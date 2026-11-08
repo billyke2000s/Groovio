@@ -2,6 +2,7 @@ package com.groovio.app.playback
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.media.audiofx.AudioEffect
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -33,6 +34,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 class GroovioPlaybackService : MediaSessionService() {
@@ -85,7 +87,21 @@ class GroovioPlaybackService : MediaSessionService() {
             .setHandleAudioBecomingNoisy(true)
             .build()
 
+        // Let the system / equalizer apps attach to Groovio's audio (Settings → Equalizer).
+        app.audioSessionId = player.audioSessionId
+        sendBroadcast(
+            Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION)
+                .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, player.audioSessionId)
+                .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+                .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+        )
+
         player.addListener(object : Player.Listener {
+            // Autoplay: when the queue runs out, continue with similar songs.
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED && app.settings.autoplay.value) autoplay(player)
+            }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 retried.clear()
                 recordedMediaId = null
@@ -129,6 +145,27 @@ class GroovioPlaybackService : MediaSessionService() {
 
         restoreQueue(player)
         scope.launch { library.trimHistory() }
+    }
+
+    private var autoplayJob: Job? = null
+
+    /** Appends YouTube's related songs for the last online song and keeps playing. */
+    private fun autoplay(player: Player) {
+        if (autoplayJob?.isActive == true || player.hasNextMediaItem()) return
+        val lastId = OnlineMedia.youtubeId(player.currentMediaItem?.localConfiguration?.uri?.toString()) ?: return
+        val queued = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
+        autoplayJob = scope.launch {
+            val related = runCatching {
+                withContext(Dispatchers.IO) { app.youtube.related(lastId) }
+            }.getOrDefault(emptyList())
+                .filter { "yt:${it.id}" !in queued }
+                .take(10)
+            if (related.isEmpty() || player.playbackState != Player.STATE_ENDED) return@launch
+            player.addMediaItems(related.map(OnlineMedia::mediaItem))
+            player.seekToNextMediaItem()
+            player.prepare()
+            player.play()
+        }
     }
 
     /** Restores the last queue (paused) if nothing has been queued yet. */
@@ -204,6 +241,13 @@ class GroovioPlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
     override fun onDestroy() {
+        session?.player?.let { p ->
+            sendBroadcast(
+                Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION)
+                    .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, (p as? ExoPlayer)?.audioSessionId ?: 0)
+                    .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            )
+        }
         session?.run {
             saveNow(player)
             player.release()

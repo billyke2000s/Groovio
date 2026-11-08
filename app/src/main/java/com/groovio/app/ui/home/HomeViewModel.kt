@@ -86,6 +86,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             val yt = groovio.youtube
             val specs: List<suspend () -> DiscoverShelf> = listOf(
                 { DiscoverShelf("Today's top hits", tracks = yt.searchSongs("top hits $year").songLength().take(15)) },
+                { DiscoverShelf("New releases", albums = yt.searchAlbums("new album $year").take(12)) },
+                { DiscoverShelf("Charts: Top 50", tracks = yt.searchSongs("top 50 global $year").songLength().take(20)) },
                 { DiscoverShelf("Popular albums", albums = yt.searchAlbums("top albums $year").take(12)) },
                 { DiscoverShelf("Pop", albums = yt.searchAlbums("pop hits").take(12)) },
                 { DiscoverShelf("Hip-hop", albums = yt.searchAlbums("hip hop").take(12)) },

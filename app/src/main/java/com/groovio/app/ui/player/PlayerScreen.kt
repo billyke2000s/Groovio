@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.SpeakerGroup
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -73,6 +74,7 @@ import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.playback.PlaybackText
 import com.groovio.app.ui.library.AddToPlaylistDialog
 import com.groovio.app.playback.PlayerUiState
+import com.groovio.app.playback.SleepTimer
 import com.groovio.app.ui.theme.GroovioColors
 
 @Composable
@@ -93,7 +95,10 @@ fun PlayerScreen(
     onAddToPlaylist: (Long) -> Unit,
     onAddToNewPlaylist: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
+    sleepTimer: SleepTimer? = null,
+    onSetSleepTimer: (Int?) -> Unit = {},
 ) {
+    var choosingSleep by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
     val artwork = rememberArtwork(state.artworkData, targetPx = 1024)
@@ -128,16 +133,28 @@ fun PlayerScreen(
             IconButton(onClick = onCollapse) {
                 Icon(Icons.Default.KeyboardArrowDown, "Close player", modifier = Modifier.size(32.dp))
             }
-            Text(
-                "NOW PLAYING",
-                modifier = Modifier.weight(1f),
-                color = GroovioColors.TextMuted,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-            // Keeps the title centred; the top bar has one action only.
-            Spacer(Modifier.size(48.dp))
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "NOW PLAYING",
+                    color = GroovioColors.TextMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                sleepTimer?.let { t ->
+                    val label = if (t.endOfTrack) "Sleep timer: end of song" else {
+                        val left = ((t.endsAtMs ?: 0L) - System.currentTimeMillis()).coerceAtLeast(0L)
+                        "Sleep timer: ${(left / 60_000) + 1} min"
+                    }
+                    Text(label, color = GroovioColors.Accent, fontSize = 11.sp)
+                }
+            }
+            IconButton(onClick = { choosingSleep = true }) {
+                Icon(
+                    Icons.Default.Timer,
+                    if (sleepTimer != null) "Sleep timer on" else "Sleep timer",
+                    tint = if (sleepTimer != null) GroovioColors.Accent else GroovioColors.Text,
+                )
+            }
         }
 
         Spacer(Modifier.weight(0.6f))
@@ -254,6 +271,30 @@ fun PlayerScreen(
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, "Queue")
             }
         }
+    }
+
+    if (choosingSleep) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { choosingSleep = false },
+            title = { Text("Sleep timer") },
+            text = {
+                Column {
+                    listOf<Pair<String, Int?>>(
+                        "Off" to null, "5 minutes" to 5, "15 minutes" to 15, "30 minutes" to 30,
+                        "45 minutes" to 45, "1 hour" to 60, "End of song" to 0,
+                    ).forEach { (label, minutes) ->
+                        Text(
+                            label,
+                            modifier = Modifier.fillMaxWidth()
+                                .clickable { onSetSleepTimer(minutes); choosingSleep = false }
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { choosingSleep = false }) { Text("Cancel") } },
+        )
     }
 
     if (addingToPlaylist) {

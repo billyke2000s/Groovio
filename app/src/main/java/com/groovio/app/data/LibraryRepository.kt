@@ -32,6 +32,8 @@ class LibraryRepository(
         dao.recordPlay(track, clock())
     }
 
+    suspend fun clearHistory() = dao.clearHistory()
+
     /** Keeps history bounded; called occasionally. */
     suspend fun trimHistory(keepDays: Int = 180) {
         dao.trimHistory(clock() - keepDays * 24L * 60 * 60 * 1000)

@@ -40,9 +40,19 @@ object StreamSelector {
         }
     }
 
-    fun choose(candidates: List<AudioCandidate>): AudioCandidate? {
+    /**
+     * @param dataSaver pick the smallest stream of the most efficient lossy codec instead
+     *                  (Settings → Audio quality → Data saver).
+     */
+    fun choose(candidates: List<AudioCandidate>, dataSaver: Boolean = false): AudioCandidate? {
         val usable = candidates.filter { it.progressive && it.url.isNotBlank() }
         val pool = usable.filter { it.originalTrack }.ifEmpty { usable }
+        if (dataSaver) {
+            val lossy = pool.filter { family(it.codec) != Family.LOSSLESS }.ifEmpty { pool }
+            return lossy.minWithOrNull(
+                compareByDescending<AudioCandidate> { family(it.codec).rank }.thenBy { it.bitrate }
+            )
+        }
         return pool.maxWithOrNull(
             compareBy<AudioCandidate> { family(it.codec).rank }.thenBy { it.bitrate }
         )

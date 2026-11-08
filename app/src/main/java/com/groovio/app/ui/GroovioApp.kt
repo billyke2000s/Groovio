@@ -56,6 +56,7 @@ import com.groovio.app.ui.player.MiniPlayer
 import com.groovio.app.ui.player.PlayerScreen
 import com.groovio.app.ui.player.QueueScreen
 import com.groovio.app.ui.search.SearchScreen
+import com.groovio.app.ui.settings.SettingsScreen
 import com.groovio.app.ui.search.SearchViewModel
 import com.groovio.app.ui.theme.GroovioColors
 
@@ -63,6 +64,7 @@ private object Routes {
     const val TABS = "tabs"
     const val PLAYER = "player"
     const val QUEUE = "queue"
+    const val SETTINGS = "settings"
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -83,6 +85,7 @@ fun GroovioApp(
     val isFavourite by vm.isFavourite.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
     val spotifyImport by vm.spotifyImport.collectAsStateWithLifecycle()
+    val sleepTimer by vm.sleepTimer.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         vm.playFiles(uris)
@@ -173,6 +176,7 @@ fun GroovioApp(
                             discover = discover,
                             update = update,
                             onUpdate = homeVm::startUpdate,
+                            onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                         )
                         Tab.SEARCH -> SearchScreen(
@@ -254,6 +258,16 @@ fun GroovioApp(
                 onAddToPlaylist = vm::addCurrentToPlaylist,
                 onAddToNewPlaylist = vm::addCurrentToNewPlaylist,
                 onOpenArtist = { openDetail(Detail.Artist(it)) },
+                sleepTimer = sleepTimer,
+                onSetSleepTimer = vm::setSleepTimer,
+            )
+        }
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
+                versionName = BuildConfig.VERSION_NAME,
+                updateMessage = updateMessage,
+                onCheckUpdates = { homeVm.checkForUpdates(manual = true) },
+                onBack = { nav.popBackStack() },
             )
         }
         composable(Routes.QUEUE) {

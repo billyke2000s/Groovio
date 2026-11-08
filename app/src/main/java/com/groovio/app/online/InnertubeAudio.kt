@@ -47,11 +47,11 @@ class InnertubeAudio(
     private var visitorFetchedAt = 0L
 
     /** The best audio from the first client YouTube serves, or throws with the last reason. */
-    fun resolve(videoId: String): ResolvedAudio {
+    fun resolve(videoId: String, dataSaver: Boolean = false): ResolvedAudio {
         var lastError: Exception? = null
         for (client in CLIENTS) {
             try {
-                return resolveWith(client, videoId)
+                return resolveWith(client, videoId, dataSaver)
             } catch (e: Exception) {
                 lastError = e
             }
@@ -59,7 +59,7 @@ class InnertubeAudio(
         throw lastError ?: IOException("No YouTube client could load $videoId")
     }
 
-    fun resolveWith(client: ClientSpec, videoId: String): ResolvedAudio {
+    fun resolveWith(client: ClientSpec, videoId: String, dataSaver: Boolean = false): ResolvedAudio {
         val body = JsonObject()
         val context = JsonObject()
         val clientObj = JsonObject()
@@ -115,7 +115,7 @@ class InnertubeAudio(
                     originalTrack = f.getObject("audioTrack").let { t -> t.isEmpty() || t.getBoolean("audioIsDefault") },
                 )
             }
-        val chosen = StreamSelector.choose(candidates) ?: throw IOException("${client.name}: no audio formats")
+        val chosen = StreamSelector.choose(candidates, dataSaver) ?: throw IOException("${client.name}: no audio formats")
         return ResolvedAudio(chosen.url, chosen.codec, chosen.bitrate, mapOf("User-Agent" to client.userAgent), clock())
     }
 
