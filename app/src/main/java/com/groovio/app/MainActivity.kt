@@ -1,171 +1,22 @@
 package com.groovio.app
 
-import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
-import androidx.core.content.ContextCompat
-import com.groovio.app.playback.AudioFormatLabel
-import com.groovio.app.playback.GroovioPlaybackService
-
-private val Green = Color(0xFF1ED760)
-private val Background = Color(0xFF101318)
+import androidx.activity.enableEdgeToEdge
+import com.groovio.app.ui.GroovioApp
+import com.groovio.app.ui.theme.GroovioTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Groovio is always dark, so keep light system-bar icons on a transparent bar.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
-        setContent { GroovioScreen() }
+        setContent { GroovioTheme { GroovioApp() } }
     }
 }
-
-@Composable
-private fun GroovioScreen() {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    var controller by remember { mutableStateOf<MediaController?>(null) }
-    var title by remember { mutableStateOf("Nothing playing") }
-    var playing by remember { mutableStateOf(false) }
-    var hasItem by remember { mutableStateOf(false) }
-    var hasNext by remember { mutableStateOf(false) }
-    var format by remember { mutableStateOf("Select an audio file") }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            // Not every document provider offers persistable grants; playback still
-            // works for this session with the temporary grant.
-            try {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (_: SecurityException) {
-            }
-            val name = displayName(context, uri) ?: "Local track"
-            title = name
-            format = "Format available after playback"
-            controller?.apply {
-                setMediaItem(MediaItem.Builder().setUri(uri)
-                    .setMediaMetadata(MediaMetadata.Builder().setTitle(name).build()).build())
-                prepare()
-                play()
-            }
-        }
-    }
-    DisposableEffect(context) {
-        val token = SessionToken(context, android.content.ComponentName(context, GroovioPlaybackService::class.java))
-        val future = MediaController.Builder(context, token).buildAsync()
-        future.addListener({
-            try {
-                val c = future.get()
-                controller = c
-                playing = c.isPlaying
-                hasItem = c.mediaItemCount > 0
-                hasNext = c.hasNextMediaItem()
-            } catch (_: Exception) {
-                format = "Player unavailable"
-            }
-        }, ContextCompat.getMainExecutor(context))
-        onDispose {
-            MediaController.releaseFuture(future)
-            controller = null
-        }
-    }
-    DisposableEffect(controller) {
-        val c = controller
-        val listener = object : Player.Listener {
-            override fun onEvents(player: Player, events: Player.Events) {
-                playing = player.isPlaying
-                hasItem = player.mediaItemCount > 0
-                hasNext = player.hasNextMediaItem()
-            }
-            override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                title = mediaMetadata.title?.toString() ?: title
-            }
-            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                val audio = AudioFormatLabel.selectedAudioFormat(tracks)
-                format = audio?.let(AudioFormatLabel::from) ?: "Audio format unknown"
-            }
-        }
-        c?.addListener(listener)
-        onDispose { c?.removeListener(listener) }
-    }
-
-    MaterialTheme(colorScheme = darkColorScheme(primary = Green, background = Background)) {
-        Column(
-            Modifier.fillMaxSize().background(Background).padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("GROOVIO", color = Green, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text("LOCAL PLAYER", color = Color.LightGray, fontSize = 12.sp)
-            }
-            Box(Modifier.fillMaxWidth().aspectRatio(1f)
-                .background(Color(0xFF23382D), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.MusicNote, contentDescription = "Album artwork placeholder",
-                    tint = Green, modifier = Modifier.size(112.dp))
-            }
-            Column {
-                Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(6.dp))
-                Text(format, color = Green, fontSize = 13.sp)
-                Spacer(Modifier.height(28.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    // Restarts the track, or goes to the previous one near the start.
-                    IconButton(onClick = { controller?.seekToPrevious() }, enabled = hasItem) {
-                        Icon(Icons.Default.SkipPrevious, "Previous track")
-                    }
-                    FilledIconButton(
-                        onClick = { if (playing) controller?.pause() else controller?.play() },
-                        modifier = Modifier.size(72.dp),
-                        enabled = controller != null && hasItem
-                    ) {
-                        Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (playing) "Pause" else "Play", modifier = Modifier.size(36.dp))
-                    }
-                    IconButton(onClick = { controller?.seekToNextMediaItem() }, enabled = hasNext) {
-                        Icon(Icons.Default.SkipNext, "Next track")
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-                Button(onClick = { picker.launch(arrayOf("audio/*")) },
-                    modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.FolderOpen, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Open audio file")
-                }
-            }
-        }
-    }
-}
-
-/** The user-visible file name from the document provider, if available. */
-private fun displayName(context: android.content.Context, uri: android.net.Uri): String? =
-    try {
-        context.contentResolver.query(
-            uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null
-        )?.use { c ->
-            if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() } else null
-        }
-    } catch (_: Exception) {
-        null
-    }
