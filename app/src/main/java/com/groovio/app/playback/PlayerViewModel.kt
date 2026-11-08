@@ -15,7 +15,10 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.groovio.app.online.NoPlayableAudioException
 import com.groovio.app.online.OnlineMedia
+import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.groovio.app.online.OnlineTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -95,8 +98,18 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             queue = queue,
             currentIndex = if (count > 0) player.currentMediaItemIndex else -1,
             currentMediaId = player.currentMediaItem?.mediaId,
-            error = player.playerError?.let { "Couldn't play this track" },
+            error = player.playerError?.let(::describeError),
         )
+    }
+
+    private fun describeError(error: Throwable): String {
+        val causes = generateSequence(error) { it.cause }.take(10).toList()
+        return when {
+            causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException } ->
+                "YouTube is blocking this network right now. Try again later or switch network."
+            causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
+            else -> "Couldn't play this track."
+        }
     }
 
     fun togglePlay() {

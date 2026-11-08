@@ -50,8 +50,34 @@ Only items with evidence are marked verified. Update this file with each phase.
 4. Output button: Android 14+ shows the system output picker; older shows Bluetooth settings.
 5. Queue: tap a song to play it; remove one; remove all → returns home.
 
+## Phase 3 — Online streaming (CI green; playback unverified)
+
+| Item | State | Evidence |
+|---|---|---|
+| Build, unit tests, lint | Verified | CI on `phase3/streaming` (see PR) |
+| YouTube Music search works on the real network | Verified | CI online smoke test: 20 real results with title, artist, duration, artwork |
+| Stream resolution and playback | **Not verified** | From GitHub's servers YouTube answered "Sign in to confirm you're not a bot" (datacenter IP block). Must be tested on a phone. |
+| Matcher matches the Discord bot | Verified | Kotlin port gives the same scores as the bot's JS on 7 cases |
+
+### Added
+- Search tab (YouTube Music "songs"), debounced, with retry and clear error messages.
+- Tap a result: the whole result list becomes the queue, starting at that song.
+- Stream URLs resolved on the loader thread at play time, cached for 4 hours, re-resolved once if YouTube rejects an expired URL.
+- Best-quality selection: lossless > Opus > AAC > MP3, highest bitrate within a codec, original audio track over dubs. The player's label shows what was actually selected.
+- Larger artwork (544px) for YouTube Music results.
+- `TrackMatcher`: port of the bot's matching (artist/channel, title words, length, album, alt-version penalties).
+
+### Manual device checklist (Phase 3)
+1. Search "Get Lucky", tap the first result: it plays within a few seconds; label shows e.g. `OPUS · 160K · 48kHz`.
+2. Next/previous move through the search results.
+3. Lock screen and notification show the song's title, artist and artwork.
+4. Pause for a long time (or leave overnight) and resume: it should recover by re-resolving the link.
+5. Turn on airplane mode, search: you get the "Couldn't connect" message, and Try again works once back online.
+
 ## Known limitations
 - No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
 - Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.
 - Local files show the file name as title. Artist and artwork should come from embedded tags when present [not yet verified on a device].
-- No online sources yet. Phase 4: YouTube Music search and on-device playback via NewPipe Extractor (owner decision, see DECISIONS.md).
+- YouTube can block a network ("not a bot" check) or change its site; playback then fails until it lifts or NewPipe Extractor is updated.
+- No albums/artists pages or Spotify-link import yet; the matcher is ready for import.
+- Streams are fetched without chunked range requests; if YouTube throttles long songs on some networks, that is the next fix.

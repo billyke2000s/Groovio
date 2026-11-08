@@ -99,7 +99,17 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
         const val URL_TTL_MS = 4 * 60 * 60 * 1000L
 
         fun bestImage(images: List<Image>): String? =
-            images.maxByOrNull { it.height }?.url
+            images.maxByOrNull { it.height }?.url?.let(::largeArtwork)
+
+        private val googleSize = Regex("=w\\d+-h\\d+")
+
+        /**
+         * YouTube Music returns 120px song art; Google's image server can serve the same
+         * image larger by changing the size parameter (e.g. "=w120-h120-l90-rj").
+         */
+        fun largeArtwork(url: String, size: Int = 544): String =
+            if (url.contains("googleusercontent.com")) url.replaceFirst(googleSize, "=w$size-h$size")
+            else url
     }
 }
 

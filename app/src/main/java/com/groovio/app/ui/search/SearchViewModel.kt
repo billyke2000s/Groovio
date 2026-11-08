@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import java.io.IOException
 
 data class SearchState(
@@ -74,7 +75,8 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun describe(e: Exception): String = when (e) {
-        is ReCaptchaException -> "YouTube is limiting requests from this device. Try again later."
+        is ReCaptchaException, is SignInConfirmNotBotException ->
+            "YouTube is blocking this network right now. Try again later or switch network."
         is IOException -> "Couldn't connect. Check your internet and try again."
         else -> "Search failed. Try again."
     }
