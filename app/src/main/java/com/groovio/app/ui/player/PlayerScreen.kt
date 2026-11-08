@@ -96,6 +96,7 @@ fun PlayerScreen(
         Spacer(Modifier.weight(0.6f))
         ArtworkImage(
             bitmap = artwork,
+            url = state.artworkUri,
             iconSize = 120.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)),
         )

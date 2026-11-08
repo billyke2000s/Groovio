@@ -6,15 +6,27 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,16 +38,26 @@ import com.groovio.app.ui.home.HomeScreen
 import com.groovio.app.ui.player.MiniPlayer
 import com.groovio.app.ui.player.PlayerScreen
 import com.groovio.app.ui.player.QueueScreen
+import com.groovio.app.ui.search.SearchScreen
+import com.groovio.app.ui.search.SearchViewModel
 import com.groovio.app.ui.theme.GroovioColors
 
 private object Routes {
-    const val HOME = "home"
+    const val TABS = "tabs"
     const val PLAYER = "player"
     const val QUEUE = "queue"
 }
 
+private enum class Tab(val label: String, val icon: ImageVector) {
+    HOME("Home", Icons.Default.Home),
+    SEARCH("Search", Icons.Default.Search),
+}
+
 @Composable
-fun GroovioApp(vm: PlayerViewModel = viewModel()) {
+fun GroovioApp(
+    vm: PlayerViewModel = viewModel(),
+    searchVm: SearchViewModel = viewModel(),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val position by vm.positionMs.collectAsStateWithLifecycle(initialValue = 0L)
     val nav = rememberNavController()
@@ -45,15 +67,25 @@ fun GroovioApp(vm: PlayerViewModel = viewModel()) {
 
     NavHost(
         navController = nav,
-        startDestination = Routes.HOME,
+        startDestination = Routes.TABS,
         modifier = Modifier.fillMaxSize().background(GroovioColors.Background),
     ) {
-        composable(Routes.HOME) {
-            Box(Modifier.fillMaxSize()) {
-                HomeScreen(
-                    onOpenFiles = { picker.launch(arrayOf("audio/*")) },
-                    modifier = Modifier.statusBarsPadding(),
-                )
+        composable(Routes.TABS) {
+            var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding()) {
+                    when (tab) {
+                        Tab.HOME -> HomeScreen(
+                            onOpenFiles = { picker.launch(arrayOf("audio/*")) },
+                            onSearch = { tab = Tab.SEARCH },
+                        )
+                        Tab.SEARCH -> SearchScreen(
+                            vm = searchVm,
+                            currentMediaId = state.currentMediaId,
+                            onPlay = vm::playTracks,
+                        )
+                    }
+                }
                 if (state.hasItem) {
                     MiniPlayer(
                         state = state,
@@ -61,11 +93,25 @@ fun GroovioApp(vm: PlayerViewModel = viewModel()) {
                         onOpen = { nav.navigate(Routes.PLAYER) { launchSingleTop = true } },
                         onTogglePlay = vm::togglePlay,
                         onNext = vm::next,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .navigationBarsPadding()
-                            .padding(8.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     )
+                }
+                NavigationBar(containerColor = GroovioColors.Background) {
+                    Tab.entries.forEach { t ->
+                        NavigationBarItem(
+                            selected = tab == t,
+                            onClick = { tab = t },
+                            icon = { Icon(t.icon, contentDescription = null) },
+                            label = { Text(t.label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = GroovioColors.Text,
+                                selectedTextColor = GroovioColors.Text,
+                                indicatorColor = GroovioColors.SurfaceHigh,
+                                unselectedIconColor = GroovioColors.TextMuted,
+                                unselectedTextColor = GroovioColors.TextMuted,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -74,9 +120,9 @@ fun GroovioApp(vm: PlayerViewModel = viewModel()) {
             enterTransition = { slideInVertically { it } },
             popExitTransition = { slideOutVertically { it } },
         ) {
-            // If the queue is emptied while the player is open, go back home.
+            // If the queue is emptied while the player is open, go back.
             LaunchedEffect(state.connected, state.hasItem) {
-                if (state.connected && !state.hasItem) nav.popBackStack(Routes.HOME, inclusive = false)
+                if (state.connected && !state.hasItem) nav.popBackStack(Routes.TABS, inclusive = false)
             }
             PlayerScreen(
                 state = state,

@@ -8,7 +8,9 @@ These rules apply to every contributor and coding agent. Read this file before e
 - Kotlin + Jetpack Compose for UI; AndroidX Media3 for playback; Room for local persistence.
 - Local-first playlists, favourites, history, and settings. Network is optional for online catalogue discovery.
 - Build Groovio's own branding; Spotify may inspire layout but do not copy protected logos or assets.
-- Metadata services do not grant full-track streaming rights. Use only authorised playable sources and comply with their terms.
+- Metadata services do not grant full-track streaming rights. Never fabricate stream URLs.
+- Owner decision (see DECISIONS.md): online audio comes from YouTube / YouTube Music, extracted on-device with NewPipe Extractor. Do not add other unofficial sources without the owner's approval.
+- Licence is GPL-3.0 (required by NewPipe Extractor). Keep all dependencies GPL-compatible.
 
 ## Architecture
 - Keep UI, metadata, source discovery, track matching, playback, and persistence separate behind explicit interfaces.
@@ -52,5 +54,5 @@ These rules apply to every contributor and coding agent. Read this file before e
 ## Initial milestones
 1. Buildable Android Studio project with CI.
 2. Exact agreed player UI with real local-file playback and inline actual codec metadata.
-3. Local library, favourites, playlists, and search.
-4. Optional free metadata discovery and authorised online playback providers.
+4. Online search and playback (YouTube Music via NewPipe Extractor), Spotify-link import using the ported matcher.
+5. Persistent favourites, playlists, history and playback state for online and local tracks.

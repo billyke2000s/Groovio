@@ -51,6 +51,7 @@ fun MiniPlayer(
             ) {
                 ArtworkImage(
                     bitmap = artwork,
+                    url = state.artworkUri,
                     iconSize = 22.dp,
                     modifier = Modifier.size(44.dp).clip(RoundedCornerShape(4.dp)),
                 )

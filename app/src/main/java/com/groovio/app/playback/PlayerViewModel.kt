@@ -15,6 +15,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.groovio.app.online.OnlineMedia
+import com.groovio.app.online.OnlineTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -81,6 +83,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             title = md.title?.toString() ?: "Unknown track",
             artist = (md.artist ?: md.albumArtist)?.toString(),
             artworkData = md.artworkData,
+            artworkUri = md.artworkUri?.toString(),
             isPlaying = player.isPlaying,
             isBuffering = player.playbackState == Player.STATE_BUFFERING,
             durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 },
@@ -91,6 +94,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 ?.let(AudioFormatLabel::from),
             queue = queue,
             currentIndex = if (count > 0) player.currentMediaItemIndex else -1,
+            currentMediaId = player.currentMediaItem?.mediaId,
             error = player.playerError?.let { "Couldn't play this track" },
         )
     }
@@ -127,6 +131,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun removeAt(index: Int) {
         val c = controller ?: return
         if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
+    }
+
+    /** Replaces the queue with online tracks and starts at [startIndex]. */
+    fun playTracks(tracks: List<OnlineTrack>, startIndex: Int) {
+        val c = controller ?: return
+        if (tracks.isEmpty()) return
+        c.setMediaItems(tracks.map(OnlineMedia::mediaItem), startIndex.coerceIn(tracks.indices), 0L)
+        c.prepare()
+        c.play()
     }
 
     /** Replaces the queue with user-picked files and starts playing the first. */

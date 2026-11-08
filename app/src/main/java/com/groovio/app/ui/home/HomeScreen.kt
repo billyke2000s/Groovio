@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,13 +25,35 @@ import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
 @Composable
-fun HomeScreen(onOpenFiles: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(onOpenFiles: () -> Unit, onSearch: () -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(16.dp))
         Text("groovio", color = GroovioColors.Accent, fontSize = 22.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(20.dp))
         Text(greeting(), fontSize = 26.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(20.dp))
+        Surface(
+            color = GroovioColors.Surface,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(20.dp)) {
+                Text("Find any song", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Search songs and artists and play them straight away.",
+                    color = GroovioColors.TextMuted,
+                    fontSize = 14.sp,
+                )
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onSearch) {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Search")
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         Surface(
             color = GroovioColors.Surface,
             shape = RoundedCornerShape(12.dp),
@@ -44,7 +68,7 @@ fun HomeScreen(onOpenFiles: () -> Unit, modifier: Modifier = Modifier) {
                     fontSize = 14.sp,
                 )
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = onOpenFiles) {
+                OutlinedButton(onClick = onOpenFiles) {
                     Icon(Icons.Default.FolderOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Choose audio files")
