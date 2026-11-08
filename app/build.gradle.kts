@@ -57,3 +57,12 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
 }
+
+// Show each test and its output in CI logs.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true
+    }
+}
