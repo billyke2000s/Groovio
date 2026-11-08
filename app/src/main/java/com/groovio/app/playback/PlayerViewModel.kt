@@ -24,8 +24,10 @@ import com.groovio.app.online.OnlineMedia
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.online.SpotifyCollection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -51,6 +53,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val library = (app as GroovioApplication).library
+    private val spotify = app.spotify
+
+    private var importJob: Job? = null
+    private val _import = MutableStateFlow<SpotifyImportProgress?>(null)
+    /** Progress of matching a Spotify link's songs to YouTube, while it runs and after. */
+    val spotifyImport: StateFlow<SpotifyImportProgress?> = _import.asStateFlow()
 
     /** Whether the current song is in Liked songs. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -190,9 +198,52 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { library.addToPlaylist(library.createPlaylist(name), track) }
     }
 
+    /**
+     * Plays a Spotify album/playlist/song: each song is matched to YouTube in order; the
+     * first match starts playing straight away and later matches are appended to the queue.
+     */
+    fun playSpotify(collection: SpotifyCollection) {
+        importJob?.cancel()
+        importJob = viewModelScope.launch {
+            var started = false
+            var found = 0
+            var missed = 0
+            val total = collection.tracks.size
+            _import.value = SpotifyImportProgress(collection.name, 0, 0, total, done = false)
+            for (track in collection.tracks) {
+                val match = withContext(Dispatchers.IO) { runCatching { spotify.match(track) }.getOrNull() }
+                val c = controller ?: break
+                if (match == null) {
+                    missed++
+                } else {
+                    found++
+                    // Spotify's title/artist read better than YouTube's upload titles.
+                    val item = OnlineMedia.mediaItem(match.copy(title = track.title, artist = track.artist ?: match.artist))
+                    if (!started) {
+                        c.setMediaItem(item)
+                        c.prepare()
+                        c.play()
+                        started = true
+                    } else {
+                        c.addMediaItem(item)
+                    }
+                }
+                _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = false)
+            }
+            _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = true)
+        }
+    }
+
+    private fun stopImport() {
+        importJob?.cancel()
+        importJob = null
+        _import.value = null
+    }
+
     /** Replaces the queue with stored tracks (liked songs, a playlist, history). */
     fun playStored(tracks: List<TrackEntity>, startIndex: Int) {
         val c = controller ?: return
+        stopImport()
         if (tracks.isEmpty()) return
         c.setMediaItems(tracks.map(TrackMapping::toMediaItem), startIndex.coerceIn(tracks.indices), 0L)
         c.prepare()
@@ -202,6 +253,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Replaces the queue with online tracks and starts at [startIndex]. */
     fun playTracks(tracks: List<OnlineTrack>, startIndex: Int) {
         val c = controller ?: return
+        stopImport()
         if (tracks.isEmpty()) return
         c.setMediaItems(tracks.map(OnlineMedia::mediaItem), startIndex.coerceIn(tracks.indices), 0L)
         c.prepare()
@@ -211,6 +263,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     /** Replaces the queue with user-picked files and starts playing the first. */
     fun playFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
+        stopImport()
         viewModelScope.launch {
             val items = withContext(Dispatchers.IO) { uris.map(::toMediaItem) }
             val c = controller ?: return@launch
@@ -252,3 +305,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         MediaController.releaseFuture(future)
     }
 }
+
+data class SpotifyImportProgress(
+    val name: String,
+    val found: Int,
+    val missed: Int,
+    val total: Int,
+    val done: Boolean,
+)

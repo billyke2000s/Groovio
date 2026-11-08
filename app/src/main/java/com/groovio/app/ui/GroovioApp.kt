@@ -28,12 +28,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.groovio.app.GroovioApplication
 import com.groovio.app.playback.PlayerViewModel
 import com.groovio.app.ui.home.HomeScreen
 import com.groovio.app.ui.library.LibraryScreen
@@ -68,9 +70,24 @@ fun GroovioApp(
     val position by vm.positionMs.collectAsStateWithLifecycle(initialValue = 0L)
     val isFavourite by vm.isFavourite.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
+    val spotifyImport by vm.spotifyImport.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         vm.playFiles(uris)
+    }
+
+    var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
+
+    // A link or text shared to Groovio opens in Search.
+    val app = LocalContext.current.applicationContext as GroovioApplication
+    val shared by app.sharedText.collectAsStateWithLifecycle()
+    LaunchedEffect(shared) {
+        val text = shared ?: return@LaunchedEffect
+        app.sharedText.value = null
+        searchVm.onQueryChange(text)
+        tab = Tab.SEARCH
+        nav.popBackStack(Routes.TABS, inclusive = false)
     }
 
     NavHost(
@@ -79,8 +96,6 @@ fun GroovioApp(
         modifier = Modifier.fillMaxSize().background(GroovioColors.Background),
     ) {
         composable(Routes.TABS) {
-            var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
-            var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding()) {
                     when (tab) {
@@ -92,6 +107,8 @@ fun GroovioApp(
                             vm = searchVm,
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playTracks,
+                            spotifyImport = spotifyImport,
+                            onPlaySpotify = vm::playSpotify,
                         )
                         Tab.LIBRARY -> LibraryScreen(
                             vm = libraryVm,

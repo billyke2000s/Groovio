@@ -36,12 +36,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.online.SpotifyCollection
+import com.groovio.app.playback.SpotifyImportProgress
 import com.groovio.app.playback.PlaybackText
 import com.groovio.app.ui.theme.GroovioColors
 
@@ -50,6 +53,8 @@ fun SearchScreen(
     vm: SearchViewModel,
     currentMediaId: String?,
     onPlay: (List<OnlineTrack>, Int) -> Unit,
+    spotifyImport: SpotifyImportProgress?,
+    onPlaySpotify: (SpotifyCollection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
@@ -66,7 +71,7 @@ fun SearchScreen(
         OutlinedTextField(
             value = input,
             onValueChange = vm::onQueryChange,
-            placeholder = { Text("Songs or artists") },
+            placeholder = { Text("Songs, artists or a Spotify link") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
                 if (input.isNotEmpty()) {
@@ -98,8 +103,13 @@ fun SearchScreen(
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = vm::retry) { Text("Try again") }
             }
+            state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify)
             state.query.isEmpty() -> Centered {
-                Text("Find songs and play them instantly.", color = GroovioColors.TextMuted)
+                Text(
+                    "Find songs and play them instantly, or paste a Spotify link.",
+                    color = GroovioColors.TextMuted,
+                    textAlign = TextAlign.Center,
+                )
             }
             state.results.isEmpty() -> Centered {
                 Text("No songs found for “${state.query}”.", color = GroovioColors.TextMuted)
@@ -159,6 +169,67 @@ private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit) 
             if (sub.isNotEmpty()) {
                 Text(sub, color = GroovioColors.TextMuted, fontSize = 13.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyResult(
+    collection: SpotifyCollection,
+    progress: SpotifyImportProgress?,
+    onPlay: (SpotifyCollection) -> Unit,
+) {
+    val kind = when (collection.type) {
+        "album" -> "Album"
+        "playlist" -> "Playlist"
+        else -> "Song"
+    }
+    // Progress belongs to this collection only if the names match.
+    val mine = progress?.takeIf { it.name == collection.name }
+    LazyColumn(Modifier.fillMaxSize()) {
+        item {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(GroovioColors.Surface, RoundedCornerShape(12.dp))
+                    .padding(20.dp),
+            ) {
+                Text("From Spotify · $kind", color = GroovioColors.Accent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(collection.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("${collection.tracks.size} songs", color = GroovioColors.TextMuted, fontSize = 14.sp)
+                Spacer(Modifier.height(14.dp))
+                when {
+                    mine == null -> Button(onClick = { onPlay(collection) }) { Text("Play") }
+                    !mine.done -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), color = GroovioColors.Accent, strokeWidth = 2.dp)
+                        Spacer(Modifier.size(10.dp))
+                        Text(
+                            "Finding songs… ${mine.found + mine.missed} of ${mine.total}",
+                            color = GroovioColors.TextMuted, fontSize = 14.sp,
+                        )
+                    }
+                    else -> Column {
+                        Text(
+                            if (mine.missed == 0) "All ${mine.found} songs queued."
+                            else "${mine.found} songs queued; ${mine.missed} couldn't be found.",
+                            color = GroovioColors.TextMuted, fontSize = 14.sp,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { onPlay(collection) }) { Text("Play again") }
+                    }
+                }
+            }
+        }
+        items(collection.tracks.size) { i ->
+            val t = collection.tracks[i]
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
+                Text(t.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val sub = listOfNotNull(t.artist, t.durationMs?.let(PlaybackText::time)).joinToString(" · ")
+                if (sub.isNotEmpty()) {
+                    Text(sub, color = GroovioColors.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

@@ -52,4 +52,17 @@ class OnlineSmokeTest {
             assertTrue("empty body", bytes > 0)
         }
     }
+
+    @Test fun `Spotify album link is read and its songs matched on YouTube`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val importer = SpotifyImporter()
+        val album = importer.load("https://open.spotify.com/album/4m2880jivSbbyEGAKfITCa")
+        println("spotify: ${album.type} '${album.name}' with ${album.tracks.size} tracks; first: ${album.tracks.firstOrNull()}")
+        assertTrue("no tracks", album.tracks.isNotEmpty())
+
+        val sample = album.tracks.take(3)
+        val matches = sample.map { it to importer.match(it) }
+        matches.forEach { (s, m) -> println("match: '${s.title}' -> ${m?.let { "${it.title} / ${it.artist} (${it.id})" }}") }
+        assertTrue("fewer than 2 of 3 songs matched", matches.count { it.second != null } >= 2)
+    }
 }

@@ -60,6 +60,8 @@ dependencies {
 
     // Online: on-device YouTube Music search and stream extraction (GPL-3.0).
     implementation("com.github.teamnewpipe:NewPipeExtractor:v0.27.0")
+    // JSON parser NewPipe already ships; pinned to the same commit to avoid duplicates.
+    implementation("com.github.TeamNewPipe:nanojson:e9d656ddb49a412a5a0a5d5ef20ca7ef09549996")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     // Local library: favourites, playlists, history, saved queue.
