@@ -296,12 +296,14 @@ private fun TitleWithAudioLabel(title: String, audioLabel: String?) {
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun SeekBar(positionMs: Long, durationMs: Long?, onSeek: (Long) -> Unit) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val duration = durationMs ?: 0L
     val fraction = if (duration > 0) (positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Column {
+        // Spotify-style: thin line with a small round thumb.
         Slider(
             value = dragging ?: fraction,
             onValueChange = { dragging = it },
@@ -310,11 +312,19 @@ private fun SeekBar(positionMs: Long, durationMs: Long?, onSeek: (Long) -> Unit)
                 dragging = null
             },
             enabled = duration > 0,
-            colors = SliderDefaults.colors(
-                thumbColor = GroovioColors.Text,
-                activeTrackColor = GroovioColors.Accent,
-                inactiveTrackColor = GroovioColors.SurfaceHigh,
-            ),
+            thumb = {
+                Box(Modifier.size(if (dragging != null) 16.dp else 12.dp).background(GroovioColors.Text, CircleShape))
+            },
+            track = { sliderState ->
+                val range = sliderState.valueRange
+                val f = ((sliderState.value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+                Box(Modifier.fillMaxWidth().height(4.dp).background(GroovioColors.SurfaceHigh, CircleShape)) {
+                    Box(
+                        Modifier.fillMaxWidth(f).height(4.dp)
+                            .background(if (dragging != null) GroovioColors.Accent else GroovioColors.Text, CircleShape)
+                    )
+                }
+            },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             val shown = dragging?.let { (it * duration).toLong() } ?: positionMs

@@ -62,6 +62,7 @@ fun MiniPlayer(
 
     Surface(
         color = tint,
+        contentColor = GroovioColors.Text,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier
             .fillMaxWidth()

@@ -1,6 +1,8 @@
 package com.groovio.app.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -77,5 +79,9 @@ private val typography = Typography().let { base ->
 
 @Composable
 fun GroovioTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = scheme, typography = typography, content = content)
+    MaterialTheme(colorScheme = scheme, typography = typography) {
+        // Screens are drawn straight on the background (no Surface), so set the default
+        // text/icon colour explicitly; otherwise Material falls back to black.
+        CompositionLocalProvider(LocalContentColor provides GroovioColors.Text, content = content)
+    }
 }
