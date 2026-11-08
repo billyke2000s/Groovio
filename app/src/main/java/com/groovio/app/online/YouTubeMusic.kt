@@ -53,7 +53,11 @@ data class ResolvedAudio(
  * YouTube Music search and audio resolution, entirely on-device via NewPipe Extractor.
  * Every function blocks on network I/O: call from a background thread.
  */
-class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
+class YouTubeMusic(
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** Settings → Audio quality → Data saver. */
+    private val dataSaver: () -> Boolean = { false },
+) {
 
     private val service = ServiceList.YouTube
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
@@ -133,12 +137,14 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
     private val innertube = InnertubeAudio(clock = clock)
 
     fun resolve(videoId: String): ResolvedAudio {
-        cache[videoId]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }
+        val saver = dataSaver()
+        val key = if (saver) "$videoId|saver" else videoId
+        cache[key]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }
         // 1) The bot's method; 2) NewPipe's own extraction as a fallback.
-        val first = runCatching { innertube.resolve(videoId) }
-        first.getOrNull()?.let { cache[videoId] = it; return it }
+        val first = runCatching { innertube.resolve(videoId, saver) }
+        first.getOrNull()?.let { cache[key] = it; return it }
         return try {
-            resolveWithNewPipe(videoId)
+            resolveWithNewPipe(videoId, saver).also { cache[key] = it }
         } catch (e: Exception) {
             // Report the bot-method error if NewPipe failed too, so "blocked" is shown accurately.
             first.exceptionOrNull()?.let { e.addSuppressed(it) }
@@ -146,7 +152,7 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
         }
     }
 
-    private fun resolveWithNewPipe(videoId: String): ResolvedAudio {
+    private fun resolveWithNewPipe(videoId: String, saver: Boolean): ResolvedAudio {
         val url = service.streamLHFactory.fromId(videoId).url
         val info = StreamInfo.getInfo(service, url)
         val chosen = StreamSelector.choose(
@@ -160,6 +166,7 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
                         it.audioTrackType == AudioTrackType.ORIGINAL,
                 )
             }
+            , saver,
         ) ?: throw NoPlayableAudioException(videoId)
         // Each YouTube client's stream URLs expect that client's user agent.
         val userAgent = when {
@@ -170,12 +177,15 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
         }
         val headers = userAgent?.let { mapOf("User-Agent" to it) } ?: emptyMap()
         return ResolvedAudio(chosen.url, chosen.codec, chosen.bitrate, headers, clock())
-            .also { cache[videoId] = it }
     }
 
     /** Forget a cached URL, e.g. after the host rejected it as expired. */
+    /** Forget all cached stream URLs (e.g. after changing audio quality). */
+    fun clearCache() = cache.clear()
+
     fun invalidate(videoId: String) {
         cache.remove(videoId)
+        cache.remove("$videoId|saver")
     }
 
     private fun toTrack(item: StreamInfoItem): OnlineTrack? {

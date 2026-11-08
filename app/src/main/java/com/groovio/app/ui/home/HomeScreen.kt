@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
@@ -74,6 +75,7 @@ fun HomeScreen(
     related: RelatedShelf? = null,
     discover: List<DiscoverShelf> = emptyList(),
     onOpenAlbum: (OnlineAlbum) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     update: UpdateState? = null,
     onUpdate: () -> Unit = {},
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
@@ -97,6 +99,9 @@ fun HomeScreen(
                 Text(greeting(), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 androidx.compose.material3.IconButton(onClick = onOpenFiles) {
                     Icon(Icons.Default.FolderOpen, "Play audio files from this phone")
+                }
+                androidx.compose.material3.IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Default.Settings, "Settings")
                 }
             }
         }

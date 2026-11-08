@@ -137,6 +137,9 @@ abstract class LibraryDao {
     )
     abstract fun recent(limit: Int): Flow<List<TrackEntity>>
 
+    @Query("DELETE FROM history")
+    abstract suspend fun clearHistory()
+
     @Query("DELETE FROM history WHERE playedAt < :before")
     abstract suspend fun trimHistory(before: Long)
 

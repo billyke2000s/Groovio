@@ -55,6 +55,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val library = (app as GroovioApplication).library
+
+    private val _sleep = MutableStateFlow<SleepTimer?>(null)
+    /** Active sleep timer, if any. */
+    val sleepTimer: StateFlow<SleepTimer?> = _sleep.asStateFlow()
+    private var sleepJob: Job? = null
     private val spotify: SpotifyImporter = (app as GroovioApplication).spotify
 
     private var importJob: Job? = null
@@ -78,6 +83,14 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = refresh(player)
+
+        // Sleep timer "end of track": pause as soon as the next song starts.
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            if (_sleep.value?.endOfTrack == true && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                controller?.pause()
+                _sleep.value = null
+            }
+        }
     }
 
     init {
@@ -153,6 +166,24 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         if (c.isPlaying) c.pause() else {
             if (c.playbackState == Player.STATE_IDLE) c.prepare()
             c.play()
+        }
+    }
+
+    /** null = off, 0 = end of this song, otherwise minutes. */
+    fun setSleepTimer(minutes: Int?) {
+        sleepJob?.cancel()
+        when {
+            minutes == null -> _sleep.value = null
+            minutes == 0 -> _sleep.value = SleepTimer(endsAtMs = null, endOfTrack = true)
+            else -> {
+                val ms = minutes * 60_000L
+                _sleep.value = SleepTimer(endsAtMs = System.currentTimeMillis() + ms, endOfTrack = false)
+                sleepJob = viewModelScope.launch {
+                    delay(ms)
+                    controller?.pause()
+                    _sleep.value = null
+                }
+            }
         }
     }
 
@@ -361,3 +392,5 @@ data class SpotifyImportProgress(
     val total: Int,
     val done: Boolean,
 )
+
+data class SleepTimer(val endsAtMs: Long?, val endOfTrack: Boolean)

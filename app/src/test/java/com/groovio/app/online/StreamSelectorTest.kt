@@ -44,4 +44,14 @@ class StreamSelectorTest {
         assertEquals(StreamSelector.Family.MP3, StreamSelector.family("mp4a.40.34"))
         assertEquals(StreamSelector.Family.AAC, StreamSelector.family("mp4a.40.2"))
     }
+
+    @Test fun `data saver picks the smallest efficient stream`() {
+        val chosen = StreamSelector.choose(listOf(
+            c("aac128", "mp4a.40.2", 128),
+            c("opus50", "opus", 50),
+            c("opus160", "opus", 160),
+            c("flac", "flac", 900),
+        ), dataSaver = true)
+        assertEquals("opus50", chosen?.url)
+    }
 }

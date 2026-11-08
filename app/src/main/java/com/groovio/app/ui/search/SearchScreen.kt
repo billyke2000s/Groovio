@@ -115,13 +115,9 @@ fun SearchScreen(
                 Button(onClick = vm::retry) { Text("Try again") }
             }
             state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify)
-            state.query.isEmpty() -> Centered {
-                Text(
-                    "Find songs and play them instantly, or paste a Spotify link.",
-                    color = GroovioColors.TextMuted,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            state.query.isEmpty() && input.isBlank() -> BrowseAll { vm.onQueryChange(it) }
+            // Typing, waiting for the first results: show nothing rather than "no songs".
+            state.query.isEmpty() -> Box(Modifier.fillMaxSize())
             state.results.isEmpty() -> Centered {
                 Text("No songs found for “${state.query}”.", color = GroovioColors.TextMuted)
             }
@@ -263,6 +259,42 @@ private fun SpotifyResult(
                 if (sub.isNotEmpty()) {
                     Text(sub, color = GroovioColors.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+            }
+        }
+    }
+}
+
+/** Genre and mood tiles shown before you type (like Spotify's "Browse all"). */
+private val browseTiles = listOf(
+    "Pop" to 0xFFE8115B, "Hip-hop" to 0xFFBA5D07, "Rock" to 0xFF8D67AB, "Dance" to 0xFF1E3264,
+    "R&B" to 0xFFDC148C, "Indie" to 0xFF608108, "Chill" to 0xFF477D95, "Workout" to 0xFFE91429,
+    "Party" to 0xFF8C1932, "Sleep" to 0xFF1E3264, "Focus" to 0xFF503750, "Country" to 0xFFB06239,
+    "Latin" to 0xFFE1118C, "K-pop" to 0xFF148A08, "Jazz" to 0xFF2D46B9, "Classical" to 0xFF7D4B32,
+)
+
+@Composable
+private fun BrowseAll(onPick: (String) -> Unit) {
+    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            Text("Browse all", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        items(browseTiles.size) { i ->
+            val (label, color) = browseTiles[i]
+            Box(
+                Modifier
+                    .height(96.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(androidx.compose.ui.graphics.Color(color))
+                    .clickable(onClickLabel = "Browse $label") { onPick("$label music") }
+                    .padding(12.dp),
+            ) {
+                Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
             }
         }
     }
