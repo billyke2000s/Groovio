@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.Format.NO_VALUE
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
 import java.util.Locale
 
 /**
@@ -72,7 +73,11 @@ object AudioFormatLabel {
             .joinToString(" · ")
             .ifEmpty { null }
 
-    /** Label from a Media3 [Format]; prefers the declared bitrate, then the average. */
+    /**
+     * Label from a Media3 [Format]; prefers the declared bitrate, then the average.
+     * Media3 marks the bitrate fields as unstable API; re-check on Media3 upgrades.
+     */
+    @androidx.annotation.OptIn(UnstableApi::class)
     fun from(format: Format): String? {
         val declared = when {
             format.bitrate != NO_VALUE -> format.bitrate

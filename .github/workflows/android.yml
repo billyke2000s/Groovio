@@ -37,6 +37,10 @@ jobs:
       - name: Lint
         run: ./gradlew :app:lintDebug --stacktrace
 
+      - name: Print full lint report
+        if: failure()
+        run: find app/build -name 'lint-results-debug.txt' -exec cat {} \; || true
+
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 

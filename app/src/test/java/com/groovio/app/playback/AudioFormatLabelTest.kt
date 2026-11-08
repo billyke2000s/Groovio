@@ -1,10 +1,12 @@
 package com.groovio.app.playback
 
 import androidx.media3.common.Format
+import androidx.media3.common.util.UnstableApi
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+@androidx.annotation.OptIn(UnstableApi::class)
 class AudioFormatLabelTest {
 
     @Test fun `maps Media3 MIME types to familiar codec names`() {
