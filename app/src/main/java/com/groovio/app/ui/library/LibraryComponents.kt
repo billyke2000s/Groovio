@@ -2,6 +2,7 @@ package com.groovio.app.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,18 +40,25 @@ import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.theme.GroovioColors
 
-/** One song row: artwork, title, artist, optional trailing action. */
+/** One song row: artwork, title, artist, optional trailing action; long-press opens the menu. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun StoredTrackRow(
     track: TrackEntity,
     playing: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Play ${track.title}", onClick = onClick)
+            .combinedClickable(
+                onClickLabel = "Play ${track.title}",
+                onLongClickLabel = "More options",
+                onLongClick = onLongClick,
+                onClick = onClick,
+            )
             .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

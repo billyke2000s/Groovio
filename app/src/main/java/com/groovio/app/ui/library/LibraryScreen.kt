@@ -7,6 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,6 +34,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -63,13 +75,14 @@ fun LibraryScreen(
     onViewChange: (String) -> Unit,
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
+    onMore: (TrackEntity) -> Unit,
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
-        view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay) { onViewChange(LibraryView.ROOT) }
-        playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange)
+        view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
+        playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore)
     }
 }
 
@@ -83,6 +96,7 @@ private fun LibraryRoot(
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
     onViewChange: (String) -> Unit,
+    onMore: (TrackEntity) -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -93,18 +107,29 @@ private fun LibraryRoot(
     val showPlaylists = filter == null || filter == FILTER_PLAYLISTS
     val showRecent = filter == null || filter == FILTER_RECENT
 
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
+    // Spotify-style list/grid toggle and sort order for playlists.
+    var grid by rememberSaveable { mutableStateOf(false) }
+    var alphabetical by rememberSaveable { mutableStateOf(false) }
+    val sortedPlaylists = if (alphabetical) playlists.sortedBy { it.name.lowercase() } else playlists
+    val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(if (grid) 3 else 1),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = if (grid) 12.dp else 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (grid) 12.dp else 0.dp),
+    ) {
+        item(span = full) {
             Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
+                Modifier.fillMaxWidth().padding(start = if (grid) 8.dp else 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Your Library", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, "New playlist") }
             }
         }
-        item {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item(span = full) {
+            Row(Modifier.padding(horizontal = if (grid) 4.dp else 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(FILTER_PLAYLISTS to "Playlists", FILTER_RECENT to "Recently played").forEach { (key, label) ->
                     FilterChip(
                         selected = filter == key,
@@ -118,31 +143,61 @@ private fun LibraryRoot(
                 }
             }
         }
-        if (showPlaylists) item {
-            CollectionRow(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") {
-                onViewChange(LibraryView.LIKED)
+        if (showPlaylists) item(span = full) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = if (grid) 0.dp else 8.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { alphabetical = !alphabetical }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = GroovioColors.Text)
+                    Text(if (alphabetical) "  Alphabetical" else "  Recents", color = GroovioColors.Text)
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { grid = !grid }) {
+                    Icon(
+                        if (grid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                        if (grid) "Show as list" else "Show as grid",
+                    )
+                }
             }
         }
-        if (showPlaylists) items(playlists, key = { "p${it.id}" }) { p ->
-            CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs") {
-                onViewChange(LibraryView.playlist(p.id))
+        if (showPlaylists) item(key = "liked") {
+            if (grid) {
+                CollectionTile(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") { onViewChange(LibraryView.LIKED) }
+            } else {
+                CollectionRow(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") { onViewChange(LibraryView.LIKED) }
             }
         }
-        if (showRecent) item {
+        if (showPlaylists) items(sortedPlaylists, key = { "p${it.id}" }) { p ->
+            if (grid) {
+                CollectionTile(Icons.AutoMirrored.Filled.QueueMusic, p.name, "${p.trackCount} songs") { onViewChange(LibraryView.playlist(p.id)) }
+            } else {
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs") {
+                    onViewChange(LibraryView.playlist(p.id))
+                }
+            }
+        }
+        if (showRecent) item(span = full) {
             Text(
                 "Recently played",
                 fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 4.dp),
+                modifier = Modifier.padding(start = if (grid) 8.dp else 20.dp, top = 20.dp, bottom = 4.dp),
             )
         }
         if (showRecent && recent.isEmpty()) {
-            item {
+            item(span = full) {
                 Text("Songs you play show up here.", color = GroovioColors.TextMuted,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
         }
-        if (showRecent) itemsIndexed(recent, key = { _, t -> "r${t.mediaId}" }) { i, track ->
-            StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(recent, i) })
+        // Songs are always rows, even in grid mode (as in Spotify).
+        if (showRecent) recent.forEachIndexed { i, track ->
+            item(key = "r${track.mediaId}", span = full) {
+                StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(recent, i) },
+                    onLongClick = { onMore(track) }) {
+                    IconButton(onClick = { onMore(track) }) { Icon(Icons.Default.MoreVert, "More options for ${track.title}") }
+                }
+            }
         }
     }
 
@@ -153,6 +208,19 @@ private fun LibraryRoot(
             onConfirm = vm::createPlaylist,
             onDismiss = { creating = false },
         )
+    }
+}
+
+@Composable
+private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp)) {
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(1f).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, contentDescription = null, tint = GroovioColors.Accent, modifier = Modifier.size(40.dp)) }
+        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp))
+        Text(subtitle, color = GroovioColors.TextMuted, fontSize = 12.sp, maxLines = 1)
     }
 }
 
@@ -189,6 +257,7 @@ private fun LikedSongs(
     vm: LibraryViewModel,
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
+    onMore: (TrackEntity) -> Unit,
     onBack: () -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
@@ -200,7 +269,8 @@ private fun LikedSongs(
         }
         LazyColumn(Modifier.fillMaxSize()) {
             itemsIndexed(liked, key = { _, t -> t.mediaId }) { i, track ->
-                StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(liked, i) }) {
+                StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(liked, i) },
+                    onLongClick = { onMore(track) }) {
                     IconButton(onClick = { vm.unlike(track) }) {
                         Icon(Icons.Default.Favorite, "Remove ${track.title} from Liked songs", tint = GroovioColors.Accent)
                     }
@@ -216,6 +286,7 @@ private fun PlaylistDetail(
     id: Long,
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
+    onMore: (TrackEntity) -> Unit,
     onBack: () -> Unit,
 ) {
     val name by remember(id) { vm.playlistName(id) }.collectAsStateWithLifecycle(initialValue = "")
@@ -235,7 +306,8 @@ private fun PlaylistDetail(
         }
         LazyColumn(Modifier.fillMaxSize()) {
             itemsIndexed(items, key = { _, item -> item.position }) { i, item ->
-                StoredTrackRow(item.track, currentMediaId == item.track.mediaId, onClick = { onPlay(tracks, i) }) {
+                StoredTrackRow(item.track, currentMediaId == item.track.mediaId, onClick = { onPlay(tracks, i) },
+                    onLongClick = { onMore(item.track) }) {
                     IconButton(onClick = { vm.removeFromPlaylist(id, item.position) }) {
                         Icon(Icons.Default.Close, "Remove ${item.track.title} from playlist")
                     }

@@ -2,6 +2,7 @@ package com.groovio.app.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.groovio.app.data.TrackEntity
+import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.ui.browse.AlbumCard
@@ -61,6 +65,7 @@ fun SearchScreen(
     spotifyImport: SpotifyImportProgress?,
     onPlaySpotify: (SpotifyCollection) -> Unit,
     onOpenAlbum: (OnlineAlbum) -> Unit,
+    onMore: (TrackEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
@@ -143,6 +148,7 @@ fun SearchScreen(
                             keyboard?.hide()
                             onPlay(state.results, index)
                         },
+                        onMore = { onMore(TrackMapping.fromOnline(track)) },
                     )
                 }
             }
@@ -157,13 +163,19 @@ private fun Centered(content: @Composable () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit) {
+private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit, onMore: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClickLabel = "Play ${track.title}", onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .combinedClickable(
+                onClickLabel = "Play ${track.title}",
+                onLongClickLabel = "More options",
+                onLongClick = onMore,
+                onClick = onClick,
+            )
+            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -191,6 +203,7 @@ private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit) 
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
+        IconButton(onClick = onMore) { Icon(Icons.Default.MoreVert, "More options for ${track.title}") }
     }
 }
 

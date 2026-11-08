@@ -3,6 +3,7 @@ package com.groovio.app.ui.browse
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
@@ -42,6 +44,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.groovio.app.GroovioApplication
+import com.groovio.app.data.TrackEntity
+import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.ArtistPage
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
@@ -98,6 +104,7 @@ fun ArtistScreen(
     onBack: () -> Unit,
     onPlay: (List<OnlineTrack>, Int) -> Unit,
     onOpenAlbum: (OnlineAlbum) -> Unit,
+    onMore: (TrackEntity) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val youtube = (LocalContext.current.applicationContext as GroovioApplication).youtube
@@ -105,7 +112,7 @@ fun ArtistScreen(
     val load = rememberLoad(name, retry) { youtube.artist(name) }
 
     Column(Modifier.fillMaxSize()) {
-        BackBar(onBack)
+        if (load !is Load.Ready) BackBar(onBack)
         when (load) {
             Load.Loading -> Centered { CircularProgressIndicator(color = GroovioColors.Accent) }
             is Load.Failed -> Centered {
@@ -113,7 +120,7 @@ fun ArtistScreen(
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = { retry++ }) { Text("Try again") }
             }
-            is Load.Ready -> ArtistContent(load.value, currentMediaId, onPlay, onOpenAlbum)
+            is Load.Ready -> ArtistContent(load.value, currentMediaId, onPlay, onOpenAlbum, onMore, onBack)
         }
     }
 }
@@ -124,16 +131,38 @@ private fun ArtistContent(
     currentMediaId: String?,
     onPlay: (List<OnlineTrack>, Int) -> Unit,
     onOpenAlbum: (OnlineAlbum) -> Unit,
+    onMore: (TrackEntity) -> Unit,
+    onBack: () -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
+            // Spotify-style header: big artist photo fading into the page, name on top.
+            Box(Modifier.fillMaxWidth().height(if (page.imageUrl != null) 300.dp else 120.dp)) {
+                if (page.imageUrl != null) {
+                    AsyncImage(
+                        model = page.imageUrl, contentDescription = null, contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(0.3f to Color.Transparent, 1f to GroovioColors.Background)
+                        )
+                    )
+                }
+                Box(Modifier.align(Alignment.TopStart)) { BackBar(onBack) }
+                Text(
+                    page.name, fontSize = 40.sp, fontWeight = FontWeight.Black,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 12.dp),
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    page.name, fontSize = 32.sp, fontWeight = FontWeight.Black,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    page.subscribers?.let { "${compactCount(it)} subscribers" } ?: "Artist",
+                    color = GroovioColors.TextMuted, fontSize = 13.sp, modifier = Modifier.weight(1f),
                 )
                 if (page.songs.isNotEmpty()) PlayButton { onPlay(page.songs, 0) }
             }
@@ -144,7 +173,7 @@ private fun ArtistContent(
         if (page.songs.isNotEmpty()) {
             item { SectionTitle("Popular") }
             itemsIndexed(page.songs, key = { _, t -> "s" + t.id }) { i, t ->
-                SongRow(i + 1, t, currentMediaId == "yt:${t.id}") { onPlay(page.songs, i) }
+                SongRow(i + 1, t, currentMediaId == "yt:${t.id}", onMore = { onMore(TrackMapping.fromOnline(t)) }) { onPlay(page.songs, i) }
             }
         }
         if (page.albums.isNotEmpty()) {
@@ -169,6 +198,7 @@ fun AlbumScreen(
     onPlay: (List<OnlineTrack>, Int) -> Unit,
     onShuffle: (List<OnlineTrack>) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onMore: (TrackEntity) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val youtube = (LocalContext.current.applicationContext as GroovioApplication).youtube
@@ -217,7 +247,8 @@ fun AlbumScreen(
                 }
             }
             is Load.Ready -> itemsIndexed(load.value, key = { i, t -> "$i${t.id}" }) { i, t ->
-                SongRow(i + 1, t, currentMediaId == "yt:${t.id}", showArt = false) { onPlay(load.value, i) }
+                SongRow(i + 1, t, currentMediaId == "yt:${t.id}", showArt = false,
+                    onMore = { onMore(TrackMapping.fromOnline(t)) }) { onPlay(load.value, i) }
             }
         }
     }
@@ -255,11 +286,20 @@ private fun Centered(content: @Composable () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun SongRow(number: Int, track: OnlineTrack, playing: Boolean, showArt: Boolean = true, onClick: () -> Unit) {
+private fun SongRow(
+    number: Int,
+    track: OnlineTrack,
+    playing: Boolean,
+    showArt: Boolean = true,
+    onMore: () -> Unit,
+    onClick: () -> Unit,
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClickLabel = "Play ${track.title}", onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth()
+            .combinedClickable(onClickLabel = "Play ${track.title}", onLongClick = onMore, onClick = onClick)
+            .padding(start = 16.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -276,6 +316,7 @@ private fun SongRow(number: Int, track: OnlineTrack, playing: Boolean, showArt: 
             val sub = listOfNotNull(track.artist, track.durationMs?.let(PlaybackText::time)).joinToString(" · ")
             if (sub.isNotEmpty()) Text(sub, color = GroovioColors.TextMuted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        IconButton(onClick = onMore) { Icon(Icons.Default.MoreVert, "More options for ${track.title}") }
     }
 }
 
@@ -292,3 +333,11 @@ fun AlbumCard(album: OnlineAlbum, onClick: () -> Unit) {
         album.artist?.let { Text(it, color = GroovioColors.TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
     }
 }
+
+/** 1234567 -> "1.2M", 45300 -> "45.3K". */
+internal fun compactCount(n: Long): String = when {
+    n >= 1_000_000_000 -> String.format(java.util.Locale.ROOT, "%.1fB", n / 1e9)
+    n >= 1_000_000 -> String.format(java.util.Locale.ROOT, "%.1fM", n / 1e6)
+    n >= 1_000 -> String.format(java.util.Locale.ROOT, "%.1fK", n / 1e3)
+    else -> n.toString()
+}.replace(".0", "")

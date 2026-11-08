@@ -2,6 +2,7 @@ package com.groovio.app.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
+import com.groovio.app.data.TrackMapping
+import com.groovio.app.online.OnlineTrack
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -65,6 +68,9 @@ fun HomeScreen(
     onOpenPlaylist: (Long) -> Unit,
     onSearch: () -> Unit,
     onOpenFiles: () -> Unit,
+    onMore: (TrackEntity) -> Unit,
+    related: RelatedShelf? = null,
+    onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty()
@@ -111,7 +117,21 @@ fun HomeScreen(
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     itemsIndexed(recent.take(20), key = { _, t -> t.mediaId }) { i, t ->
-                        SquareCard(t.title, t.artist, t.artworkUri, currentMediaId == t.mediaId) { onPlayRecent(recent, i) }
+                        SquareCard(t.title, t.artist, t.artworkUri, currentMediaId == t.mediaId, onLongClick = { onMore(t) }) {
+                            onPlayRecent(recent, i)
+                        }
+                    }
+                }
+            }
+        }
+        if (related != null) {
+            item { Shelf("More like ${related.seedTitle}") }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    itemsIndexed(related.tracks, key = { _, t -> "rel" + t.id }) { i, t ->
+                        SquareCard(t.title, t.artist, t.thumbnailUrl, currentMediaId == "yt:${t.id}",
+                            onLongClick = { onMore(TrackMapping.fromOnline(t)) }) { onPlayRelated(related.tracks, i) }
                     }
                 }
             }
@@ -181,6 +201,7 @@ private fun Shelf(title: String) {
         modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 10.dp))
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SquareCard(
     title: String,
@@ -188,9 +209,10 @@ private fun SquareCard(
     artworkUri: String?,
     playing: Boolean,
     icon: ImageVector = Icons.Default.MusicNote,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    Column(Modifier.width(140.dp).clickable(onClickLabel = "Play $title", onClick = onClick)) {
+    Column(Modifier.width(140.dp).combinedClickable(onClickLabel = "Play $title", onLongClick = onLongClick, onClick = onClick)) {
         Box(Modifier.size(140.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.ArtworkFallback),
             contentAlignment = Alignment.Center) {
             if (artworkUri != null) {

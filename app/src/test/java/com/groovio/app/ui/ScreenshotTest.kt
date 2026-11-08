@@ -65,7 +65,7 @@ class ScreenshotTest {
             recent = recent, likedCount = 12,
             playlists = listOf(PlaylistSummary(1, "Road trip", 24), PlaylistSummary(2, "Gym", 31)),
             currentMediaId = "yt:0", onPlayRecent = { _, _ -> }, onOpenLiked = {}, onOpenPlaylist = {},
-            onSearch = {}, onOpenFiles = {},
+            onSearch = {}, onOpenFiles = {}, onMore = {},
         )
     }
 
@@ -83,6 +83,6 @@ class ScreenshotTest {
     }
 
     @Test fun queue() = shot("queue") {
-        QueueScreen(state = playing, onBack = {}, onPlayAt = {}, onRemoveAt = {})
+        QueueScreen(state = playing, onBack = {}, onPlayAt = {}, onRemoveAt = {}, onMove = { _, _ -> })
     }
 }

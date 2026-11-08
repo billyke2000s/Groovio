@@ -43,7 +43,10 @@ import com.groovio.app.ui.browse.AlbumScreen
 import com.groovio.app.ui.browse.ArtistScreen
 import com.groovio.app.ui.browse.Detail
 import com.groovio.app.ui.home.HomeScreen
+import com.groovio.app.ui.home.HomeViewModel
+import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.library.LibraryScreen
+import com.groovio.app.ui.library.SongMenu
 import com.groovio.app.ui.library.LibraryView
 import com.groovio.app.ui.library.LibraryViewModel
 import com.groovio.app.ui.player.MiniPlayer
@@ -70,6 +73,7 @@ fun GroovioApp(
     vm: PlayerViewModel = viewModel(),
     searchVm: SearchViewModel = viewModel(),
     libraryVm: LibraryViewModel = viewModel(),
+    homeVm: HomeViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val position by vm.positionMs.collectAsStateWithLifecycle(initialValue = 0L)
@@ -85,6 +89,11 @@ fun GroovioApp(
     var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
     val recent by libraryVm.recent.collectAsStateWithLifecycle()
     val liked by libraryVm.favourites.collectAsStateWithLifecycle()
+    val related by homeVm.related.collectAsStateWithLifecycle()
+
+    // Song menu (⋮ / long press), shown over everything.
+    var menuTrack by remember { mutableStateOf<TrackEntity?>(null) }
+    val openMenu: (TrackEntity) -> Unit = { menuTrack = it }
 
     // Artist/album pages stack over the current tab (back pops one level).
     val details = remember { mutableStateListOf<Detail>() }
@@ -126,6 +135,7 @@ fun GroovioApp(
                             onBack = { details.removeAt(details.lastIndex) },
                             onPlay = vm::playTracks,
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
+                            onMore = openMenu,
                         )
                         is Detail.Album -> AlbumScreen(
                             album = detail.album,
@@ -134,6 +144,7 @@ fun GroovioApp(
                             onPlay = vm::playTracks,
                             onShuffle = vm::shuffleTracks,
                             onOpenArtist = { openDetail(Detail.Artist(it)) },
+                            onMore = openMenu,
                         )
                         null -> when (tab) {
                         Tab.HOME -> HomeScreen(
@@ -146,6 +157,9 @@ fun GroovioApp(
                             onOpenPlaylist = { libraryView = LibraryView.playlist(it); tab = Tab.LIBRARY },
                             onSearch = { tab = Tab.SEARCH },
                             onOpenFiles = { picker.launch(arrayOf("audio/*")) },
+                            onMore = openMenu,
+                            related = related,
+                            onPlayRelated = vm::playTracks,
                         )
                         Tab.SEARCH -> SearchScreen(
                             vm = searchVm,
@@ -154,6 +168,7 @@ fun GroovioApp(
                             spotifyImport = spotifyImport,
                             onPlaySpotify = vm::playSpotify,
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
+                            onMore = openMenu,
                         )
                         Tab.LIBRARY -> LibraryScreen(
                             vm = libraryVm,
@@ -161,6 +176,7 @@ fun GroovioApp(
                             onViewChange = { libraryView = it },
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playStored,
+                            onMore = openMenu,
                         )
                         }
                     }
@@ -229,7 +245,18 @@ fun GroovioApp(
                 onBack = { nav.popBackStack() },
                 onPlayAt = vm::playAt,
                 onRemoveAt = vm::removeAt,
+                onMove = vm::move,
             )
         }
+    }
+
+    menuTrack?.let { track ->
+        SongMenu(
+            track = track,
+            vm = vm,
+            playlists = playlists,
+            onOpenArtist = { openDetail(Detail.Artist(it)) },
+            onDismiss = { menuTrack = null },
+        )
     }
 }
