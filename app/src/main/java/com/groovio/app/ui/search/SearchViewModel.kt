@@ -101,7 +101,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
-        const val DEBOUNCE_MS = 450L
+        const val DEBOUNCE_MS = 250L
         const val MIN_QUERY = 2
     }
 }

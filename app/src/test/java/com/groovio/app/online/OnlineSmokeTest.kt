@@ -90,4 +90,18 @@ class OnlineSmokeTest {
         assertTrue(hits.isNotEmpty() && albums.isNotEmpty())
         assertTrue(albums.all { it.thumbnailUrl != null })
     }
+
+    /** Probe: does a public Spotify profile page list the user's public playlists? */
+    @Test fun `probe Spotify profile page for public playlists`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        for (url in listOf("https://open.spotify.com/user/spotify", "https://open.spotify.com/user/spotify/playlists")) {
+            val request = Request.Builder().url(url).header("User-Agent", NewPipeDownloader.USER_AGENT).build()
+            OkHttpClient().newCall(request).execute().use { r ->
+                val html = r.body?.string().orEmpty()
+                val playlists = Regex("spotify:playlist:[A-Za-z0-9]{22}|/playlist/[A-Za-z0-9]{22}").findAll(html).map { it.value.takeLast(22) }.toSet()
+                val scripts = Regex("<script[^>]*id=\"([^\"]+)\"").findAll(html).map { it.groupValues[1] }.toList()
+                println("profile probe $url: HTTP ${r.code}, ${html.length} chars, ${playlists.size} playlist ids, scripts=$scripts")
+            }
+        }
+    }
 }
