@@ -3,7 +3,10 @@ package com.groovio.app.ui.home
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.groovio.app.BuildConfig
 import com.groovio.app.GroovioApplication
+import com.groovio.app.update.AvailableUpdate
+import com.groovio.app.update.UpdateChecker
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import kotlinx.coroutines.async
@@ -36,12 +39,21 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _related = MutableStateFlow<RelatedShelf?>(null)
     val related: StateFlow<RelatedShelf?> = _related.asStateFlow()
 
+    private val _update = MutableStateFlow<AvailableUpdate?>(null)
+    /** A newer Groovio release, if GitHub has one. */
+    val update: StateFlow<AvailableUpdate?> = _update.asStateFlow()
+
     private var loadingDiscover = false
     private val _discover = MutableStateFlow<List<DiscoverShelf>>(emptyList())
     val discover: StateFlow<List<DiscoverShelf>> = _discover.asStateFlow()
 
     init {
         loadDiscover()
+        viewModelScope.launch {
+            _update.value = withContext(Dispatchers.IO) {
+                runCatching { UpdateChecker(BuildConfig.VERSION_CODE).check() }.getOrNull()
+            }
+        }
         viewModelScope.launch {
             groovio.library.recent(10)
                 .map { list -> list.firstOrNull { it.mediaId.startsWith("yt:") } }
@@ -69,13 +81,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             val year = java.time.Year.now().value
             val yt = groovio.youtube
             val specs: List<suspend () -> DiscoverShelf> = listOf(
-                { DiscoverShelf("Today's top hits", tracks = yt.searchSongs("top hits $year").take(15)) },
+                { DiscoverShelf("Today's top hits", tracks = yt.searchSongs("top hits $year").songLength().take(15)) },
                 { DiscoverShelf("Popular albums", albums = yt.searchAlbums("top albums $year").take(12)) },
                 { DiscoverShelf("Pop", albums = yt.searchAlbums("pop hits").take(12)) },
                 { DiscoverShelf("Hip-hop", albums = yt.searchAlbums("hip hop").take(12)) },
                 { DiscoverShelf("Dance & electronic", albums = yt.searchAlbums("dance electronic").take(12)) },
                 { DiscoverShelf("Rock", albums = yt.searchAlbums("rock classics").take(12)) },
-                { DiscoverShelf("Chill", tracks = yt.searchSongs("chill vibes").take(15)) },
+                { DiscoverShelf("Chill", tracks = yt.searchSongs("chill vibes").songLength().take(15)) },
             )
             val shelves = coroutineScope {
                 specs.map { spec ->
@@ -87,3 +99,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 }
+
+/** Drops compilations and hour-long mixes that sometimes appear in song searches. */
+private fun List<OnlineTrack>.songLength(): List<OnlineTrack> =
+    filter { t -> t.durationMs == null || t.durationMs in 60_000L..600_000L }

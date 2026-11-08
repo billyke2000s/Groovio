@@ -1,0 +1,32 @@
+name: Build and publish Groovio
+description: Tests, builds the signed APK and publishes it as release v0.1.<commit count>.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: android-actions/setup-android@v3
+      with:
+        packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+    - uses: gradle/actions/setup-gradle@v4
+    - name: Test and build
+      shell: bash
+      run: |
+        # Commit count on main: always increases, so each release is a higher version.
+        echo "GROOVIO_BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+        export GROOVIO_BUILD_NUMBER=$(git rev-list --count HEAD)
+        ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+    - name: Publish release
+      shell: bash
+      run: |
+        tag="v0.1.${GROOVIO_BUILD_NUMBER}"
+        if gh release view "$tag" >/dev/null 2>&1; then
+          echo "Release $tag already exists; nothing to publish."
+          exit 0
+        fi
+        apk="groovio-${tag}.apk"
+        cp app/build/outputs/apk/debug/*.apk "$apk"
+        gh release create "$tag" "$apk" --target "$(git rev-parse HEAD)" \
+          --title "Groovio ${tag#v}" --notes-file .github/release-notes.md --latest

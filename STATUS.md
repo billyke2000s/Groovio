@@ -143,6 +143,15 @@ Only items with evidence are marked verified. Update this file with each phase.
 5. Queue: drag a song by its handle to reorder.
 6. Library: switch to grid; sort alphabetically.
 
+## Phase 7 — Discovery, playback fix, auto-updates
+
+| Item | State | Evidence |
+|---|---|---|
+| Home discovery shelves have covers | Verified live | Smoke test: 30/30 songs and 20/20 albums with covers |
+| Playback blocked on phones with extractor v0.27.0 | Confirmed on owner's phone | "YouTube is blocking this network"; matches NewPipe issue #14005 |
+| Playback with extractor v0.26.5 | **Not verified yet** | Needs the next build on a phone |
+| Auto-update workflows and in-app update banner | Built; **first run pending** | |
+
 ## Known limitations
 - No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
 - Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.

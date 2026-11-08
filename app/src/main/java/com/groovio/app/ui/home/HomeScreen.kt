@@ -47,6 +47,7 @@ import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.ui.browse.AlbumCard
+import com.groovio.app.update.AvailableUpdate
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -74,6 +75,7 @@ fun HomeScreen(
     related: RelatedShelf? = null,
     discover: List<DiscoverShelf> = emptyList(),
     onOpenAlbum: (OnlineAlbum) -> Unit = {},
+    update: AvailableUpdate? = null,
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -98,6 +100,8 @@ fun HomeScreen(
                 }
             }
         }
+
+        if (update != null) item { UpdateBanner(update) }
 
         // New users get the welcome card, then the discovery shelves below.
         if (firstRun) item { Welcome(onSearch, onOpenFiles) }
@@ -250,4 +254,30 @@ private fun greeting(): String = when (LocalTime.now().hour) {
     in 5..11 -> "Good morning"
     in 12..17 -> "Good afternoon"
     else -> "Good evening"
+}
+
+/** "Update available": opens the new APK in the browser, which downloads it for install. */
+@Composable
+private fun UpdateBanner(update: AvailableUpdate) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(GroovioColors.Accent, RoundedCornerShape(12.dp))
+            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Update available", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
+            Text("Groovio ${update.version}", color = GroovioColors.OnAccent, fontSize = 13.sp)
+        }
+        androidx.compose.material3.TextButton(onClick = {
+            try {
+                context.startActivity(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(update.apkUrl))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: android.content.ActivityNotFoundException) {
+            }
+        }) { Text("Update", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold) }
+    }
 }

@@ -91,6 +91,7 @@ fun GroovioApp(
     val liked by libraryVm.favourites.collectAsStateWithLifecycle()
     val related by homeVm.related.collectAsStateWithLifecycle()
     val discover by homeVm.discover.collectAsStateWithLifecycle()
+    val update by homeVm.update.collectAsStateWithLifecycle()
     // Retry discovery when Home is shown again (e.g. after coming back online).
     LaunchedEffect(tab) { if (tab == Tab.HOME) homeVm.loadDiscover() }
 
@@ -164,6 +165,7 @@ fun GroovioApp(
                             related = related,
                             onPlayRelated = vm::playTracks,
                             discover = discover,
+                            update = update,
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                         )
                         Tab.SEARCH -> SearchScreen(
