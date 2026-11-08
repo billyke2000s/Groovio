@@ -37,6 +37,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.groovio.app.BuildConfig
 import com.groovio.app.GroovioApplication
 import com.groovio.app.playback.PlayerViewModel
 import com.groovio.app.ui.browse.AlbumScreen
@@ -92,6 +95,9 @@ fun GroovioApp(
     val related by homeVm.related.collectAsStateWithLifecycle()
     val discover by homeVm.discover.collectAsStateWithLifecycle()
     val update by homeVm.update.collectAsStateWithLifecycle()
+    val updateMessage by homeVm.updateMessage.collectAsStateWithLifecycle()
+    // Check for updates whenever Groovio comes back to the foreground.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { homeVm.onResume() }
     // Retry discovery when Home is shown again (e.g. after coming back online).
     LaunchedEffect(tab) { if (tab == Tab.HOME) homeVm.loadDiscover() }
 
@@ -166,6 +172,7 @@ fun GroovioApp(
                             onPlayRelated = vm::playTracks,
                             discover = discover,
                             update = update,
+                            onUpdate = homeVm::startUpdate,
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                         )
                         Tab.SEARCH -> SearchScreen(
@@ -184,6 +191,9 @@ fun GroovioApp(
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playStored,
                             onMore = openMenu,
+                            versionName = BuildConfig.VERSION_NAME,
+                            updateMessage = updateMessage,
+                            onCheckUpdates = { homeVm.checkForUpdates(manual = true) },
                         )
                         }
                     }

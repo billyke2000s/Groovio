@@ -47,7 +47,6 @@ import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.ui.browse.AlbumCard
-import com.groovio.app.update.AvailableUpdate
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -75,7 +74,8 @@ fun HomeScreen(
     related: RelatedShelf? = null,
     discover: List<DiscoverShelf> = emptyList(),
     onOpenAlbum: (OnlineAlbum) -> Unit = {},
-    update: AvailableUpdate? = null,
+    update: UpdateState? = null,
+    onUpdate: () -> Unit = {},
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -101,7 +101,7 @@ fun HomeScreen(
             }
         }
 
-        if (update != null) item { UpdateBanner(update) }
+        if (update != null) item { UpdateBanner(update, onUpdate) }
 
         // New users get the welcome card, then the discovery shelves below.
         if (firstRun) item { Welcome(onSearch, onOpenFiles) }
@@ -256,28 +256,49 @@ private fun greeting(): String = when (LocalTime.now().hour) {
     else -> "Good evening"
 }
 
-/** "Update available": opens the new APK in the browser, which downloads it for install. */
+/** In-app update banner: download progress inside Groovio, then Android's install screen. */
 @Composable
-private fun UpdateBanner(update: AvailableUpdate) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    Row(
+private fun UpdateBanner(state: UpdateState, onUpdate: () -> Unit) {
+    val (title, detail, action) = when (state) {
+        is UpdateState.Available -> Triple("Update available", "Groovio ${state.update.version}", "Update")
+        is UpdateState.Downloading -> Triple(
+            "Downloading update…",
+            if (state.progress >= 0) "${(state.progress * 100).toInt()}%" else "Groovio ${state.update.version}",
+            null,
+        )
+        is UpdateState.NeedsPermission -> Triple("Allow Groovio to install updates", "Turn on the switch, then come back", "Allow")
+        is UpdateState.Ready -> Triple("Update downloaded", "Groovio ${state.update.version}", "Install")
+        is UpdateState.Failed -> Triple("Update failed", state.message, "Retry")
+    }
+    Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
             .background(GroovioColors.Accent, RoundedCornerShape(12.dp))
             .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text("Update available", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
-            Text("Groovio ${update.version}", color = GroovioColors.OnAccent, fontSize = 13.sp)
-        }
-        androidx.compose.material3.TextButton(onClick = {
-            try {
-                context.startActivity(
-                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(update.apkUrl))
-                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            } catch (_: android.content.ActivityNotFoundException) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
+                Text(detail, color = GroovioColors.OnAccent, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-        }) { Text("Update", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold) }
+            if (action != null) {
+                androidx.compose.material3.TextButton(onClick = onUpdate) {
+                    Text(action, color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        if (state is UpdateState.Downloading) {
+            val p = state.progress
+            if (p >= 0) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { p }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 8.dp),
+                    color = GroovioColors.OnAccent, trackColor = GroovioColors.Accent.copy(alpha = 0.4f),
+                )
+            } else {
+                androidx.compose.material3.LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 8.dp),
+                    color = GroovioColors.OnAccent,
+                )
+            }
+        }
     }
 }

@@ -7,6 +7,7 @@ import com.groovio.app.BuildConfig
 import com.groovio.app.GroovioApplication
 import com.groovio.app.update.AvailableUpdate
 import com.groovio.app.update.UpdateChecker
+import com.groovio.app.update.UpdateInstaller
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import kotlinx.coroutines.async
@@ -39,9 +40,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _related = MutableStateFlow<RelatedShelf?>(null)
     val related: StateFlow<RelatedShelf?> = _related.asStateFlow()
 
-    private val _update = MutableStateFlow<AvailableUpdate?>(null)
-    /** A newer Groovio release, if GitHub has one. */
-    val update: StateFlow<AvailableUpdate?> = _update.asStateFlow()
+    private val installer = UpdateInstaller(app)
+    private val _update = MutableStateFlow<UpdateState?>(null)
+    /** In-app update progress, or null when Groovio is up to date. */
+    val update: StateFlow<UpdateState?> = _update.asStateFlow()
+
+    private val _updateMessage = MutableStateFlow<String?>(null)
+    /** Result of a manual "Check for updates" (e.g. "You're up to date"). */
+    val updateMessage: StateFlow<String?> = _updateMessage.asStateFlow()
+    private var lastCheck = 0L
+    private var downloadJob: kotlinx.coroutines.Job? = null
 
     private var loadingDiscover = false
     private val _discover = MutableStateFlow<List<DiscoverShelf>>(emptyList())
@@ -49,11 +57,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         loadDiscover()
-        viewModelScope.launch {
-            _update.value = withContext(Dispatchers.IO) {
-                runCatching { UpdateChecker(BuildConfig.VERSION_CODE).check() }.getOrNull()
-            }
-        }
+        checkForUpdates()
         viewModelScope.launch {
             groovio.library.recent(10)
                 .map { list -> list.firstOrNull { it.mediaId.startsWith("yt:") } }
@@ -98,6 +102,82 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             loadingDiscover = false
         }
     }
+
+    /** Checks GitHub for a newer release. Automatic checks run at most once a minute. */
+    fun checkForUpdates(manual: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!manual && now - lastCheck < 60_000) return
+        if (_update.value is UpdateState.Downloading) return
+        lastCheck = now
+        if (manual) _updateMessage.value = "Checking…"
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { UpdateChecker(BuildConfig.VERSION_CODE).check() }
+            }
+            result.onSuccess { found ->
+                if (found != null) {
+                    if (_update.value?.update?.version != found.version) _update.value = UpdateState.Available(found)
+                    if (manual) _updateMessage.value = "Groovio ${found.version} is available"
+                } else if (manual) {
+                    _updateMessage.value = "You're up to date"
+                }
+            }.onFailure { if (manual) _updateMessage.value = "Couldn't check for updates. Check your connection." }
+        }
+    }
+
+    /** Called when the app comes back to the foreground. */
+    fun onResume() {
+        checkForUpdates()
+        // Returning from the "Install unknown apps" switch: carry on installing.
+        val state = _update.value
+        if (state is UpdateState.NeedsPermission && installer.canInstall()) {
+            installer.install(state.file)
+            _update.value = UpdateState.Ready(state.update, state.file)
+        }
+    }
+
+    /** Update button: download inside the app, then show Android's install screen. */
+    fun startUpdate() {
+        val state = _update.value ?: return
+        when (state) {
+            is UpdateState.Downloading -> return
+            is UpdateState.Ready -> { install(state.update, state.file); return }
+            is UpdateState.NeedsPermission -> { installer.openInstallPermission(); return }
+            else -> Unit
+        }
+        val update = state.update
+        downloadJob?.cancel()
+        downloadJob = viewModelScope.launch {
+            _update.value = UpdateState.Downloading(update, 0f)
+            try {
+                val file = installer.download(update) { p -> _update.value = UpdateState.Downloading(update, p) }
+                install(update, file)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _update.value = UpdateState.Failed(update, e.message ?: "Download failed")
+            }
+        }
+    }
+
+    private fun install(update: AvailableUpdate, file: java.io.File) {
+        if (installer.canInstall()) {
+            _update.value = UpdateState.Ready(update, file)
+            installer.install(file)
+        } else {
+            _update.value = UpdateState.NeedsPermission(update, file)
+            installer.openInstallPermission()
+        }
+    }
+}
+
+sealed interface UpdateState {
+    val update: AvailableUpdate
+    data class Available(override val update: AvailableUpdate) : UpdateState
+    data class Downloading(override val update: AvailableUpdate, val progress: Float) : UpdateState
+    data class NeedsPermission(override val update: AvailableUpdate, val file: java.io.File) : UpdateState
+    data class Ready(override val update: AvailableUpdate, val file: java.io.File) : UpdateState
+    data class Failed(override val update: AvailableUpdate, val message: String) : UpdateState
 }
 
 /** Drops compilations and hour-long mixes that sometimes appear in song searches. */

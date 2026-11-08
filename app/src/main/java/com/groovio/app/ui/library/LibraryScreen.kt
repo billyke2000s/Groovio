@@ -76,13 +76,16 @@ fun LibraryScreen(
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
     onMore: (TrackEntity) -> Unit,
+    versionName: String = "",
+    updateMessage: String? = null,
+    onCheckUpdates: () -> Unit = {},
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates)
     }
 }
 
@@ -97,6 +100,9 @@ private fun LibraryRoot(
     onPlay: (List<TrackEntity>, Int) -> Unit,
     onViewChange: (String) -> Unit,
     onMore: (TrackEntity) -> Unit,
+    versionName: String,
+    updateMessage: String?,
+    onCheckUpdates: () -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -197,6 +203,17 @@ private fun LibraryRoot(
                     onLongClick = { onMore(track) }) {
                     IconButton(onClick = { onMore(track) }) { Icon(Icons.Default.MoreVert, "More options for ${track.title}") }
                 }
+            }
+        }
+        // About / updates.
+        item(span = full) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("Groovio $versionName", color = GroovioColors.TextMuted, fontSize = 13.sp)
+                TextButton(onClick = onCheckUpdates) { Text("Check for updates", color = GroovioColors.Accent) }
+                updateMessage?.let { Text(it, color = GroovioColors.TextMuted, fontSize = 13.sp) }
             }
         }
     }
