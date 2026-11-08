@@ -97,10 +97,30 @@ Only items with evidence are marked verified. Update this file with each phase.
 4. Force-stop Groovio and reopen: the mini-player shows the last song at the same position; play resumes there.
 5. After force-stopping, use the media "resume" card (Android 11+ quick settings): it should play the saved queue.
 
+## Phase 5 — Spotify links (CI green; on-device playback unverified)
+
+| Item | State | Evidence |
+|---|---|---|
+| Build, lint, 42 unit tests | Verified | CI run 42507824115 |
+| Reading a real Spotify album without an account or key | Verified | Online smoke test: "Random Access Memories", 13 tracks with titles, artists, durations |
+| Matching Spotify songs to the right YouTube recordings | Verified (sample) | 3 of 3 sampled songs matched the correct Daft Punk tracks |
+| Playing the matched songs | **Not verified** | Same YouTube datacenter block as Phase 3; test on a phone |
+
+### Added
+- Paste a Spotify song, album or playlist link in Search (or Share → Groovio from the Spotify app).
+- A card shows the album/playlist and its songs; **Play** matches each song to YouTube in order: the first plays immediately, the rest are appended to the queue as they're found, with progress and a count of songs that couldn't be found.
+- Matching is the Discord bot's method: YouTube Music songs first, then YouTube videos, scored on artist, title, length and alt-version words.
+
+### Manual device checklist (Phase 5)
+1. In Spotify, Share → Groovio on an album: Groovio opens Search with the album card.
+2. Tap Play: music starts after the first match; the queue grows as songs are found.
+3. Try a playlist with unusual songs: unmatched songs are counted, not played wrongly.
+
 ## Known limitations
 - No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
 - Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.
 - Local files show the file name as title. Artist and artwork should come from embedded tags when present [not yet verified on a device].
 - YouTube can block a network ("not a bot" check) or change its site; playback then fails until it lifts or NewPipe Extractor is updated.
-- No albums/artists pages or Spotify-link import yet; the matcher is ready for import.
+- No artist or album pages yet.
+- Spotify playlists: the embed page may list only the first part of very long playlists [Unverified: not yet tested with a 100+ song playlist].
 - Streams are fetched without chunked range requests; if YouTube throttles long songs on some networks, that is the next fix.
