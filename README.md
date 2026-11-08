@@ -25,7 +25,9 @@ This repository contains an Android application foundation with a Compose player
 
 The app uses Android's document picker, so broad storage permission is unnecessary. Playback continues through a Media3 media session service.
 
-> The repository does not yet include the Gradle wrapper binary. Use Android Studio's configured Gradle or install Gradle 8.10.2 to build from the command line.
+Command line: `./gradlew :app:assembleDebug` (wrapper pins Gradle 8.10.2). Run tests with `./gradlew :app:testDebugUnitTest`.
+
+CI builds every push and uploads the debug APK as the `groovio-debug-apk` artifact. See [STATUS.md](STATUS.md) for what is verified.
 
 ## Development
 See [AGENTS.md](AGENTS.md) for contributor/AI rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design decisions. This project is not affiliated with Spotify.
