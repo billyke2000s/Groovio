@@ -35,7 +35,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,9 +75,10 @@ private sealed interface Load<out T> {
 /** Loads [block] on the IO dispatcher; reloads when [key] or the retry counter change. */
 @Composable
 private fun <T> rememberLoad(key: Any, retry: Int, block: suspend () -> T): Load<T> {
-    val state by produceState<Load<T>>(Load.Loading, key, retry) {
-        value = Load.Loading
-        value = try {
+    // remember + LaunchedEffect rather than produceState: lint misreads produceState here.
+    var state by remember(key, retry) { mutableStateOf<Load<T>>(Load.Loading) }
+    LaunchedEffect(key, retry) {
+        state = try {
             Load.Ready(withContext(Dispatchers.IO) { block() })
         } catch (e: CancellationException) {
             throw e
