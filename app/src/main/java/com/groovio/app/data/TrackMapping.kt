@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.groovio.app.online.OnlineMedia
+import com.groovio.app.online.OnlineTrack
 
 /**
  * Converts between Media3 items and stored tracks. The playable URI is always derived
@@ -28,6 +29,9 @@ object TrackMapping {
             artworkUri = md.artworkUri?.toString(),
         )
     }
+
+    fun fromOnline(track: OnlineTrack): TrackEntity =
+        TrackEntity("yt:${track.id}", track.title, track.artist, track.thumbnailUrl)
 
     fun toMediaItem(track: TrackEntity): MediaItem =
         MediaItem.Builder()

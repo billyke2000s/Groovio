@@ -49,6 +49,7 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
@@ -60,8 +61,13 @@ dependencies {
 
     // Online: on-device YouTube Music search and stream extraction (GPL-3.0).
     implementation("com.github.teamnewpipe:NewPipeExtractor:v0.27.0")
+    // JSON parser NewPipe already ships; pinned to the same commit to avoid duplicates.
+    implementation("com.github.TeamNewPipe:nanojson:e9d656ddb49a412a5a0a5d5ef20ca7ef09549996")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    // Artwork colour for the player background.
+    implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation("androidx.core:core-ktx:1.13.1")
     // Local library: favourites, playlists, history, saved queue.
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
@@ -73,10 +79,16 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Screenshots of Compose screens rendered on the JVM (CI prints them for review).
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 // Show each test and its output in CI logs.
 tasks.withType<Test>().configureEach {
+    // Record screenshots only when asked (CI screenshot job), so normal tests stay fast.
+    systemProperty("roborazzi.test.record", System.getenv("GROOVIO_SCREENSHOTS") == "1")
     testLogging {
         events("passed", "skipped", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

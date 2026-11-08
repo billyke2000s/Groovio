@@ -14,8 +14,10 @@
 - The service records history once a song actually plays, saves the queue (debounced), restores it on start, and rebuilds URIs for items from external controllers.
 - `ui/home`, `ui/search`, `ui/library`, `ui/player`: Compose screens; `GroovioApp` hosts tabs (Home, Search, Library), the mini-player, full player and queue.
 
+- `online/SpotifyLinks` parses Spotify links and the public embed page (no account or key); `online/SpotifyImporter` fetches it and matches each song to YouTube with `TrackMatcher` (YouTube Music songs, then videos). `PlayerViewModel.playSpotify` plays the first match immediately and appends the rest.
+- `MainActivity` accepts `ACTION_SEND` text (Share → Groovio) and opens it in Search.
+
 ## Planned
-- Spotify-link import (public embed page, no key) matched to YouTube with `TrackMatcher`.
 - Artist and album pages.
 
 No backend, Lavalink server, or account is required. Online features need an internet connection.

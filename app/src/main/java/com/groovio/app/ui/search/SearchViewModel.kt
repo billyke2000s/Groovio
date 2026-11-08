@@ -4,7 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.groovio.app.GroovioApplication
+import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.online.SpotifyCollection
+import com.groovio.app.online.SpotifyImporter
+import com.groovio.app.online.SpotifyLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -26,6 +30,9 @@ data class SearchState(
     val query: String = "",
     val loading: Boolean = false,
     val results: List<OnlineTrack> = emptyList(),
+    val albums: List<OnlineAlbum> = emptyList(),
+    /** Set when the query is a Spotify link that was read successfully. */
+    val spotify: SpotifyCollection? = null,
     val error: String? = null,
 )
 
@@ -33,6 +40,7 @@ data class SearchState(
 class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     private val youtube = (app as GroovioApplication).youtube
+    private val spotify: SpotifyImporter = (app as GroovioApplication).spotify
     private val query = MutableStateFlow("")
     private val retryTick = MutableStateFlow(0)
 
@@ -54,9 +62,19 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                     return@collectLatest
                 }
                 _state.value = _state.value.copy(query = q, loading = true, error = null)
+                val link = SpotifyLinks.findLink(q)
                 _state.value = try {
-                    val results = withContext(Dispatchers.IO) { youtube.searchSongs(q) }
-                    SearchState(query = q, results = results)
+                    if (link != null) {
+                        val collection = withContext(Dispatchers.IO) { spotify.load(link) }
+                        SearchState(query = q, spotify = collection)
+                    } else {
+                        val results = withContext(Dispatchers.IO) { youtube.searchSongs(q) }
+                        // Albums are a bonus row; a failure there shouldn't hide the songs.
+                        val albums = withContext(Dispatchers.IO) {
+                            runCatching { youtube.searchAlbums(q).take(8) }.getOrDefault(emptyList())
+                        }
+                        SearchState(query = q, results = results, albums = albums)
+                    }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -78,6 +96,7 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
         is ReCaptchaException, is SignInConfirmNotBotException ->
             "YouTube is blocking this network right now. Try again later or switch network."
         is IOException -> "Couldn't connect. Check your internet and try again."
+        is IllegalArgumentException -> e.message ?: "Couldn't read that link."
         else -> "Search failed. Try again."
     }
 
