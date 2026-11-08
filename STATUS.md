@@ -29,8 +29,29 @@ Only items with evidence are marked verified. Update this file with each phase.
 5. Unplug wired headphones while playing: playback pauses.
 6. Start a phone call or another audio app: Groovio pauses or ducks.
 
+## Phase 2 — Interface (CI green; device checks outstanding)
+
+| Item | State | Evidence |
+|---|---|---|
+| Build, unit tests, lint | Verified | CI run 42503888268: APK artifact, tests pass, lint no errors |
+| Full player, mini-player, queue on a device | **Not verified** | Manual checklist below |
+
+### Added
+- Full-screen player: square artwork (embedded art, or fallback), title with inline actual audio label scrolling together, artist, seek bar with times, shuffle / previous / play-pause / next / repeat (off → all → one), buffering ring, output switcher, queue.
+- Mini-player with progress, play/pause and next; tap opens the player.
+- Queue screen: tap to play, remove items.
+- Pick several files at once; they become the queue.
+- Original coral accent; adaptive app icon.
+
+### Manual device checklist (Phase 2)
+1. Choose 3+ files: mini-player appears; tap it, full player slides up.
+2. Long title: title and audio label scroll together.
+3. Seek by dragging; times update. Shuffle and repeat icons change colour and behaviour.
+4. Output button: Android 14+ shows the system output picker; older shows Bluetooth settings.
+5. Queue: tap a song to play it; remove one; remove all → returns home.
+
 ## Known limitations
-- Single-file playback only; no queue, library or persistence yet (Phases 2–3).
-- Codec label is still on its own line, not inline after the title (Phase 2).
-- Title is the file name; embedded tags are not read yet (Phase 3, via MediaStore).
-- No online sources. The audio-source policy for Phase 4 is undecided.
+- No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
+- Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.
+- Local files show the file name as title. Artist and artwork should come from embedded tags when present [not yet verified on a device].
+- No online sources yet. Phase 4: YouTube Music search and on-device playback via NewPipe Extractor (owner decision, see DECISIONS.md).

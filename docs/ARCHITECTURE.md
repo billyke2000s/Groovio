@@ -1,9 +1,12 @@
 # Architecture
 
 ## Current implementation
-- `MainActivity`: Compose player screen and Android document picker.
-- `GroovioPlaybackService`: AndroidX Media3 `MediaSessionService` and ExoPlayer for local audio playback.
-- Android document picker supplies a persistable read URI for a user-selected local file.
+- `MainActivity`: edge-to-edge host for `GroovioApp`.
+- `ui/GroovioApp`: navigation (home, full player, queue) and the mini-player.
+- `playback/PlayerViewModel`: wraps a Media3 `MediaController`; exposes `PlayerUiState` as a `StateFlow` and position as a lifecycle-collected `Flow`.
+- `playback/GroovioPlaybackService`: Media3 `MediaSessionService` + ExoPlayer, audio focus, pause on becoming noisy.
+- `playback/AudioFormatLabel`: inline codec/bitrate/sample-rate label from the selected track.
+- Android document picker supplies read URIs for user-selected files (multiple selection forms the queue).
 
 ## Planned modules (not implemented)
 - `metadata`: MusicBrainz/Cover Art Archive with caching and respectful rate limits.
