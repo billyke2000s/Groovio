@@ -78,10 +78,16 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Screenshots of Compose screens rendered on the JVM (CI prints them for review).
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
 // Show each test and its output in CI logs.
 tasks.withType<Test>().configureEach {
+    // Record screenshots only when asked (CI screenshot job), so normal tests stay fast.
+    systemProperty("roborazzi.test.record", System.getenv("GROOVIO_SCREENSHOTS") == "1")
     testLogging {
         events("passed", "skipped", "failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
