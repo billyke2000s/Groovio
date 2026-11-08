@@ -26,6 +26,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.core.content.ContextCompat
+import com.groovio.app.playback.AudioFormatLabel
 import com.groovio.app.playback.GroovioPlaybackService
 
 private val Green = Color(0xFF1ED760)
@@ -44,11 +45,18 @@ private fun GroovioScreen() {
     var controller by remember { mutableStateOf<MediaController?>(null) }
     var title by remember { mutableStateOf("Nothing playing") }
     var playing by remember { mutableStateOf(false) }
+    var hasItem by remember { mutableStateOf(false) }
+    var hasNext by remember { mutableStateOf(false) }
     var format by remember { mutableStateOf("Select an audio file") }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            val name = uri.lastPathSegment?.substringAfterLast('/') ?: "Local track"
+            // Not every document provider offers persistable grants; playback still
+            // works for this session with the temporary grant.
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (_: SecurityException) {
+            }
+            val name = displayName(context, uri) ?: "Local track"
             title = name
             format = "Format available after playback"
             controller?.apply {
@@ -67,6 +75,8 @@ private fun GroovioScreen() {
                 val c = future.get()
                 controller = c
                 playing = c.isPlaying
+                hasItem = c.mediaItemCount > 0
+                hasNext = c.hasNextMediaItem()
             } catch (_: Exception) {
                 format = "Player unavailable"
             }
@@ -79,21 +89,17 @@ private fun GroovioScreen() {
     DisposableEffect(controller) {
         val c = controller
         val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+            override fun onEvents(player: Player, events: Player.Events) {
+                playing = player.isPlaying
+                hasItem = player.mediaItemCount > 0
+                hasNext = player.hasNextMediaItem()
+            }
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
                 title = mediaMetadata.title?.toString() ?: title
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                val audio = tracks.groups.firstOrNull {
-                    it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO && it.isSelected
-                }?.getTrackFormat(0)
-                format = if (audio != null) {
-                    listOfNotNull(
-                        audio.sampleMimeType?.substringAfterLast('/')?.uppercase()?.takeIf { it.isNotBlank() },
-                        audio.bitrate.takeIf { it > 0 }?.let { "${it / 1000}K" },
-                        audio.sampleRate.takeIf { it > 0 }?.let { "${it / 1000.0}kHz" }
-                    ).joinToString(" · ").ifBlank { "Audio format unknown" }
-                } else "Audio format unknown"
+                val audio = AudioFormatLabel.selectedAudioFormat(tracks)
+                format = audio?.let(AudioFormatLabel::from) ?: "Audio format unknown"
             }
         }
         c?.addListener(listener)
@@ -124,18 +130,19 @@ private fun GroovioScreen() {
                 Spacer(Modifier.height(28.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { controller?.seekToPreviousMediaItem() }) {
+                    // Restarts the track, or goes to the previous one near the start.
+                    IconButton(onClick = { controller?.seekToPrevious() }, enabled = hasItem) {
                         Icon(Icons.Default.SkipPrevious, "Previous track")
                     }
                     FilledIconButton(
                         onClick = { if (playing) controller?.pause() else controller?.play() },
                         modifier = Modifier.size(72.dp),
-                        enabled = controller?.mediaItemCount != 0 && controller != null
+                        enabled = controller != null && hasItem
                     ) {
                         Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                             if (playing) "Pause" else "Play", modifier = Modifier.size(36.dp))
                     }
-                    IconButton(onClick = { controller?.seekToNextMediaItem() }) {
+                    IconButton(onClick = { controller?.seekToNextMediaItem() }, enabled = hasNext) {
                         Icon(Icons.Default.SkipNext, "Next track")
                     }
                 }
@@ -150,3 +157,15 @@ private fun GroovioScreen() {
         }
     }
 }
+
+/** The user-visible file name from the document provider, if available. */
+private fun displayName(context: android.content.Context, uri: android.net.Uri): String? =
+    try {
+        context.contentResolver.query(
+            uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null
+        )?.use { c ->
+            if (c.moveToFirst()) c.getString(0)?.takeIf { it.isNotBlank() } else null
+        }
+    } catch (_: Exception) {
+        null
+    }
