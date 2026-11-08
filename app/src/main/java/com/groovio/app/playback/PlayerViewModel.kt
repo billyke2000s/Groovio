@@ -25,6 +25,7 @@ import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.online.SpotifyCollection
+import com.groovio.app.online.SpotifyImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -53,7 +54,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val library = (app as GroovioApplication).library
-    private val spotify = app.spotify
+    private val spotify: SpotifyImporter = (app as GroovioApplication).spotify
 
     private var importJob: Job? = null
     private val _import = MutableStateFlow<SpotifyImportProgress?>(null)

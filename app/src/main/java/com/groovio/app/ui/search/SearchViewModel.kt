@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.groovio.app.GroovioApplication
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.online.SpotifyCollection
+import com.groovio.app.online.SpotifyImporter
 import com.groovio.app.online.SpotifyLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +38,7 @@ data class SearchState(
 class SearchViewModel(app: Application) : AndroidViewModel(app) {
 
     private val youtube = (app as GroovioApplication).youtube
-    private val spotify = app.spotify
+    private val spotify: SpotifyImporter = (app as GroovioApplication).spotify
     private val query = MutableStateFlow("")
     private val retryTick = MutableStateFlow(0)
 
