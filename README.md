@@ -11,6 +11,13 @@ See [STATUS.md](STATUS.md) for exactly what is built and verified. Debug APKs co
 
 **About online playback:** songs are found and streamed from YouTube on each phone using [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor). This is not permitted by YouTube's terms of service, so Groovio cannot be published on Google Play, and YouTube changes can temporarily break playback until the extractor is updated.
 
+## Features
+- Paste or share a Spotify song, album or playlist link and play it: each song is matched to YouTube on the phone (no Spotify account needed).
+- Search YouTube Music and stream on the phone, with the actual codec, bitrate and sample rate shown after the title.
+- Full-screen player, mini-player, queue, shuffle/repeat, output picker, background and lock-screen playback.
+- Liked songs, playlists, recently played, and the queue restored after restart, all stored only on the phone.
+- Play audio files from your phone too.
+
 ## Principles
 - Free, no subscriptions, no advertising, no required accounts or hosted backend.
 - Native Kotlin, Jetpack Compose, AndroidX Media3.
