@@ -17,7 +17,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -39,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +58,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
+import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.playback.PlaybackText
+import com.groovio.app.ui.library.AddToPlaylistDialog
 import com.groovio.app.playback.PlayerUiState
 import com.groovio.app.ui.theme.GroovioColors
 
@@ -70,8 +76,14 @@ fun PlayerScreen(
     onPrevious: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeat: () -> Unit,
+    isFavourite: Boolean,
+    onToggleFavourite: () -> Unit,
+    playlists: List<PlaylistSummary>,
+    onAddToPlaylist: (Long) -> Unit,
+    onAddToNewPlaylist: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
     val artwork = rememberArtwork(state.artworkData, targetPx = 1024)
 
     Column(
@@ -102,15 +114,26 @@ fun PlayerScreen(
         )
         Spacer(Modifier.weight(0.6f))
 
-        TitleWithAudioLabel(state.title, state.audioLabel)
-        Text(
-            state.artist ?: "Unknown artist",
-            color = GroovioColors.TextMuted,
-            fontSize = 16.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                TitleWithAudioLabel(state.title, state.audioLabel)
+                Text(
+                    state.artist ?: "Unknown artist",
+                    color = GroovioColors.TextMuted,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            IconButton(onClick = onToggleFavourite, enabled = state.hasItem) {
+                Icon(
+                    if (isFavourite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    if (isFavourite) "Remove from Liked songs" else "Add to Liked songs",
+                    tint = if (isFavourite) GroovioColors.Accent else GroovioColors.Text,
+                )
+            }
+        }
 
         state.error?.let {
             Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error,
@@ -184,10 +207,22 @@ fun PlayerScreen(
             IconButton(onClick = { openOutputSwitcher(context) }) {
                 Icon(Icons.Default.SpeakerGroup, "Choose audio output")
             }
+            IconButton(onClick = { addingToPlaylist = true }, enabled = state.hasItem) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist")
+            }
             IconButton(onClick = onOpenQueue) {
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, "Queue")
             }
         }
+    }
+
+    if (addingToPlaylist) {
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onPick = onAddToPlaylist,
+            onCreate = onAddToNewPlaylist,
+            onDismiss = { addingToPlaylist = false },
+        )
     }
 }
 

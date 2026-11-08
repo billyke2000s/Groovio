@@ -54,5 +54,5 @@ These rules apply to every contributor and coding agent. Read this file before e
 ## Initial milestones
 1. Buildable Android Studio project with CI.
 2. Exact agreed player UI with real local-file playback and inline actual codec metadata.
-4. Online search and playback (YouTube Music via NewPipe Extractor), Spotify-link import using the ported matcher.
-5. Persistent favourites, playlists, history and playback state for online and local tracks.
+3. Online search and playback (YouTube Music via NewPipe Extractor), Spotify-link import using the ported matcher.
+4. Persistent favourites, playlists, history and playback state for online and local tracks.

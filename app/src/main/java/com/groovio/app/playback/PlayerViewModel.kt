@@ -15,12 +15,23 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.groovio.app.GroovioApplication
+import com.groovio.app.data.PlaylistSummary
+import com.groovio.app.data.TrackEntity
+import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.NoPlayableAudioException
 import com.groovio.app.online.OnlineMedia
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.groovio.app.online.OnlineTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +49,19 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
+
+    private val library = (app as GroovioApplication).library
+
+    /** Whether the current song is in Liked songs. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val isFavourite: StateFlow<Boolean> = _state
+        .map { it.currentMediaId }
+        .distinctUntilChanged()
+        .flatMapLatest { id -> if (id == null) flowOf(false) else library.isFavourite(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val playlists: StateFlow<List<PlaylistSummary>> = library.playlists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private var controller: MediaController? = null
     private val future: ListenableFuture<MediaController>
@@ -144,6 +168,35 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun removeAt(index: Int) {
         val c = controller ?: return
         if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
+    }
+
+    private fun currentTrack(): TrackEntity? =
+        controller?.currentMediaItem?.let(TrackMapping::fromMediaItem)
+
+    fun toggleFavourite() {
+        val track = currentTrack() ?: return
+        val now = !isFavourite.value
+        viewModelScope.launch { library.setFavourite(track, now) }
+    }
+
+    fun addCurrentToPlaylist(playlistId: Long) {
+        val track = currentTrack() ?: return
+        viewModelScope.launch { library.addToPlaylist(playlistId, track) }
+    }
+
+    fun addCurrentToNewPlaylist(name: String) {
+        val track = currentTrack() ?: return
+        if (name.isBlank()) return
+        viewModelScope.launch { library.addToPlaylist(library.createPlaylist(name), track) }
+    }
+
+    /** Replaces the queue with stored tracks (liked songs, a playlist, history). */
+    fun playStored(tracks: List<TrackEntity>, startIndex: Int) {
+        val c = controller ?: return
+        if (tracks.isEmpty()) return
+        c.setMediaItems(tracks.map(TrackMapping::toMediaItem), startIndex.coerceIn(tracks.indices), 0L)
+        c.prepare()
+        c.play()
     }
 
     /** Replaces the queue with online tracks and starts at [startIndex]. */

@@ -1,7 +1,12 @@
 package com.groovio.app
 
 import android.app.Application
+import com.groovio.app.data.LibraryDatabase
+import com.groovio.app.data.LibraryRepository
 import com.groovio.app.online.NewPipeDownloader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.groovio.app.online.YouTubeMusic
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.localization.ContentCountry
@@ -12,6 +17,10 @@ import java.util.Locale
 class GroovioApplication : Application() {
 
     val youtube: YouTubeMusic by lazy { YouTubeMusic() }
+    val library: LibraryRepository by lazy { LibraryRepository(LibraryDatabase.create(this).dao()) }
+
+    /** Outlives screens and the service, for short writes that must finish (e.g. saving the queue). */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
         super.onCreate()

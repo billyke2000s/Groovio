@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -35,6 +36,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.groovio.app.playback.PlayerViewModel
 import com.groovio.app.ui.home.HomeScreen
+import com.groovio.app.ui.library.LibraryScreen
+import com.groovio.app.ui.library.LibraryView
+import com.groovio.app.ui.library.LibraryViewModel
 import com.groovio.app.ui.player.MiniPlayer
 import com.groovio.app.ui.player.PlayerScreen
 import com.groovio.app.ui.player.QueueScreen
@@ -51,15 +55,19 @@ private object Routes {
 private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
     SEARCH("Search", Icons.Default.Search),
+    LIBRARY("Library", Icons.Default.LibraryMusic),
 }
 
 @Composable
 fun GroovioApp(
     vm: PlayerViewModel = viewModel(),
     searchVm: SearchViewModel = viewModel(),
+    libraryVm: LibraryViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val position by vm.positionMs.collectAsStateWithLifecycle(initialValue = 0L)
+    val isFavourite by vm.isFavourite.collectAsStateWithLifecycle()
+    val playlists by vm.playlists.collectAsStateWithLifecycle()
     val nav = rememberNavController()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         vm.playFiles(uris)
@@ -72,6 +80,7 @@ fun GroovioApp(
     ) {
         composable(Routes.TABS) {
             var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+            var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
             Column(Modifier.fillMaxSize()) {
                 Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding()) {
                     when (tab) {
@@ -83,6 +92,13 @@ fun GroovioApp(
                             vm = searchVm,
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playTracks,
+                        )
+                        Tab.LIBRARY -> LibraryScreen(
+                            vm = libraryVm,
+                            view = libraryView,
+                            onViewChange = { libraryView = it },
+                            currentMediaId = state.currentMediaId,
+                            onPlay = vm::playStored,
                         )
                     }
                 }
@@ -100,7 +116,11 @@ fun GroovioApp(
                     Tab.entries.forEach { t ->
                         NavigationBarItem(
                             selected = tab == t,
-                            onClick = { tab = t },
+                            onClick = {
+                                // Tapping Library again returns to its top level.
+                                if (t == Tab.LIBRARY && tab == Tab.LIBRARY) libraryView = LibraryView.ROOT
+                                tab = t
+                            },
                             icon = { Icon(t.icon, contentDescription = null) },
                             label = { Text(t.label) },
                             colors = NavigationBarItemDefaults.colors(
@@ -135,6 +155,11 @@ fun GroovioApp(
                 onPrevious = vm::previous,
                 onToggleShuffle = vm::toggleShuffle,
                 onCycleRepeat = vm::cycleRepeat,
+                isFavourite = isFavourite,
+                onToggleFavourite = vm::toggleFavourite,
+                playlists = playlists,
+                onAddToPlaylist = vm::addCurrentToPlaylist,
+                onAddToNewPlaylist = vm::addCurrentToNewPlaylist,
             )
         }
         composable(Routes.QUEUE) {

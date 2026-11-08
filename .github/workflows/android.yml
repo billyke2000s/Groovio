@@ -44,6 +44,18 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      # Room schemas must be committed (needed to test future migrations).
+      - name: Check Room schema is committed
+        run: |
+          changes=$(git status --porcelain -- app/schemas)
+          if [ -n "$changes" ]; then
+            echo "::warning::Room schema changed or missing from Git. Commit these files:"
+            echo "$changes"
+            for f in $(git ls-files --others --modified --exclude-standard -- app/schemas); do
+              echo "----- $f"; cat "$f"
+            done
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: groovio-debug-apk
