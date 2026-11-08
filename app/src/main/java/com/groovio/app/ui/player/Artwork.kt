@@ -26,9 +26,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun rememberArtwork(data: ByteArray?, targetPx: Int): ImageBitmap? {
     val bitmap by produceState<ImageBitmap?>(initialValue = null, data, targetPx) {
-        value = data?.let { bytes ->
-            withContext(Dispatchers.Default) { decodeSampled(bytes, targetPx) }
-        }
+        value = if (data == null) null
+        else withContext(Dispatchers.Default) { decodeSampled(data, targetPx) }
     }
     return bitmap
 }
