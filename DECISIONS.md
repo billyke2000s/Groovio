@@ -22,3 +22,6 @@ Spotify's Web API needs a client secret, which cannot be shipped safely inside a
 
 ## 2026-11-08 — Local file playback stays as an extra
 Groovio is primarily a streaming app; "Choose audio files" remains as a secondary option.
+
+## 2026-11-08 — Phase order: streaming before library
+Because Groovio is primarily a streaming app, online search/playback (originally Phase 4) is built before persistence (originally Phase 3), so favourites, playlists and history are designed around streamed tracks from the start.

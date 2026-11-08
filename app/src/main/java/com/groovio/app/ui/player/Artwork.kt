@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
+import coil.compose.AsyncImage
 import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -50,11 +51,20 @@ private fun decodeSampled(bytes: ByteArray, targetPx: Int): ImageBitmap? = try {
     null
 }
 
-/** Square artwork, or a neutral fallback when the track has none. */
+/**
+ * Square artwork: embedded bytes first, then an online URL, else a neutral fallback.
+ */
 @Composable
-fun ArtworkImage(bitmap: ImageBitmap?, iconSize: Dp, modifier: Modifier = Modifier) {
+fun ArtworkImage(bitmap: ImageBitmap?, url: String?, iconSize: Dp, modifier: Modifier = Modifier) {
     Box(modifier.background(GroovioColors.ArtworkFallback), contentAlignment = Alignment.Center) {
-        if (bitmap != null) {
+        if (bitmap == null && url != null) {
+            AsyncImage(
+                model = url,
+                contentDescription = "Album artwork",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (bitmap != null) {
             Image(
                 bitmap = bitmap,
                 contentDescription = "Album artwork",

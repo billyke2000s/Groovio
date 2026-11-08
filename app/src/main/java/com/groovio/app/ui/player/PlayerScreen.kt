@@ -2,7 +2,11 @@ package com.groovio.app.ui.player
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +21,10 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -37,12 +44,20 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -54,7 +69,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
+import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.playback.PlaybackText
+import com.groovio.app.ui.library.AddToPlaylistDialog
 import com.groovio.app.playback.PlayerUiState
 import com.groovio.app.ui.theme.GroovioColors
 
@@ -70,12 +87,42 @@ fun PlayerScreen(
     onPrevious: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeat: () -> Unit,
+    isFavourite: Boolean,
+    onToggleFavourite: () -> Unit,
+    playlists: List<PlaylistSummary>,
+    onAddToPlaylist: (Long) -> Unit,
+    onAddToNewPlaylist: (String) -> Unit,
+    onOpenArtist: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
     val artwork = rememberArtwork(state.artworkData, targetPx = 1024)
+    val tint = rememberArtworkTint(artwork, state.artworkUri)
+
+    // Swipe down to close, following the finger like Spotify.
+    val collapse by rememberUpdatedState(onCollapse)
+    val threshold = with(LocalDensity.current) { 120.dp.toPx() }
+    var dragY by remember { mutableFloatStateOf(0f) }
 
     Column(
-        Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
+        Modifier
+            .fillMaxSize()
+            .offset { IntOffset(0, dragY.roundToInt()) }
+            .background(Brush.verticalGradient(0f to tint, 0.75f to GroovioColors.Background))
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragEnd = {
+                        if (dragY > threshold) collapse()
+                        dragY = 0f
+                    },
+                    onDragCancel = { dragY = 0f },
+                ) { change, amount ->
+                    change.consume()
+                    dragY = (dragY + amount).coerceAtLeast(0f)
+                }
+            }
+            .systemBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onCollapse) {
@@ -96,20 +143,37 @@ fun PlayerScreen(
         Spacer(Modifier.weight(0.6f))
         ArtworkImage(
             bitmap = artwork,
+            url = state.artworkUri,
             iconSize = 120.dp,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)),
         )
         Spacer(Modifier.weight(0.6f))
 
-        TitleWithAudioLabel(state.title, state.audioLabel)
-        Text(
-            state.artist ?: "Unknown artist",
-            color = GroovioColors.TextMuted,
-            fontSize = 16.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                TitleWithAudioLabel(state.title, state.audioLabel)
+                val artist = state.artist
+                Text(
+                    artist ?: "Unknown artist",
+                    color = GroovioColors.TextMuted,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable(enabled = artist != null, onClickLabel = "Open artist") {
+                            artist?.let(onOpenArtist)
+                        },
+                )
+            }
+            IconButton(onClick = onToggleFavourite, enabled = state.hasItem) {
+                Icon(
+                    if (isFavourite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    if (isFavourite) "Remove from Liked songs" else "Add to Liked songs",
+                    tint = if (isFavourite) GroovioColors.Accent else GroovioColors.Text,
+                )
+            }
+        }
 
         state.error?.let {
             Text(it, color = androidx.compose.material3.MaterialTheme.colorScheme.error,
@@ -183,10 +247,22 @@ fun PlayerScreen(
             IconButton(onClick = { openOutputSwitcher(context) }) {
                 Icon(Icons.Default.SpeakerGroup, "Choose audio output")
             }
+            IconButton(onClick = { addingToPlaylist = true }, enabled = state.hasItem) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist")
+            }
             IconButton(onClick = onOpenQueue) {
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, "Queue")
             }
         }
+    }
+
+    if (addingToPlaylist) {
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onPick = onAddToPlaylist,
+            onCreate = onAddToNewPlaylist,
+            onDismiss = { addingToPlaylist = false },
+        )
     }
 }
 
@@ -220,12 +296,14 @@ private fun TitleWithAudioLabel(title: String, audioLabel: String?) {
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun SeekBar(positionMs: Long, durationMs: Long?, onSeek: (Long) -> Unit) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val duration = durationMs ?: 0L
     val fraction = if (duration > 0) (positionMs.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Column {
+        // Spotify-style: thin line with a small round thumb.
         Slider(
             value = dragging ?: fraction,
             onValueChange = { dragging = it },
@@ -234,11 +312,19 @@ private fun SeekBar(positionMs: Long, durationMs: Long?, onSeek: (Long) -> Unit)
                 dragging = null
             },
             enabled = duration > 0,
-            colors = SliderDefaults.colors(
-                thumbColor = GroovioColors.Text,
-                activeTrackColor = GroovioColors.Accent,
-                inactiveTrackColor = GroovioColors.SurfaceHigh,
-            ),
+            thumb = {
+                Box(Modifier.size(if (dragging != null) 16.dp else 12.dp).background(GroovioColors.Text, CircleShape))
+            },
+            track = { sliderState ->
+                val range = sliderState.valueRange
+                val f = ((sliderState.value - range.start) / (range.endInclusive - range.start)).coerceIn(0f, 1f)
+                Box(Modifier.fillMaxWidth().height(4.dp).background(GroovioColors.SurfaceHigh, CircleShape)) {
+                    Box(
+                        Modifier.fillMaxWidth(f).height(4.dp)
+                            .background(if (dragging != null) GroovioColors.Accent else GroovioColors.Text, CircleShape)
+                    )
+                }
+            },
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             val shown = dragging?.let { (it * duration).toLong() } ?: positionMs

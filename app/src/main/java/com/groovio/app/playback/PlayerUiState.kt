@@ -16,6 +16,8 @@ data class PlayerUiState(
     val title: String = "",
     val artist: String? = null,
     val artworkData: ByteArray? = null,
+    /** Online artwork, used when there are no embedded artwork bytes. */
+    val artworkUri: String? = null,
     val isPlaying: Boolean = false,
     val isBuffering: Boolean = false,
     val durationMs: Long? = null,
@@ -26,6 +28,7 @@ data class PlayerUiState(
     val audioLabel: String? = null,
     val queue: List<QueueEntry> = emptyList(),
     val currentIndex: Int = -1,
+    val currentMediaId: String? = null,
     val error: String? = null,
 ) {
     // ByteArray uses reference equality, which is what we want: a new artwork
@@ -34,17 +37,19 @@ data class PlayerUiState(
         other is PlayerUiState &&
             connected == other.connected && hasItem == other.hasItem &&
             title == other.title && artist == other.artist &&
-            artworkData === other.artworkData && isPlaying == other.isPlaying &&
+            artworkData === other.artworkData && artworkUri == other.artworkUri &&
+            isPlaying == other.isPlaying &&
             isBuffering == other.isBuffering && durationMs == other.durationMs &&
             hasNext == other.hasNext && shuffle == other.shuffle &&
             repeatMode == other.repeatMode && audioLabel == other.audioLabel &&
             queue == other.queue && currentIndex == other.currentIndex &&
+            currentMediaId == other.currentMediaId &&
             error == other.error
 
     override fun hashCode(): Int =
-        listOf(connected, hasItem, title, artist, System.identityHashCode(artworkData),
+        listOf(connected, hasItem, title, artist, System.identityHashCode(artworkData), artworkUri,
             isPlaying, isBuffering, durationMs, hasNext, shuffle, repeatMode,
-            audioLabel, queue, currentIndex, error).hashCode()
+            audioLabel, queue, currentIndex, currentMediaId, error).hashCode()
 }
 
 object PlaybackText {
