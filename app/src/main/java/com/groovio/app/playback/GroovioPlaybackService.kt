@@ -240,6 +240,7 @@ class GroovioPlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
+    @OptIn(UnstableApi::class)
     override fun onDestroy() {
         session?.player?.let { p ->
             sendBroadcast(
