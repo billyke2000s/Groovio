@@ -8,11 +8,14 @@
 - `playback/AudioFormatLabel`: inline codec/bitrate/sample-rate label from the selected track.
 - Android document picker supplies read URIs for user-selected files (multiple selection forms the queue).
 
-## Planned modules (not implemented)
-- `metadata`: MusicBrainz/Cover Art Archive with caching and respectful rate limits.
-- `sources`: provider adapters for legally authorised playable media; no fabricated streams.
-- `matching`: Android-native, tested track matching inspired by existing Discord bot.
-- `database`: Room entities for favourites, playlists, and listening history.
-- `ui/home`, `ui/search`, `ui/library`: Compose navigation and screens.
+- `online/YouTubeMusic`: YouTube Music search and stream resolution via NewPipe Extractor (`NewPipeDownloader` over OkHttp). `StreamSelector` picks the best original audio; `TrackMatcher` is the Discord bot's matcher, ported.
+- Online songs are queued as `groovio://youtube/<id>`; `GroovioPlaybackService` resolves them to real URLs in a `ResolvingDataSource` on the loader thread, caches them (4h) and re-resolves once on HTTP errors.
+- `data/LibraryDatabase` (Room): tracks, favourites, history, playlists, saved queue and playback state. `LibraryRepository` is the only entry point. A track's identity is its media id (`yt:<id>` or a local `content://` URI); `TrackMapping` derives the playable URI from it.
+- The service records history once a song actually plays, saves the queue (debounced), restores it on start, and rebuilds URIs for items from external controllers.
+- `ui/home`, `ui/search`, `ui/library`, `ui/player`: Compose screens; `GroovioApp` hosts tabs (Home, Search, Library), the mini-player, full player and queue.
 
-No backend, Lavalink server, or account is required. Online discovery will still require an internet connection.
+## Planned
+- Spotify-link import (public embed page, no key) matched to YouTube with `TrackMatcher`.
+- Artist and album pages.
+
+No backend, Lavalink server, or account is required. Online features need an internet connection.

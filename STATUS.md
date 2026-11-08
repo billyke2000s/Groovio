@@ -74,6 +74,29 @@ Only items with evidence are marked verified. Update this file with each phase.
 4. Pause for a long time (or leave overnight) and resume: it should recover by re-resolving the link.
 5. Turn on airplane mode, search: you get the "Couldn't connect" message, and Try again works once back online.
 
+## Phase 4 — Library (CI green; device checks outstanding)
+
+| Item | State | Evidence |
+|---|---|---|
+| Build, lint, 36 unit tests | Verified | CI run 42506423472 |
+| Database logic (likes, history, playlists, saved queue) | Verified | 9 Robolectric tests on a real in-memory Room database |
+| Library UI, restore after restart, resume card, Bluetooth | **Not verified** | Manual checklist below |
+
+### Added
+- **Liked songs**: heart in the full player; list in Library with unlike.
+- **Playlists**: create, rename, delete; add the current song from the player; remove songs; duplicates allowed.
+- **Recently played**: each song once, newest first; history older than 180 days is trimmed.
+- **Saved queue**: queue, position, shuffle and repeat are saved and restored (paused) when Groovio restarts. Android's "resume playback" card offers the same queue.
+- Items from Bluetooth, car and system controllers get their URI rebuilt, so they play.
+- Room schema v1 committed for future migration tests.
+
+### Manual device checklist (Phase 4)
+1. Play a song, tap the heart: it appears in Library → Liked songs. Tap again: removed.
+2. Player → playlist button → New playlist: song is added. Rename and delete it from Library.
+3. Play a few songs: they show in Recently played, newest first.
+4. Force-stop Groovio and reopen: the mini-player shows the last song at the same position; play resumes there.
+5. After force-stopping, use the media "resume" card (Android 11+ quick settings): it should play the saved queue.
+
 ## Known limitations
 - No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
 - Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.
