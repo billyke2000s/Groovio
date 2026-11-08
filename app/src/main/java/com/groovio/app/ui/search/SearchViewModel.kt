@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.groovio.app.GroovioApplication
+import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.online.SpotifyCollection
 import com.groovio.app.online.SpotifyImporter
@@ -29,6 +30,7 @@ data class SearchState(
     val query: String = "",
     val loading: Boolean = false,
     val results: List<OnlineTrack> = emptyList(),
+    val albums: List<OnlineAlbum> = emptyList(),
     /** Set when the query is a Spotify link that was read successfully. */
     val spotify: SpotifyCollection? = null,
     val error: String? = null,
@@ -67,7 +69,11 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                         SearchState(query = q, spotify = collection)
                     } else {
                         val results = withContext(Dispatchers.IO) { youtube.searchSongs(q) }
-                        SearchState(query = q, results = results)
+                        // Albums are a bonus row; a failure there shouldn't hide the songs.
+                        val albums = withContext(Dispatchers.IO) {
+                            runCatching { youtube.searchAlbums(q).take(8) }.getOrDefault(emptyList())
+                        }
+                        SearchState(query = q, results = results, albums = albums)
                     }
                 } catch (e: CancellationException) {
                     throw e

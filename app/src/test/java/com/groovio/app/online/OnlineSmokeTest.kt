@@ -65,4 +65,18 @@ class OnlineSmokeTest {
         matches.forEach { (s, m) -> println("match: '${s.title}' -> ${m?.let { "${it.title} / ${it.artist} (${it.id})" }}") }
         assertTrue("fewer than 2 of 3 songs matched", matches.count { it.second != null } >= 2)
     }
+
+    @Test fun `artist page and album tracks load`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val yt = YouTubeMusic()
+        val artist = yt.artist("Daft Punk")
+        println("artist: ${artist.songs.size} songs, ${artist.albums.size} albums; albums: ${artist.albums.take(5).map { it.title }}")
+        assertTrue("no artist songs", artist.songs.isNotEmpty())
+        assertTrue("no artist albums", artist.albums.isNotEmpty())
+
+        val album = artist.albums.first()
+        val tracks = yt.albumTracks(album)
+        println("album '${album.title}': ${tracks.size} tracks; first: ${tracks.firstOrNull()?.title}")
+        assertTrue("album has no tracks", tracks.isNotEmpty())
+    }
 }

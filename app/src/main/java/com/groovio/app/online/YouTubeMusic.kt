@@ -2,6 +2,8 @@ package com.groovio.app.online
 
 import org.schabi.newpipe.extractor.Image
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.playlist.PlaylistInfo
+import org.schabi.newpipe.extractor.playlist.PlaylistInfoItem
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.AudioTrackType
@@ -18,6 +20,16 @@ data class OnlineTrack(
     val durationMs: Long?,
     val thumbnailUrl: String?,
 )
+
+/** An album on YouTube Music (a playlist under the hood). */
+data class OnlineAlbum(
+    val url: String,
+    val title: String,
+    val artist: String?,
+    val thumbnailUrl: String?,
+)
+
+data class ArtistPage(val name: String, val songs: List<OnlineTrack>, val albums: List<OnlineAlbum>)
 
 /** A resolved, directly playable audio URL. */
 data class ResolvedAudio(
@@ -48,6 +60,39 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
             .filterIsInstance<StreamInfoItem>()
             .mapNotNull(::toTrack)
     }
+
+    fun searchAlbums(query: String): List<OnlineAlbum> {
+        val extractor = service.getSearchExtractor(
+            query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_ALBUMS), "",
+        )
+        extractor.fetchPage()
+        return extractor.initialPage.items
+            .filterIsInstance<PlaylistInfoItem>()
+            .map {
+                OnlineAlbum(
+                    url = it.url,
+                    title = it.name,
+                    artist = it.uploaderName?.removeSuffix(" - Topic")?.takeIf { a -> a.isNotBlank() },
+                    thumbnailUrl = bestImage(it.thumbnails),
+                )
+            }
+    }
+
+    /** An album's songs, in order. Songs take the album's square artwork. */
+    fun albumTracks(album: OnlineAlbum): List<OnlineTrack> {
+        val info = PlaylistInfo.getInfo(service, album.url)
+        return info.relatedItems
+            .filterIsInstance<StreamInfoItem>()
+            .mapNotNull(::toTrack)
+            .map { t -> t.copy(artist = t.artist ?: album.artist, thumbnailUrl = album.thumbnailUrl ?: t.thumbnailUrl) }
+    }
+
+    /** Top songs and albums by an artist (YouTube Music search, filtered to that artist). */
+    fun artist(name: String): ArtistPage = ArtistPage(
+        name = name,
+        songs = searchSongs(name).filter { sameArtist(name, it.artist) }.take(10),
+        albums = searchAlbums(name).filter { sameArtist(name, it.artist) }.take(12),
+    )
 
     fun resolve(videoId: String): ResolvedAudio {
         cache[videoId]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }
@@ -97,6 +142,14 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
     companion object {
         /** YouTube stream URLs last about six hours; refresh well before that. */
         const val URL_TTL_MS = 4 * 60 * 60 * 1000L
+
+        /** "Daft Punk" vs "Daft Punk, Pharrell Williams": loose, accent/case-insensitive. */
+        fun sameArtist(wanted: String, actual: String?): Boolean {
+            val a = TrackMatcher.compact(actual)
+            if (a.isEmpty()) return false
+            return wanted.split(',').map { TrackMatcher.compact(it) }.filter { it.isNotEmpty() }
+                .any { w -> a == w || a.startsWith(w) || w.startsWith(a) }
+        }
 
         fun bestImage(images: List<Image>): String? =
             images.maxByOrNull { it.height }?.url?.let(::largeArtwork)

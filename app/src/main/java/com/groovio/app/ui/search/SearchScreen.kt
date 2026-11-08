@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,7 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.ui.browse.AlbumCard
 import com.groovio.app.online.SpotifyCollection
 import com.groovio.app.playback.SpotifyImportProgress
 import com.groovio.app.playback.PlaybackText
@@ -55,6 +60,7 @@ fun SearchScreen(
     onPlay: (List<OnlineTrack>, Int) -> Unit,
     spotifyImport: SpotifyImportProgress?,
     onPlaySpotify: (SpotifyCollection) -> Unit,
+    onOpenAlbum: (OnlineAlbum) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
@@ -115,6 +121,20 @@ fun SearchScreen(
                 Text("No songs found for “${state.query}”.", color = GroovioColors.TextMuted)
             }
             else -> LazyColumn(Modifier.fillMaxSize()) {
+                if (state.albums.isNotEmpty()) {
+                    item {
+                        Text("Albums", fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 8.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            items(state.albums, key = { it.url }) { a -> AlbumCard(a) { onOpenAlbum(a) } }
+                        }
+                        Text("Songs", fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp))
+                    }
+                }
                 itemsIndexed(state.results, key = { _, t -> t.id }) { index, track ->
                     TrackRow(
                         track = track,

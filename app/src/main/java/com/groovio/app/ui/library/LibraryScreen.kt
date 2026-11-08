@@ -24,6 +24,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -70,6 +73,10 @@ fun LibraryScreen(
     }
 }
 
+private const val FILTER_PLAYLISTS = "playlists"
+private const val FILTER_RECENT = "recent"
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LibraryRoot(
     vm: LibraryViewModel,
@@ -81,6 +88,10 @@ private fun LibraryRoot(
     val playlists by vm.playlists.collectAsStateWithLifecycle()
     val recent by vm.recent.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
+    // Spotify-style filter chips: null shows everything.
+    var filter by rememberSaveable { mutableStateOf<String?>(null) }
+    val showPlaylists = filter == null || filter == FILTER_PLAYLISTS
+    val showRecent = filter == null || filter == FILTER_RECENT
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
@@ -93,29 +104,44 @@ private fun LibraryRoot(
             }
         }
         item {
+            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(FILTER_PLAYLISTS to "Playlists", FILTER_RECENT to "Recently played").forEach { (key, label) ->
+                    FilterChip(
+                        selected = filter == key,
+                        onClick = { filter = if (filter == key) null else key },
+                        label = { Text(label) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = GroovioColors.Accent,
+                            selectedLabelColor = GroovioColors.OnAccent,
+                        ),
+                    )
+                }
+            }
+        }
+        if (showPlaylists) item {
             CollectionRow(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") {
                 onViewChange(LibraryView.LIKED)
             }
         }
-        items(playlists, key = { "p${it.id}" }) { p ->
+        if (showPlaylists) items(playlists, key = { "p${it.id}" }) { p ->
             CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs") {
                 onViewChange(LibraryView.playlist(p.id))
             }
         }
-        item {
+        if (showRecent) item {
             Text(
                 "Recently played",
                 fontSize = 18.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 4.dp),
             )
         }
-        if (recent.isEmpty()) {
+        if (showRecent && recent.isEmpty()) {
             item {
                 Text("Songs you play show up here.", color = GroovioColors.TextMuted,
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
         }
-        itemsIndexed(recent, key = { _, t -> "r${t.mediaId}" }) { i, track ->
+        if (showRecent) itemsIndexed(recent, key = { _, t -> "r${t.mediaId}" }) { i, track ->
             StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(recent, i) })
         }
     }

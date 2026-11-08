@@ -251,6 +251,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         c.play()
     }
 
+    /** Plays [tracks] in shuffle mode, starting from a random song. */
+    fun shuffleTracks(tracks: List<OnlineTrack>) {
+        if (tracks.isEmpty()) return
+        playTracks(tracks, tracks.indices.random())
+        controller?.shuffleModeEnabled = true
+    }
+
     /** Replaces the queue with online tracks and starts at [startIndex]. */
     fun playTracks(tracks: List<OnlineTrack>, startIndex: Int) {
         val c = controller ?: return
