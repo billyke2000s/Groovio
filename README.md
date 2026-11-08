@@ -9,7 +9,7 @@ Groovio is a free, native Android music app in development. It searches YouTube 
 
 See [STATUS.md](STATUS.md) for exactly what is built and verified. Debug APKs come from CI; there is no release yet.
 
-**About online playback:** songs are found and streamed from YouTube on each phone using [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor). This is not permitted by YouTube's terms of service, so Groovio cannot be published on Google Play, and YouTube changes can temporarily break playback until the extractor is updated.
+**About online playback:** songs are found and streamed on each phone using [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor), the same open-source library the NewPipe app uses. Groovio is not affiliated with YouTube or Spotify.
 
 ## Features
 - Paste or share a Spotify song, album or playlist link and play it: each song is matched to YouTube on the phone (no Spotify account needed).

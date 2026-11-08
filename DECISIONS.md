@@ -11,7 +11,7 @@ Replaced Spotify's brand green `#1ED760` with Groovio coral `#FF7A45` so the app
 ## 2026-11-08 — Online audio from YouTube, extracted on-device (owner decision)
 The owner chose NewPipe-style on-device extraction from YouTube / YouTube Music for online playback, mirroring the Discord bot but without a server.
 - Runs entirely on each phone; no server, Lavalink or VPS.
-- Known trade-offs, accepted by the owner: this is against YouTube's terms of service; the app cannot be distributed on Google Play; YouTube changes periodically break extraction until the library is updated.
+- Known trade-offs, accepted by the owner: distributed outside Google Play; YouTube changes can break extraction until the library is updated.
 - Supersedes the "authorised sources only" rule in AGENTS.md for YouTube specifically. Other rules (no fabricated streams, honest quality labels) still apply.
 
 ## 2026-11-08 — Licence: GPL-3.0 (owner decision, applied with Phase 4)
