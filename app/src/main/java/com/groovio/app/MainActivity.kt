@@ -26,8 +26,6 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.core.content.ContextCompat
-import com.google.common.util.concurrent.MoreExecutors
-import androidx.media3.common.util.UnstableApi
 import com.groovio.app.playback.GroovioPlaybackService
 
 private val Green = Color(0xFF1ED760)
@@ -91,7 +89,7 @@ private fun GroovioScreen() {
                 }?.getTrackFormat(0)
                 format = if (audio != null) {
                     listOfNotNull(
-                        audio.sampleMimeType?.substringAfterLast('/ ')?.uppercase()?.takeIf { it.isNotBlank() },
+                        audio.sampleMimeType?.substringAfterLast('/')?.uppercase()?.takeIf { it.isNotBlank() },
                         audio.bitrate.takeIf { it > 0 }?.let { "${it / 1000}K" },
                         audio.sampleRate.takeIf { it > 0 }?.let { "${it / 1000.0}kHz" }
                     ).joinToString(" · ").ifBlank { "Audio format unknown" }
