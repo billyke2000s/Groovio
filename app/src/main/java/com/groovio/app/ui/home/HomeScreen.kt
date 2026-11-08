@@ -44,7 +44,9 @@ import coil.compose.AsyncImage
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
+import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.ui.browse.AlbumCard
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -70,6 +72,8 @@ fun HomeScreen(
     onOpenFiles: () -> Unit,
     onMore: (TrackEntity) -> Unit,
     related: RelatedShelf? = null,
+    discover: List<DiscoverShelf> = emptyList(),
+    onOpenAlbum: (OnlineAlbum) -> Unit = {},
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -95,10 +99,8 @@ fun HomeScreen(
             }
         }
 
-        if (firstRun) {
-            item { Welcome(onSearch, onOpenFiles) }
-            return@LazyColumn
-        }
+        // New users get the welcome card, then the discovery shelves below.
+        if (firstRun) item { Welcome(onSearch, onOpenFiles) }
 
         // Two-column quick-access tiles.
         tiles.chunked(2).forEach { pair ->
@@ -144,6 +146,22 @@ fun HomeScreen(
                     items(playlists, key = { it.id }) { p ->
                         SquareCard(p.name, "${p.trackCount} songs", null, false, Icons.AutoMirrored.Filled.QueueMusic) {
                             onOpenPlaylist(p.id)
+                        }
+                    }
+                }
+            }
+        }
+        discover.forEach { shelf ->
+            item(key = "dt-" + shelf.title) { Shelf(shelf.title) }
+            item(key = "dr-" + shelf.title) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (shelf.albums.isNotEmpty()) {
+                        items(shelf.albums, key = { it.url }) { a -> AlbumCard(a) { onOpenAlbum(a) } }
+                    } else {
+                        itemsIndexed(shelf.tracks, key = { _, t -> t.id }) { i, t ->
+                            SquareCard(t.title, t.artist, t.thumbnailUrl, currentMediaId == "yt:${t.id}",
+                                onLongClick = { onMore(TrackMapping.fromOnline(t)) }) { onPlayRelated(shelf.tracks, i) }
                         }
                     }
                 }

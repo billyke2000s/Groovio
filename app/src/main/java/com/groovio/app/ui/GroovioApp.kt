@@ -90,6 +90,9 @@ fun GroovioApp(
     val recent by libraryVm.recent.collectAsStateWithLifecycle()
     val liked by libraryVm.favourites.collectAsStateWithLifecycle()
     val related by homeVm.related.collectAsStateWithLifecycle()
+    val discover by homeVm.discover.collectAsStateWithLifecycle()
+    // Retry discovery when Home is shown again (e.g. after coming back online).
+    LaunchedEffect(tab) { if (tab == Tab.HOME) homeVm.loadDiscover() }
 
     // Song menu (⋮ / long press), shown over everything.
     var menuTrack by remember { mutableStateOf<TrackEntity?>(null) }
@@ -160,6 +163,8 @@ fun GroovioApp(
                             onMore = openMenu,
                             related = related,
                             onPlayRelated = vm::playTracks,
+                            discover = discover,
+                            onOpenAlbum = { openDetail(Detail.Album(it)) },
                         )
                         Tab.SEARCH -> SearchScreen(
                             vm = searchVm,

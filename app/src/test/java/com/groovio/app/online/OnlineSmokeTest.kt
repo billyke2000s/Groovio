@@ -79,4 +79,15 @@ class OnlineSmokeTest {
         println("album '${album.title}': ${tracks.size} tracks; first: ${tracks.firstOrNull()?.title}")
         assertTrue("album has no tracks", tracks.isNotEmpty())
     }
+
+    @Test fun `home discovery shelves have covers`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val yt = YouTubeMusic()
+        val hits = yt.searchSongs("top hits ${java.time.Year.now().value}")
+        val albums = yt.searchAlbums("pop hits")
+        println("discover: ${hits.size} hits (first: ${hits.firstOrNull()?.title}), ${albums.size} albums (first: ${albums.firstOrNull()?.title})")
+        println("discover covers: ${hits.count { it.thumbnailUrl != null }}/${hits.size} songs, ${albums.count { it.thumbnailUrl != null }}/${albums.size} albums")
+        assertTrue(hits.isNotEmpty() && albums.isNotEmpty())
+        assertTrue(albums.all { it.thumbnailUrl != null })
+    }
 }
