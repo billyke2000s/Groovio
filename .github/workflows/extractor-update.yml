@@ -1,0 +1,69 @@
+name: Follow NewPipe Extractor
+# Once a day: if NewPipe Extractor has a newer release (and it is not blocklisted),
+# move Groovio to it, test, commit to main and publish a release. Users get it as an
+# in-app update, so YouTube fixes arrive without anyone editing code.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  follow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Check for a newer extractor
+        id: check
+        run: |
+          latest=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest -q .tag_name)
+          current=$(grep -oE 'NewPipeExtractor:v[0-9.]+' app/build.gradle.kts | cut -d: -f2)
+          echo "current=$current latest=$latest"
+          newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
+          if [ "$latest" = "$current" ] || [ "$newest" != "$latest" ]; then
+            echo "Already on the newest extractor."; exit 0
+          fi
+          if grep -qx "$latest" .github/extractor-blocklist; then
+            echo "$latest is blocklisted; staying on $current."; exit 0
+          fi
+          echo "update=$latest" >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+      - name: Move to the new extractor
+        if: steps.check.outputs.update != ''
+        run: |
+          sed -i "s/NewPipeExtractor:${{ steps.check.outputs.current }}/NewPipeExtractor:${{ steps.check.outputs.update }}/" app/build.gradle.kts
+          git config user.name "groovio-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: follow NewPipe Extractor ${{ steps.check.outputs.update }}"
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.update != ''
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        if: steps.check.outputs.update != ''
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.check.outputs.update != ''
+      # Only a build that passes tests and lint reaches main.
+      - name: Test the new extractor
+        if: steps.check.outputs.update != ''
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+      - name: Push the update to main
+        if: steps.check.outputs.update != ''
+        run: git push origin HEAD:main
+      - name: Publish release
+        if: steps.check.outputs.update != ''
+        uses: ./.github/actions/publish

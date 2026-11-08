@@ -18,11 +18,27 @@ android {
         applicationId = "com.groovio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes the commit count on main, so every release has a higher version.
+        val build = (System.getenv("GROOVIO_BUILD_NUMBER") ?: "1").toInt()
+        versionCode = build
+        versionName = "0.1.$build"
+    }
+
+    // One fixed key for every build, so in-app updates install over the previous version.
+    // Committed on purpose (owner decision, see DECISIONS.md): Groovio stores no accounts.
+    signingConfigs {
+        create("groovio") {
+            storeFile = rootProject.file("signing/groovio.jks")
+            storePassword = "EKem909avrEQQhqVk8eEUStjspsZCF9"
+            keyAlias = "groovio"
+            keyPassword = "EKem909avrEQQhqVk8eEUStjspsZCF9"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("groovio")
+        }
         release {
             isMinifyEnabled = false
         }
@@ -35,7 +51,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     testOptions {
         unitTests.isReturnDefaultValues = true
         unitTests.isIncludeAndroidResources = true
@@ -60,7 +79,9 @@ dependencies {
     implementation("androidx.media3:media3-common:1.5.1")
 
     // Online: on-device YouTube Music search and stream extraction (GPL-3.0).
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.27.0")
+    // v0.26.5, as in NewPipe 0.29.1. v0.27.0 (NewPipe 0.29.2) gets "confirm you're not a bot"
+    // on every video: see DECISIONS.md and .github/extractor-blocklist.
+    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.5")
     // JSON parser NewPipe already ships; pinned to the same commit to avoid duplicates.
     implementation("com.github.TeamNewPipe:nanojson:e9d656ddb49a412a5a0a5d5ef20ca7ef09549996")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

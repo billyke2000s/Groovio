@@ -44,7 +44,10 @@ import coil.compose.AsyncImage
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
+import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
+import com.groovio.app.ui.browse.AlbumCard
+import com.groovio.app.update.AvailableUpdate
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -70,6 +73,9 @@ fun HomeScreen(
     onOpenFiles: () -> Unit,
     onMore: (TrackEntity) -> Unit,
     related: RelatedShelf? = null,
+    discover: List<DiscoverShelf> = emptyList(),
+    onOpenAlbum: (OnlineAlbum) -> Unit = {},
+    update: AvailableUpdate? = null,
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -95,10 +101,10 @@ fun HomeScreen(
             }
         }
 
-        if (firstRun) {
-            item { Welcome(onSearch, onOpenFiles) }
-            return@LazyColumn
-        }
+        if (update != null) item { UpdateBanner(update) }
+
+        // New users get the welcome card, then the discovery shelves below.
+        if (firstRun) item { Welcome(onSearch, onOpenFiles) }
 
         // Two-column quick-access tiles.
         tiles.chunked(2).forEach { pair ->
@@ -144,6 +150,22 @@ fun HomeScreen(
                     items(playlists, key = { it.id }) { p ->
                         SquareCard(p.name, "${p.trackCount} songs", null, false, Icons.AutoMirrored.Filled.QueueMusic) {
                             onOpenPlaylist(p.id)
+                        }
+                    }
+                }
+            }
+        }
+        discover.forEach { shelf ->
+            item(key = "dt-" + shelf.title) { Shelf(shelf.title) }
+            item(key = "dr-" + shelf.title) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (shelf.albums.isNotEmpty()) {
+                        items(shelf.albums, key = { it.url }) { a -> AlbumCard(a) { onOpenAlbum(a) } }
+                    } else {
+                        itemsIndexed(shelf.tracks, key = { _, t -> t.id }) { i, t ->
+                            SquareCard(t.title, t.artist, t.thumbnailUrl, currentMediaId == "yt:${t.id}",
+                                onLongClick = { onMore(TrackMapping.fromOnline(t)) }) { onPlayRelated(shelf.tracks, i) }
                         }
                     }
                 }
@@ -232,4 +254,30 @@ private fun greeting(): String = when (LocalTime.now().hour) {
     in 5..11 -> "Good morning"
     in 12..17 -> "Good afternoon"
     else -> "Good evening"
+}
+
+/** "Update available": opens the new APK in the browser, which downloads it for install. */
+@Composable
+private fun UpdateBanner(update: AvailableUpdate) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(GroovioColors.Accent, RoundedCornerShape(12.dp))
+            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Update available", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
+            Text("Groovio ${update.version}", color = GroovioColors.OnAccent, fontSize = 13.sp)
+        }
+        androidx.compose.material3.TextButton(onClick = {
+            try {
+                context.startActivity(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(update.apkUrl))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (_: android.content.ActivityNotFoundException) {
+            }
+        }) { Text("Update", color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold) }
+    }
 }

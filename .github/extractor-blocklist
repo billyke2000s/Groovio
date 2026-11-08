@@ -1,0 +1,3 @@
+# NewPipe Extractor versions Groovio must not move to (one per line).
+# v0.27.0: every video fails with "Sign in to confirm you are not a bot" (NewPipe issue #14005).
+v0.27.0

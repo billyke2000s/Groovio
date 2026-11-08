@@ -25,3 +25,12 @@ Groovio is primarily a streaming app; "Choose audio files" remains as a secondar
 
 ## 2026-11-08 — Phase order: streaming before library
 Because Groovio is primarily a streaming app, online search/playback (originally Phase 4) is built before persistence (originally Phase 3), so favourites, playlists and history are designed around streamed tracks from the start.
+
+## 2026-11-08 — NewPipe Extractor pinned to v0.26.5; v0.27.0 blocklisted
+On a phone (mobile data) every song failed with "Sign in to confirm you're not a bot". NewPipe 0.29.2, which moved to extractor v0.27.0, shows the same failure (NewPipe issue #14005), while 0.29.1 on v0.26.5 worked. v0.27.0 dropped the Android/iOS fallback clients. Groovio uses v0.26.5 until a newer extractor release appears.
+
+## 2026-11-08 — Automatic updates (owner decision)
+- `Follow NewPipe Extractor` workflow checks daily for a newer extractor release, skips versions in `.github/extractor-blocklist`, runs tests, commits to `main` and publishes a release.
+- `Release` workflow publishes `v0.1.<commit count>` for every app change on `main`.
+- Groovio checks GitHub releases on launch and offers the newer APK.
+- All builds are signed with one key committed at `signing/groovio.jks` so updates install over each other. The owner accepted that a public key lets others build look-alike updates; Groovio holds no accounts or passwords.

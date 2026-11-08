@@ -145,11 +145,14 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
                 )
             }
         ) ?: throw NoPlayableAudioException(videoId)
-        val headers = if (YoutubeParsingHelper.isVisionOsStreamingUrl(chosen.url)) {
-            mapOf("User-Agent" to YoutubeParsingHelper.getVisionOsUserAgent(null))
-        } else {
-            emptyMap()
+        // Each YouTube client's stream URLs expect that client's user agent.
+        val userAgent = when {
+            YoutubeParsingHelper.isVisionOsStreamingUrl(chosen.url) -> YoutubeParsingHelper.getVisionOsUserAgent(null)
+            YoutubeParsingHelper.isAndroidStreamingUrl(chosen.url) -> YoutubeParsingHelper.getAndroidUserAgent(null)
+            YoutubeParsingHelper.isIosStreamingUrl(chosen.url) -> YoutubeParsingHelper.getIosUserAgent(null)
+            else -> null
         }
+        val headers = userAgent?.let { mapOf("User-Agent" to it) } ?: emptyMap()
         return ResolvedAudio(chosen.url, chosen.codec, chosen.bitrate, headers, clock())
             .also { cache[videoId] = it }
     }

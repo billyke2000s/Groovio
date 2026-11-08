@@ -69,6 +69,22 @@ class ScreenshotTest {
         )
     }
 
+    @Test fun homeFirstRun() = shot("home_first_run") {
+        HomeScreen(
+            recent = emptyList(), likedCount = 0, playlists = emptyList(),
+            currentMediaId = null, onPlayRecent = { _, _ -> }, onOpenLiked = {}, onOpenPlaylist = {},
+            onSearch = {}, onOpenFiles = {}, onMore = {},
+            discover = listOf(
+                com.groovio.app.ui.home.DiscoverShelf("Today's top hits", tracks = (1..5).map {
+                    com.groovio.app.online.OnlineTrack("t$it", "Hit song $it", "Artist $it", 200_000, null)
+                }),
+                com.groovio.app.ui.home.DiscoverShelf("Popular albums", albums = (1..5).map {
+                    com.groovio.app.online.OnlineAlbum("u$it", "Album $it", "Artist $it", null)
+                }),
+            ),
+        )
+    }
+
     @Test fun player() = shot("player") {
         PlayerScreen(
             state = playing, positionMs = 95_000, onCollapse = {}, onOpenQueue = {}, onTogglePlay = {},
