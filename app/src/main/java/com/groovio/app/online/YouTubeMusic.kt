@@ -129,8 +129,24 @@ class YouTubeMusic(private val clock: () -> Long = System::currentTimeMillis) {
             .take(20)
     }
 
+    /** The Discord bot's way of getting audio (TV / Android VR clients), on the phone. */
+    private val innertube = InnertubeAudio(clock = clock)
+
     fun resolve(videoId: String): ResolvedAudio {
         cache[videoId]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }
+        // 1) The bot's method; 2) NewPipe's own extraction as a fallback.
+        val first = runCatching { innertube.resolve(videoId) }
+        first.getOrNull()?.let { cache[videoId] = it; return it }
+        return try {
+            resolveWithNewPipe(videoId)
+        } catch (e: Exception) {
+            // Report the bot-method error if NewPipe failed too, so "blocked" is shown accurately.
+            first.exceptionOrNull()?.let { e.addSuppressed(it) }
+            throw e
+        }
+    }
+
+    private fun resolveWithNewPipe(videoId: String): ResolvedAudio {
         val url = service.streamLHFactory.fromId(videoId).url
         val info = StreamInfo.getInfo(service, url)
         val chosen = StreamSelector.choose(

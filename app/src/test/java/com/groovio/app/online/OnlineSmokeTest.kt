@@ -104,4 +104,23 @@ class OnlineSmokeTest {
             }
         }
     }
+
+    /** Each of the Discord bot's playback clients, separately: which ones YouTube serves here. */
+    @Test fun `bot playback clients`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val it = InnertubeAudio()
+        var served = 0
+        for (client in InnertubeAudio.CLIENTS) {
+            val result = runCatching { it.resolveWith(client, "4D7u5KF7SP8") }
+            result.onSuccess { a ->
+                val code = OkHttpClient().newCall(
+                    Request.Builder().url(a.url).header("Range", "bytes=0-65535")
+                        .apply { a.headers.forEach { (k, v) -> header(k, v) } }.build()
+                ).execute().use { r -> r.code }
+                println("bot client ${client.name}: OK codec=${a.codec} bitrate=${a.bitrate} fetch=HTTP $code")
+                if (code == 200 || code == 206) served++
+            }.onFailure { e -> println("bot client ${client.name}: FAILED ${e.javaClass.simpleName}: ${e.message}") }
+        }
+        assertTrue("no bot client could stream from here", served > 0)
+    }
 }

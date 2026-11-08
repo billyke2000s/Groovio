@@ -19,6 +19,7 @@ import com.groovio.app.GroovioApplication
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
+import com.groovio.app.online.InnertubeAudio
 import com.groovio.app.online.NoPlayableAudioException
 import com.groovio.app.online.OnlineMedia
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
@@ -136,9 +137,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun describeError(error: Throwable): String {
-        val causes = generateSequence(error) { it.cause }.take(10).toList()
+        val causes = generateSequence(error) { it.cause }.take(10)
+            .flatMap { sequenceOf(it) + it.suppressed.asSequence() }.toList()
         return when {
-            causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException } ->
+            causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException || it is InnertubeAudio.BlockedException } ->
                 "YouTube is blocking this network right now. Try again later or switch network."
             causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
             else -> "Couldn't play this track."
