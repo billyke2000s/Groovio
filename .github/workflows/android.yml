@@ -44,6 +44,18 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      # Room schemas must be committed (needed to test future migrations).
+      - name: Check Room schema is committed
+        run: |
+          changes=$(git status --porcelain -- app/schemas)
+          if [ -n "$changes" ]; then
+            echo "::warning::Room schema changed or missing from Git. Commit these files:"
+            echo "$changes"
+            for f in $(git ls-files --others --modified --exclude-standard -- app/schemas); do
+              echo "----- $f"; cat "$f"
+            done
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: groovio-debug-apk
@@ -58,4 +70,66 @@ jobs:
           path: |
             app/build/reports/
             app/build/test-results/
+          if-no-files-found: ignore
+
+  # Real-network check that YouTube search and streaming work via NewPipe Extractor.
+  # Non-blocking: YouTube often blocks datacenter IPs, so a failure here does not
+  # prove the app fails on phones; a pass is real evidence that extraction works.
+  online-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Online smoke test
+        env:
+          GROOVIO_ONLINE_TESTS: '1'
+        run: ./gradlew :app:testDebugUnitTest --tests '*OnlineSmokeTest*' --stacktrace
+
+  # Renders key screens (Robolectric + Roborazzi) and prints them base64-encoded,
+  # so the UI can be reviewed from the log as well as the artifact.
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Render screenshots
+        env:
+          GROOVIO_SCREENSHOTS: '1'
+        run: ./gradlew :app:testDebugUnitTest --tests '*ScreenshotTest*' --stacktrace
+      - name: Print screenshots
+        if: always()
+        run: |
+          for f in app/build/screenshots/*.png; do
+            [ -f "$f" ] || continue
+            echo "=====PNG-BEGIN $(basename "$f")"
+            base64 -w 2000 "$f"
+            echo "=====PNG-END"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: groovio-screenshots
+          path: app/build/screenshots/
           if-no-files-found: ignore

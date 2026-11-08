@@ -6,5 +6,5 @@
 - Do not upscale or transcode to claim lossless audio.
 - Choose the highest-quality compatible, authorised representation where providers offer alternatives.
 - Different codecs cannot be ranked solely by nominal bitrate.
-- Codec labels belong inline with the title in the final player design; the current prototype displays a separate format line and must be refined.
+- Codec labels are shown inline after the title in the full-screen player (`AudioFormatLabel`), and scroll together with long titles.
 - Codec/bitrate labels may be absent for some local files if the decoder or source does not expose them.

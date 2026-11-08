@@ -2,20 +2,29 @@
 
 **Your music. Your way.**
 
-Groovio is a free, local-first, native Android music player in development, with a dark music-streaming-inspired interface and accurate audio-format information.
+Groovio is a free, native Android music app in development. It searches YouTube Music and plays songs directly on your phone (no server, no account), with a dark music-streaming-inspired interface and accurate audio-format information. It can also play audio files from your phone.
 
 ## Current status
 🚧 **Early development — not a released streaming service.**
 
-This repository contains an Android application foundation with a Compose player screen and local audio playback through AndroidX Media3. It does **not** yet provide a catalogue of playable commercial songs, online streaming providers, downloads, playlists, or an APK release.
+See [STATUS.md](STATUS.md) for exactly what is built and verified. Debug APKs come from CI; there is no release yet.
+
+**About online playback:** songs are found and streamed from YouTube on each phone using [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor). This is not permitted by YouTube's terms of service, so Groovio cannot be published on Google Play, and YouTube changes can temporarily break playback until the extractor is updated.
+
+## Features
+- Paste or share a Spotify song, album or playlist link and play it: each song is matched to YouTube on the phone (no Spotify account needed).
+- Search YouTube Music and stream on the phone, with the actual codec, bitrate and sample rate shown after the title.
+- Full-screen player, mini-player, queue, shuffle/repeat, output picker, background and lock-screen playback.
+- Liked songs, playlists, recently played, and the queue restored after restart, all stored only on the phone.
+- Play audio files from your phone too.
 
 ## Principles
 - Free, no subscriptions, no advertising, no required accounts or hosted backend.
 - Native Kotlin, Jetpack Compose, AndroidX Media3.
-- Local-first. Online catalogue discovery can be added later.
+- Your playlists and history stay on your phone.
 - Show **real** codec/sample-rate/bitrate when known; never invent or upscale quality.
 - Spotify-inspired usability with original Groovio branding.
-- Use authorised music sources only.
+- No server: search and streaming happen on the phone.
 
 ## Try the starter
 1. Open this repository in Android Studio with JDK 17.
@@ -33,4 +42,4 @@ CI builds every push and uploads the debug APK as the `groovio-debug-apk` artifa
 See [AGENTS.md](AGENTS.md) for contributor/AI rules and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design decisions. This project is not affiliated with Spotify.
 
 ## License
-Apache-2.0. See [LICENSE](LICENSE).
+GPL-3.0. See [LICENSE](LICENSE). (Required by NewPipe Extractor, which is GPL-3.0.)
