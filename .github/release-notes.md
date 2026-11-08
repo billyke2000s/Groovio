@@ -17,7 +17,7 @@
 ### Known limits
 - **Online playback has not yet been confirmed on a real phone.** If songs don't play, note the message shown under the song title.
 - YouTube can block some networks or change its site; playback then fails until Groovio is updated.
-- Not on Google Play: it streams from YouTube, which YouTube's terms don't allow.
+- Install from this page; Groovio isn't on Google Play.
 - Signed with a test key. A future signed release may need uninstalling this one first.
 - No lyrics.
 
