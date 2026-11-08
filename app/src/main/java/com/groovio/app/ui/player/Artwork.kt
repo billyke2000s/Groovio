@@ -11,7 +11,10 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -25,8 +28,9 @@ import kotlinx.coroutines.withContext
 /** Decodes embedded artwork off the main thread, downsampled to about [targetPx]. */
 @Composable
 fun rememberArtwork(data: ByteArray?, targetPx: Int): ImageBitmap? {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, data, targetPx) {
-        value = if (data == null) null
+    var bitmap by remember(data, targetPx) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(data, targetPx) {
+        bitmap = if (data == null) null
         else withContext(Dispatchers.Default) { decodeSampled(data, targetPx) }
     }
     return bitmap
