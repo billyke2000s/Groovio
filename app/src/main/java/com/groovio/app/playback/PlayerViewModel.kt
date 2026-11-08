@@ -189,14 +189,52 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addCurrentToPlaylist(playlistId: Long) {
-        val track = currentTrack() ?: return
-        viewModelScope.launch { library.addToPlaylist(playlistId, track) }
+        currentTrack()?.let { addToPlaylist(playlistId, it) }
     }
 
     fun addCurrentToNewPlaylist(name: String) {
-        val track = currentTrack() ?: return
+        currentTrack()?.let { addToNewPlaylist(name, it) }
+    }
+
+    // Actions from the song menu (any song, not just the current one).
+
+    fun isFavourite(mediaId: String): Flow<Boolean> = library.isFavourite(mediaId)
+
+    fun setFavourite(track: TrackEntity, favourite: Boolean) {
+        viewModelScope.launch { library.setFavourite(track, favourite) }
+    }
+
+    fun addToPlaylist(playlistId: Long, track: TrackEntity) {
+        viewModelScope.launch { library.addToPlaylist(playlistId, track) }
+    }
+
+    fun addToNewPlaylist(name: String, track: TrackEntity) {
         if (name.isBlank()) return
         viewModelScope.launch { library.addToPlaylist(library.createPlaylist(name), track) }
+    }
+
+    /** Inserts right after the current song (or starts playing if the queue is empty). */
+    fun playNext(track: TrackEntity) {
+        val c = controller ?: return
+        val item = TrackMapping.toMediaItem(track)
+        if (c.mediaItemCount == 0) {
+            c.setMediaItem(item); c.prepare(); c.play()
+        } else {
+            c.addMediaItem(c.currentMediaItemIndex + 1, item)
+        }
+    }
+
+    fun addToQueue(track: TrackEntity) {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0) playNext(track) else c.addMediaItem(TrackMapping.toMediaItem(track))
+    }
+
+    /** Reorders the queue (drag in the queue screen). */
+    fun move(from: Int, to: Int) {
+        val c = controller ?: return
+        if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount && from != to) {
+            c.moveMediaItem(from, to)
+        }
     }
 
     /**
@@ -249,6 +287,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         c.setMediaItems(tracks.map(TrackMapping::toMediaItem), startIndex.coerceIn(tracks.indices), 0L)
         c.prepare()
         c.play()
+    }
+
+    /** Plays [tracks] in shuffle mode, starting from a random song. */
+    fun shuffleTracks(tracks: List<OnlineTrack>) {
+        if (tracks.isEmpty()) return
+        playTracks(tracks, tracks.indices.random())
+        controller?.shuffleModeEnabled = true
     }
 
     /** Replaces the queue with online tracks and starts at [startIndex]. */

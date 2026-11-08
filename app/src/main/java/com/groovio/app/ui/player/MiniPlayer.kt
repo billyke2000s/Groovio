@@ -1,6 +1,8 @@
 package com.groovio.app.ui.player
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +20,18 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,18 +46,48 @@ fun MiniPlayer(
     onOpen: () -> Unit,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
+    onPrevious: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val artwork = rememberArtwork(state.artworkData, targetPx = 128)
+    val tint = rememberArtworkTint(artwork, state.artworkUri)
     val duration = state.durationMs ?: 0L
+
+    // Swipe left for next, right for previous.
+    val next by rememberUpdatedState(onNext)
+    val previous by rememberUpdatedState(onPrevious)
+    val canNext by rememberUpdatedState(state.hasNext)
+    val threshold = with(LocalDensity.current) { 72.dp.toPx() }
+    var dragX by remember { mutableFloatStateOf(0f) }
+
     Surface(
-        color = GroovioColors.SurfaceHigh,
+        color = tint,
+        contentColor = GroovioColors.Text,
         shape = RoundedCornerShape(8.dp),
-        modifier = modifier.fillMaxWidth().clickable(onClickLabel = "Open player", onClick = onOpen),
+        modifier = modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        when {
+                            dragX < -threshold && canNext -> next()
+                            dragX > threshold -> previous()
+                        }
+                        dragX = 0f
+                    },
+                    onDragCancel = { dragX = 0f },
+                ) { change, amount ->
+                    change.consume()
+                    dragX += amount
+                }
+            }
+            .clickable(onClickLabel = "Open player", onClick = onOpen),
     ) {
         Column {
             Row(
-                Modifier.padding(start = 8.dp, top = 6.dp, bottom = 6.dp),
+                Modifier
+                    .offset { IntOffset((dragX * 0.5f).roundToInt(), 0) }
+                    .padding(start = 8.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ArtworkImage(
