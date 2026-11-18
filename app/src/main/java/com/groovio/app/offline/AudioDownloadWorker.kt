@@ -31,12 +31,13 @@ class AudioDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             catch (_: Exception) { return@withContext if (runAttemptCount < 2) Result.retry() else Result.failure() }
         }
         val id = track.mediaId
-        if (app.downloads.localFile(id) != null) return@withContext try {
-            app.downloads.publishToMusicFolder(track)
-            Result.success()
-        } catch (e: IOException) {
-            if (runAttemptCount < 2) Result.retry()
-            else Result.failure(workDataOf("error" to "Couldn't save to Music/Groovio"))
+        // The offline original is the download. A secondary MediaStore export is
+        // best-effort and must never turn a playable song into a failed download.
+        if (app.downloads.localFile(id) != null) {
+            val exported = runCatching { app.downloads.publishToMusicFolder(track) }
+            return@withContext Result.success(workDataOf(
+                "mediaId" to id, "savedLocal" to true, "exportFailed" to exported.isFailure,
+            ))
         }
         val temporary = File(app.downloads.file(id).path + ".${this@AudioDownloadWorker.id}.part")
         try {
@@ -45,10 +46,12 @@ class AudioDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
                 setProgress(workDataOf("percent" to percent))
             }
             app.downloads.complete(track, temporary) { isStopped }
-            // The private original stays playable even if Android's public storage is unavailable.
-            // WorkManager retries only the public copy, never re-downloads an already completed song.
-            app.downloads.publishToMusicFolder(track, audio.codec)
-            Result.success()
+            // Never fail or re-download an already saved track because the optional
+            // second copy could not be written to Android's shared Music folder.
+            val exported = runCatching { app.downloads.publishToMusicFolder(track, audio.codec) }
+            Result.success(workDataOf(
+                "mediaId" to id, "savedLocal" to true, "exportFailed" to exported.isFailure,
+            ))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
