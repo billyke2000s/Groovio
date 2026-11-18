@@ -5,6 +5,18 @@ import android.media.audiofx.AudioEffect
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -329,22 +341,25 @@ private fun Action(title: String, subtitle: String, onClick: () -> Unit) {
 }
 
 /**
- * Compact EQ with a real response curve and a searchable-by-scrolling preset menu.
- * Sliders update the same persisted five-band settings used by the audio session.
+ * Five vertical, finger-draggable EQ bands save space while preserving the
+ * existing persisted -6..+6 dB levels and headroom-safe audio effect engine.
  */
 @Composable
 private fun EqualizerPanel(bands: List<Int>, onBandsChange: (List<Int>) -> Unit) {
     var presetsOpen by remember { mutableStateOf(false) }
-    val frequencies = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
+    val labels = listOf("60", "230", "910", "3.6k", "14k")
+    val latestBands by rememberUpdatedState(bands)
+    val update by rememberUpdatedState(onBandsChange)
+
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(GroovioColors.Surface, RoundedCornerShape(16.dp)).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .background(GroovioColors.Surface, RoundedCornerShape(16.dp)).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Sound profile", fontWeight = FontWeight.SemiBold)
-                Text("Choose a preset or adjust your own", color = GroovioColors.TextMuted, fontSize = 12.sp)
+                Text("Five-band equaliser", fontSize = 12.sp, color = GroovioColors.TextMuted)
             }
             Box {
                 OutlinedButton(onClick = { presetsOpen = true }) {
@@ -353,60 +368,104 @@ private fun EqualizerPanel(bands: List<Int>, onBandsChange: (List<Int>) -> Unit)
                 DropdownMenu(expanded = presetsOpen, onDismissRequest = { presetsOpen = false }) {
                     com.groovio.app.playback.EqualizerPresets.all.forEach { preset ->
                         DropdownMenuItem(text = { Text(preset.name) }, onClick = {
-                            onBandsChange(preset.bands)
+                            update(preset.bands)
                             presetsOpen = false
                         })
                     }
                 }
             }
         }
-        Text("+6 dB", color = GroovioColors.TextMuted, fontSize = 11.sp)
-        Canvas(Modifier.fillMaxWidth().height(116.dp)) {
-            val chartWidth = size.width
-            val chartHeight = size.height
-            val left = 12.dp.toPx()
-            val right = chartWidth - left
-            val baseline = chartHeight * 0.5f
-            drawLine(GroovioColors.TextMuted.copy(alpha = 0.4f),
-                Offset(left, baseline), Offset(right, baseline), 1.dp.toPx())
-            val values = (0..4).map { i -> bands.getOrElse(i) { 0 }.coerceIn(-6, 6) }
-            val points = values.mapIndexed { i, db ->
-                Offset(left + (right - left) * i / 4f, chartHeight * (6 - db) / 12f)
-            }
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                points.drop(1).forEach { lineTo(it.x, it.y) }
-            }
-            drawPath(path, GroovioColors.Accent,
-                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-            points.forEach { drawCircle(GroovioColors.Accent, 4.dp.toPx(), it) }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf("60", "230", "910", "3.6k", "14k").forEach { frequency ->
-                Text(frequency, color = GroovioColors.TextMuted, fontSize = 11.sp)
-            }
-        }
-        Text("Fine tune", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
-        frequencies.forEachIndexed { index, frequency ->
-            Column {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(frequency, color = GroovioColors.TextMuted, fontSize = 13.sp)
-                    val db = bands.getOrElse(index) { 0 }
-                    Text("${if (db > 0) "+" else ""}$db dB", color = GroovioColors.Accent, fontSize = 13.sp)
-                }
-                androidx.compose.material3.Slider(
-                    value = bands.getOrElse(index) { 0 }.toFloat(),
-                    valueRange = -6f..6f, steps = 11,
-                    onValueChange = { value ->
-                        onBandsChange((0..4).map { i ->
-                            if (i == index) kotlin.math.round(value).toInt() else bands.getOrElse(i) { 0 }
-                        })
-                    },
-                    modifier = Modifier.semantics { contentDescription = "Equaliser $frequency" },
+        Row(
+            Modifier.fillMaxWidth().height(168.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            labels.forEachIndexed { index, frequency ->
+                val db = bands.getOrElse(index) { 0 }.coerceIn(-6, 6)
+                val animated by animateFloatAsState(
+                    targetValue = db.toFloat(),
+                    animationSpec = tween(115, easing = FastOutSlowInEasing),
+                    label = "EQ $frequency level",
                 )
+                fun setBand(value: Int) {
+                    val next = value.coerceIn(-6, 6)
+                    if (next != latestBands.getOrElse(index) { 0 }) {
+                        update((0..4).map { i ->
+                            if (i == index) next else latestBands.getOrElse(i) { 0 }
+                        })
+                    }
+                }
+                Column(
+                    Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        "${if (db > 0) "+" else ""}$db",
+                        color = GroovioColors.Accent,
+                        fontSize = 12.sp,
+                    )
+                    Box(
+                        Modifier.weight(1f).fillMaxWidth()
+                            .pointerInput(index) {
+                                detectTapGestures { location ->
+                                    val y = location.y.coerceIn(0f, size.height.toFloat())
+                                    setBand((6 - 12 * y / size.height.coerceAtLeast(1)).roundToInt())
+                                }
+                            }
+                            .pointerInput(index) {
+                                detectDragGestures(
+                                    onDragStart = { location ->
+                                        val y = location.y.coerceIn(0f, size.height.toFloat())
+                                        setBand((6 - 12 * y / size.height.coerceAtLeast(1)).roundToInt())
+                                    },
+                                ) { change, _ ->
+                                    val y = change.position.y.coerceIn(0f, size.height.toFloat())
+                                    setBand((6 - 12 * y / size.height.coerceAtLeast(1)).roundToInt())
+                                    change.consume()
+                                }
+                            }
+                            .semantics {
+                                contentDescription = "Equaliser $frequency Hertz"
+                                stateDescription = "${db} decibels"
+                                progressBarRangeInfo = ProgressBarRangeInfo(db.toFloat(), -6f..6f, 11)
+                                setProgress { target ->
+                                    setBand(target.roundToInt())
+                                    true
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Canvas(Modifier.fillMaxSize()) {
+                            val cx = size.width / 2f
+                            val margin = 10.dp.toPx()
+                            val top = margin
+                            val bottom = size.height - margin
+                            val middle = (top + bottom) / 2f
+                            val thumbY = middle - animated / 6f * (middle - top)
+                            drawLine(
+                                GroovioColors.TextMuted.copy(alpha = 0.32f),
+                                Offset(cx, top), Offset(cx, bottom),
+                                strokeWidth = 9.dp.toPx(), cap = StrokeCap.Round,
+                            )
+                            drawLine(
+                                GroovioColors.Accent, Offset(cx, middle), Offset(cx, thumbY),
+                                strokeWidth = 9.dp.toPx(), cap = StrokeCap.Round,
+                            )
+                            drawCircle(GroovioColors.Accent, radius = 7.dp.toPx(),
+                                center = Offset(cx, thumbY))
+                            drawLine(
+                                GroovioColors.TextMuted.copy(alpha = 0.25f),
+                                Offset(0f, middle), Offset(size.width, middle),
+                                strokeWidth = 1.dp.toPx(),
+                            )
+                        }
+                    }
+                    Text("$frequency Hz", color = GroovioColors.TextMuted, fontSize = 11.sp)
+                }
             }
         }
-        Text("Boosts use automatic headroom to avoid clipping. Effects may vary by audio output.",
-            color = GroovioColors.TextMuted, fontSize = 12.sp)
+        Text(
+            "Drag bars up to boost, down to reduce · Automatic headroom limits clipping",
+            color = GroovioColors.TextMuted, fontSize = 11.sp,
+        )
     }
 }
