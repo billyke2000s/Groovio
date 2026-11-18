@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,10 @@ fun SearchScreen(
     val online by app.connectivity.online.collectAsStateWithLifecycle()
     val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
+    val focus = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(onBack != null) {
+        if (onBack != null) { focus.requestFocus(); keyboard?.show() }
+    }
     var selected by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
 
     Column(modifier.fillMaxSize().then(Modifier.imePadding())) {
@@ -117,7 +122,7 @@ fun SearchScreen(
                 focusedBorderColor = GroovioColors.Accent,
                 unfocusedBorderColor = GroovioColors.Surface,
             ),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).focusRequester(focus),
         )
         Spacer(Modifier.height(8.dp))
 

@@ -22,12 +22,17 @@ class OfflineStore(private val context: Context) {
     private fun key(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
     fun file(id: String) = File(directory, key(id) + ".audio")
     private fun metadata(id: String) = File(directory, key(id) + ".json")
-    fun localFile(id: String): File? = file(id).takeIf { it.length() > 0 && metadata(id).isFile }
+    fun localFile(id: String): File? = file(id).takeIf { audio ->
+        audio.length() > 0 && metadata(id).isFile && runCatching {
+            val expected = JSONObject(metadata(id).readText()).optLong("bytes", audio.length())
+            expected == audio.length()
+        }.getOrDefault(false)
+    }
     private fun readTracks(): List<TrackEntity> = directory.listFiles().orEmpty().filter { it.extension == "json" }.mapNotNull { f ->
         runCatching {
             val j = JSONObject(f.readText())
             TrackEntity(j.getString("id"), j.getString("title"), j.optString("artist").ifBlank { null }, j.optString("art").ifBlank { null })
-                .takeIf { file(it.mediaId).length() > 0 }
+                .takeIf { localFile(it.mediaId) != null }
         }.getOrNull()
     }.sortedBy { it.title.lowercase() }
     @Synchronized fun refresh() { mutable.value = readTracks() }
@@ -80,7 +85,7 @@ class OfflineStore(private val context: Context) {
         val target = metadata(track.mediaId)
         val tmp = File(target.path + ".part")
         tmp.writeText(JSONObject().put("id", track.mediaId).put("title", track.title)
-            .put("artist", track.artist ?: "").put("art", track.artworkUri ?: "").toString())
+            .put("artist", track.artist ?: "").put("art", track.artworkUri ?: "").put("bytes", file(track.mediaId).length()).toString())
         check(tmp.renameTo(target)) { "Couldn't save download details" }
         refresh()
     }
