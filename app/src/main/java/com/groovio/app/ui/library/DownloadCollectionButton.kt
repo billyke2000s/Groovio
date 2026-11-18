@@ -36,11 +36,13 @@ fun DownloadCollectionButton(tracks: List<TrackEntity>, onPlay: () -> Unit) {
     val enabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
     val online by app.connectivity.online.collectAsStateWithLifecycle()
     val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
-    val saved by app.downloads.tracks.collectAsStateWithLifecycle()
-    val jobs by app.downloads.jobs.collectAsStateWithLifecycle(initialValue = emptyList())
     val ids = tracks.filter { it.mediaId.startsWith("yt:") }.map { it.mediaId }.distinct()
     if (ids.isEmpty() || !enabled) return
 
+    // Do not initialise WorkManager just to display a playlist while
+    // downloads are disabled, including in offline/preview/test contexts.
+    val saved by app.downloads.tracks.collectAsStateWithLifecycle()
+    val jobs by app.downloads.jobs.collectAsStateWithLifecycle(initialValue = emptyList())
     val stored = saved.map { it.mediaId }.toSet()
     val allSaved = ids.all { it in stored }
     val active = jobs.filter { job ->
