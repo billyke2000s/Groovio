@@ -2,6 +2,8 @@ package com.groovio.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -347,8 +349,8 @@ fun GroovioApp(
         }
         composable(
             Routes.SEARCH,
-            enterTransition = { slideInVertically { it } },
-            popExitTransition = { slideOutVertically { it } },
+            enterTransition = { slideInVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { it } },
+            popExitTransition = { slideOutVertically(animationSpec = tween(240, easing = FastOutSlowInEasing)) { it } },
         ) {
             androidx.activity.compose.BackHandler { nav.popBackStack() }
             SearchScreen(
@@ -367,8 +369,8 @@ fun GroovioApp(
         }
         composable(
             Routes.PLAYER,
-            enterTransition = { slideInVertically { it } },
-            popExitTransition = { slideOutVertically { it } },
+            enterTransition = { slideInVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { it } },
+            popExitTransition = { slideOutVertically(animationSpec = tween(240, easing = FastOutSlowInEasing)) { it } },
         ) {
             // If the queue is emptied while the player is open, go back.
             LaunchedEffect(state.connected, state.hasItem) {

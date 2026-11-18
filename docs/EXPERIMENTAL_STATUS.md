@@ -108,3 +108,10 @@ Home quick tiles, Jump back in, personal mixes, Library recents and Search's Las
 UK top songs is displayed after personal mixes, recommendations, saved playlists and discovery shelves, not above the customised Home content.
 
 The Android app and media data schema are unchanged. Validate the new flow on-device before promoting from experimental.
+
+## Full-screen swipe and compact control polish (experimental)
+
+- Artwork is now a horizontal, finger-following carousel: swipe left for the next actual Media3 queue entry; swipe right for the previous Media3 item regardless of the usual skip-to-start behaviour of the Previous button. A short swipe or queue boundary snaps back softly. The artwork view preloads the adjacent queue entries' known artwork URLs (no fabricated media), and requests playback only at swipe commit. Vertical swipe-down to dismiss is still supported, with an eased return or dismissal; the mini player also eases back after sideways swipes. Navigation slide easing is tuned.
+- The playlist action formerly labelled "Download & play" is now a compact accessible download icon. Real WorkManager jobs drive a progress indicator, and fully saved playlists show a checkmark. Clicking the idle icon still enqueues and starts playback exactly as before; clicking the checkmark plays the saved collection.
+- The five-band EQ was condensed into five finger-draggable vertical bars, retaining the saved -6..+6 dB settings, preset dropdown and headroom-safe audio path. Bar levels animate softly when presets are changed. No database or audio decoder changes.
+- Unit tests cover swipe threshold, fling, and first/last queue boundaries. Device testing is still needed for feel, Bluetooth behaviour and Android-specific gesture competition.

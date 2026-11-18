@@ -1,5 +1,10 @@
 package com.groovio.app.ui.player
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.offset
@@ -59,6 +64,15 @@ fun MiniPlayer(
     val canNext by rememberUpdatedState(state.hasNext)
     val threshold = with(LocalDensity.current) { 72.dp.toPx() }
     var dragX by remember { mutableFloatStateOf(0f) }
+    val gestureScope = rememberCoroutineScope()
+    fun settleSwipe() {
+        val from = dragX
+        gestureScope.launch {
+            Animatable(from).animateTo(0f, tween(200, easing = FastOutSlowInEasing)) {
+                dragX = value
+            }
+        }
+    }
 
     Surface(
         color = tint,
@@ -73,9 +87,9 @@ fun MiniPlayer(
                             dragX < -threshold && canNext -> next()
                             dragX > threshold -> previous()
                         }
-                        dragX = 0f
+                        settleSwipe()
                     },
-                    onDragCancel = { dragX = 0f },
+                    onDragCancel = { settleSwipe() },
                 ) { change, amount ->
                     change.consume()
                     dragX += amount

@@ -1,5 +1,10 @@
 package com.groovio.app.ui.player
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
@@ -111,6 +116,16 @@ fun PlayerScreen(
     val collapse by rememberUpdatedState(onCollapse)
     val threshold = with(LocalDensity.current) { 120.dp.toPx() }
     var dragY by remember { mutableFloatStateOf(0f) }
+    val gestureScope = rememberCoroutineScope()
+    val dismissDistance = with(LocalDensity.current) { 900.dp.toPx() }
+    fun returnToRest() {
+        val start = dragY
+        gestureScope.launch {
+            Animatable(start).animateTo(0f, tween(220, easing = FastOutSlowInEasing)) {
+                dragY = value
+            }
+        }
+    }
 
     Column(
         Modifier
@@ -120,10 +135,19 @@ fun PlayerScreen(
             .pointerInput(Unit) {
                 detectVerticalDragGestures(
                     onDragEnd = {
-                        if (dragY > threshold) collapse()
-                        dragY = 0f
+                        if (dragY > threshold) {
+                            val start = dragY
+                            gestureScope.launch {
+                                Animatable(start).animateTo(
+                                    dismissDistance, tween(210, easing = FastOutSlowInEasing)
+                                ) { dragY = value }
+                                collapse()
+                            }
+                        } else {
+                            returnToRest()
+                        }
                     },
-                    onDragCancel = { dragY = 0f },
+                    onDragCancel = { returnToRest() },
                 ) { change, amount ->
                     change.consume()
                     dragY = (dragY + amount).coerceAtLeast(0f)
