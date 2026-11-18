@@ -66,7 +66,7 @@ fun SpokenDiscovery(
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (podcast) FilterChip(selected = followingOnly, onClick = { followingOnly = !followingOnly }, label = { Text("Following") }, shape = CircleShape, border = null,
+                FilterChip(selected = followingOnly, onClick = { followingOnly = !followingOnly }, label = { Text(if (podcast) "Following" else "Saved") }, shape = CircleShape, border = null,
                     colors = FilterChipDefaults.filterChipColors(containerColor = GroovioColors.SurfaceHigh, selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { searching = !searching }) { Icon(if (searching) Icons.Default.Close else Icons.Default.Search, "Search $kind") }
@@ -104,10 +104,18 @@ fun SpokenDiscovery(
         if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = GroovioColors.Accent) }
         message?.let { item { Text(it, color = GroovioColors.TextMuted, style = MaterialTheme.typography.bodyMedium) } }
         if (followingOnly) {
-            item { Text("Your shows", style = MaterialTheme.typography.titleLarge) }
-            if (myShows.isEmpty()) item { Text("Follow a show to keep its episodes here.", color = GroovioColors.TextMuted) }
+            item { Text(if (podcast) "Your shows" else "Your books", style = MaterialTheme.typography.titleLarge) }
+            if (myShows.isEmpty() && myItems.isEmpty()) item {
+                Text(if (podcast) "Follow a show to keep its episodes here." else "Save a book to keep it here.", color = GroovioColors.TextMuted)
+            }
             items(myShows, key = { "following:${it.album.url}" }) { show ->
-                SpokenCollectionCard(show.album, podcast = true, onClick = { onOpenSaved(show) })
+                SpokenCollectionCard(show.album, podcast = podcast, onClick = { onOpenSaved(show) })
+            }
+            if (myItems.isNotEmpty()) item { Text(if (podcast) "Saved episodes" else "Saved audiobooks", style = MaterialTheme.typography.titleMedium) }
+            items(myItems, key = { "library:${it.track.id}" }) { item ->
+                val track = item.track
+                SpokenFeatureCard(track, podcast, true, "yt:${track.id}" in downloadedIds, item.positionMs,
+                    downloadsEnabled && !offline, { onPlay(track) }, { onSave(track) }, { onRemove(track) }, { onDownload(track) })
             }
         } else {
             val inProgress = myItems.filter { it.positionMs > 0 }

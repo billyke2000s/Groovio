@@ -42,4 +42,14 @@ class SpokenDiscoveryTest {
         compose.onNodeWithText("Follow a show to keep its episodes here.").assertIsDisplayed()
         compose.onNodeWithText("Story One").assertDoesNotExist()
     }
+    @Test fun `saved books stay accessible without depending on discovery results`() {
+        compose.setContent { GroovioTheme {
+            SpokenDiscovery("Audiobooks", emptyList(), emptyList(), emptyList(),
+                listOf(com.groovio.app.spoken.SpokenItem(book, "Audiobooks")), emptySet(), false, false, true, null, "", {},
+                onPlay = {}, onSave = {}, onRemove = {}, onDownload = {}, onOpen = {}, onOpenSaved = {})
+        } }
+        compose.onNodeWithText("Saved").performClick()
+        compose.onNodeWithText("Your books").assertIsDisplayed()
+        compose.onNodeWithText("Story One").assertIsDisplayed()
+    }
 }
