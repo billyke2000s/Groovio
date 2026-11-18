@@ -44,6 +44,7 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
         }
         collections.filter { it.state == WorkInfo.State.SUCCEEDED }.forEach { job ->
             val data = job.outputData
+            data.getString("missingNames")?.takeIf { it.isNotBlank() }?.let { Text("Couldn't match: $it", modifier = Modifier.padding(horizontal = 16.dp)) }
             Text("${job.tags.firstOrNull { it.startsWith("title:") }?.removePrefix("title:") ?: "Collection"}: ${data.getInt("matched", 0)} matched; ${data.getInt("missed", 0)} unavailable. Audio transfers may still be running.", modifier = Modifier.padding(16.dp))
         }
         if (failed.isNotEmpty()) Text("${failed.size} downloads couldn't finish. Use Download & play again to retry.", modifier = Modifier.padding(20.dp))

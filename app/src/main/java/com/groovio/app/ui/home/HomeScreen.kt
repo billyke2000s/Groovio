@@ -176,7 +176,7 @@ fun HomeScreen(
             }
         }
         if (personalMixes.isNotEmpty()) {
-            personalMixes.groupBy { if (it.title.startsWith("Daily Mix")) "Made for you" else "Your top mixes" }.forEach { (title, mixes) ->
+            personalMixes.groupBy { when { it.title.startsWith("Daily Mix") -> "Made for you"; it.title == "Discovery mix" -> "Discover more"; else -> "Your top mixes" } }.forEach { (title, mixes) ->
             item { Shelf(title) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -70,12 +70,18 @@ class CollectionImportWorker(context: Context, params: WorkerParameters) : Corou
                     // Original position is the idempotency key, including any unavailable gaps.
                     app.library.importTrack(playlist, index, stored)
                     app.downloads.enqueue(listOf(stored))
+                    t.put("matchedId", stored.mediaId)
                     j.put("matched", j.getInt("matched") + 1)
-                } else j.put("missed", j.getInt("missed") + 1)
+                } else {
+                    t.put("unmatched", true)
+                    j.put("missed", j.getInt("missed") + 1)
+                }
                 j.put("next", index + 1); app.collectionImports.write(key, j)
                 setProgress(workDataOf("matched" to j.getInt("matched"), "missed" to j.getInt("missed"), "total" to tracks.length()))
             }
-            Result.success(workDataOf("matched" to j.getInt("matched"), "missed" to j.getInt("missed"), "total" to tracks.length()))
+            val missing = (0 until tracks.length()).map { tracks.getJSONObject(it) }
+                .filter { it.optBoolean("unmatched", false) }.take(5).joinToString(", ") { it.getString("title") }.take(500)
+            Result.success(workDataOf("matched" to j.getInt("matched"), "missed" to j.getInt("missed"), "total" to tracks.length(), "missingNames" to missing))
         } catch (e: kotlinx.coroutines.CancellationException) { throw e }
         catch (_: Exception) { if (runAttemptCount < 2) Result.retry() else Result.failure(workDataOf("error" to "Import interrupted. Retry Save & play to continue.")) }
     }

@@ -88,7 +88,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 val cached = mixStore.read(day)
                 if (cached.isNotEmpty()) { _personalMixes.value = cached; return@collectLatest }
                 val mixes = withContext(Dispatchers.IO) {
-                    MixSelection.seeds(likes, history).mapIndexedNotNull { index, seed ->
+                    val candidates = MixSelection.seeds(likes, history).mapIndexedNotNull { index, seed ->
                         val tracks = try { groovio.youtube.related(seed.mediaId.removePrefix("yt:")) }
                         catch (e: CancellationException) { throw e }
                         catch (_: Exception) { emptyList() }
@@ -96,7 +96,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                             PersonalMix("$day-${seed.mediaId}", if (index < 3) "Daily Mix ${index + 1}" else "${seed.artist ?: seed.title} Mix",
                                 "Based on ${seed.artist ?: seed.title}", it)
                         }
-                    }.let(MixSelection::diversify)
+                    }
+                    val known = (likes + history).map { it.mediaId }.toSet()
+                    val discovery = candidates.flatMap { it.tracks }.distinctBy { it.id }.filter { "yt:${it.id}" !in known }
+                    MixSelection.diversify(candidates.map { it.copy(tracks = it.tracks.take(12)) } +
+                        PersonalMix("$day-discovery", "Discovery mix", "New finds from your listening", discovery))
                 }
                 if (mixes.isNotEmpty()) { mixStore.write(day, mixes); _personalMixes.value = mixes }
             }

@@ -34,8 +34,10 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    var searchJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     fun search() {
-        scope.launch {
+        searchJob?.cancel()
+        searchJob = scope.launch {
             loading = true; message = null
             try {
                 results = withContext(Dispatchers.IO) { app.youtube.searchSpoken(
@@ -62,6 +64,7 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
         message?.let { item { Text(it, modifier = Modifier.padding(16.dp)) } }
         followed.filter { it.kind == kind }.forEach { collection -> item(key = "followed:${collection.album.url}") {
             Column(Modifier.padding(horizontal = 16.dp)) {
+                coil.compose.AsyncImage(model = collection.album.thumbnailUrl, contentDescription = null, modifier = Modifier.size(96.dp))
                 TextButton(onClick = { opened = collection }) { Text(collection.album.title) }
                 TextButton(onClick = { app.spoken.unfollow(collection.album.url) }) { Text(if (kind == "Podcasts") "Unfollow show" else "Remove book collection") }
             }
@@ -80,6 +83,7 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
         }
         if (!offline) collections.forEach { album -> item(key = "show:${album.url}") {
             Column(Modifier.padding(16.dp)) {
+                coil.compose.AsyncImage(model = album.thumbnailUrl, contentDescription = null, modifier = Modifier.size(96.dp))
                 Text(album.title)
                 TextButton(onClick = { scope.launch {
                     loading = true
