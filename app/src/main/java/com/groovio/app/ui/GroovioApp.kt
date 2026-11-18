@@ -204,6 +204,29 @@ fun GroovioApp(
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                             onMore = openMenu,
                         )
+                        is Detail.Collection -> {
+                            val chosen = detail.collection
+                            // A saved playlist uses live Room items, never a stale history snapshot.
+                            val songs = if (chosen.playlistId != null) {
+                                val rows by remember(chosen.playlistId) {
+                                    libraryVm.playlistItems(chosen.playlistId)
+                                }.collectAsStateWithLifecycle(initialValue = emptyList())
+                                rows.map { it.track }
+                            } else chosen.tracks
+                            com.groovio.app.ui.browse.CollectionDetailScreen(
+                                collection = chosen, tracks = songs,
+                                currentMediaId = state.currentMediaId,
+                                onBack = { details.removeAt(details.lastIndex) },
+                                onPlay = { items, index ->
+                                    if (items.isNotEmpty()) {
+                                        vm.rememberCollection(chosen.copy(
+                                            tracks = items, playedAt = System.currentTimeMillis()))
+                                        vm.playStored(items, index)
+                                    }
+                                },
+                                onMore = openMenu,
+                            )
+                        }
                         is Detail.Album -> AlbumScreen(
                             album = detail.album,
                             currentMediaId = state.currentMediaId,
@@ -234,11 +257,13 @@ fun GroovioApp(
                         } else HomeScreen(
                             filter = homeFilter, onFilter = { homeFilter = it },
                             recentCollections = recentCollections,
-                            onReplayCollection = ::replayCollection,
-                            onPlayMix = { mix ->
-                                vm.rememberCollection(RecentCollection("mix:${mix.id}", mix.title, "Mix", mix.tracks.firstOrNull()?.thumbnailUrl,
-                                    mix.tracks.map(TrackMapping::fromOnline)))
-                                vm.playTracks(mix.tracks, 0)
+                            onOpenCollection = { openDetail(Detail.Collection(it)) },
+                            onOpenMix = { mix ->
+                                openDetail(Detail.Collection(RecentCollection(
+                                    "mix:${mix.id}", mix.title, "Mix",
+                                    mix.tracks.firstOrNull()?.thumbnailUrl,
+                                    mix.tracks.map(TrackMapping::fromOnline),
+                                )))
                             },
                             recent = recent,
                             likedCount = liked.size,
@@ -246,7 +271,14 @@ fun GroovioApp(
                             currentMediaId = state.currentMediaId,
                             onPlayRecent = vm::playStored,
                             onOpenLiked = { libraryView = LibraryView.LIKED; tab = Tab.LIBRARY },
-                            onOpenPlaylist = { libraryView = LibraryView.playlist(it); tab = Tab.LIBRARY },
+                            onOpenPlaylist = { id ->
+                                playlists.firstOrNull { it.id == id }?.let { p ->
+                                    openDetail(Detail.Collection(RecentCollection(
+                                        "playlist:${p.id}", p.name, "Playlist",
+                                        p.artworkUri, emptyList(), playlistId = p.id,
+                                    )))
+                                }
+                            },
                             onSearch = { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
                             onOpenFiles = { nav.navigate(Routes.LOCAL_FILES) { launchSingleTop = true } },
                             onMore = openMenu,
@@ -278,7 +310,7 @@ fun GroovioApp(
                         )
                         Tab.LIBRARY -> LibraryScreen(
                             vm = libraryVm,
-                            onReplayCollection = ::replayCollection,
+                            onOpenCollection = { openDetail(Detail.Collection(it)) },
                             view = libraryView,
                             onViewChange = { libraryView = it },
                             currentMediaId = state.currentMediaId,
@@ -349,7 +381,8 @@ fun GroovioApp(
                 onDownloadSpotify = { vm.playSpotify(it, true) },
                 downloadsEnabled = downloadsEnabled && !offline,
                 onOpenAlbum = { openDetail(Detail.Album(it)) }, onMore = openMenu,
-                recentCollections = recentCollections, onReplayCollection = ::replayCollection,
+                recentCollections = recentCollections,
+                onOpenCollection = { openDetail(Detail.Collection(it)) },
                 onBack = { nav.popBackStack() },
                 modifier = Modifier.statusBarsPadding(),
             )
