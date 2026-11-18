@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import com.groovio.app.data.TrackEntity
+import com.groovio.app.ui.motion.groovioCombinedClickable
 import com.groovio.app.ui.theme.GroovioColors
 
 /** Library sub-view, kept as a string so it survives configuration changes. */
@@ -272,10 +273,12 @@ private fun LibraryRoot(
             }, color = GroovioColors.TextMuted, modifier = Modifier.padding(20.dp))
         }
         items(displayed, key = { it.key }, span = { if (grid) GridItemSpan(1) else full() }) { entry ->
-            if (grid) {
-                CollectionTile(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
-            } else {
-                CollectionRow(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
+            Box(Modifier.animateItem()) {
+                if (grid) {
+                    CollectionTile(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
+                } else {
+                    CollectionRow(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
+                }
             }
         }
         item(span = full) {
@@ -295,7 +298,7 @@ private fun CollectionTile(
     icon: ImageVector, title: String, subtitle: String, artwork: String? = null,
     onClick: () -> Unit, onLongClick: (() -> Unit)? = null,
 ) {
-    Column(Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(vertical = 8.dp)) {
+    Column(Modifier.fillMaxWidth().groovioCombinedClickable(onClick = onClick, onLongClick = onLongClick).padding(vertical = 8.dp)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
@@ -315,7 +318,7 @@ private fun CollectionRow(
     onClick: () -> Unit, onLongClick: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
+        Modifier.fillMaxWidth().groovioCombinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

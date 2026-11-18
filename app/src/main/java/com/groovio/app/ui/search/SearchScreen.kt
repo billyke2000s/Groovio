@@ -59,6 +59,8 @@ import com.groovio.app.ui.browse.AlbumCard
 import com.groovio.app.online.SpotifyCollection
 import com.groovio.app.playback.SpotifyImportProgress
 import com.groovio.app.playback.PlaybackText
+import com.groovio.app.ui.motion.groovioClickable
+import com.groovio.app.ui.motion.groovioCombinedClickable
 import com.groovio.app.ui.theme.GroovioColors
 
 @Composable
@@ -221,7 +223,7 @@ private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit, 
     Row(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(
+            .groovioCombinedClickable(
                 onClickLabel = "Play ${track.title}",
                 onLongClickLabel = "More options",
                 onLongClick = onMore,
@@ -353,7 +355,7 @@ private fun BrowseAll(onPick: (String) -> Unit) {
                     .height(96.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(androidx.compose.ui.graphics.Color(color))
-                    .clickable(onClickLabel = "Browse $label") { onPick("$label music") }
+                    .groovioClickable(onClickLabel = "Browse $label") { onPick("$label music") }
                     .padding(12.dp),
             ) {
                 Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)

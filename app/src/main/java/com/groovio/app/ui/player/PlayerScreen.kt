@@ -1,5 +1,11 @@
 package com.groovio.app.ui.player
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -213,11 +219,20 @@ fun PlayerScreen(
                 )
             }
             IconButton(onClick = onToggleFavourite, enabled = state.hasItem) {
-                Icon(
-                    if (isFavourite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    if (isFavourite) "Remove from Liked songs" else "Add to Liked songs",
-                    tint = if (isFavourite) GroovioColors.Accent else GroovioColors.Text,
-                )
+                AnimatedContent(
+                    targetState = isFavourite,
+                    transitionSpec = {
+                        (fadeIn(tween(150)) + scaleIn(initialScale = 0.78f, animationSpec = tween(160))) togetherWith
+                            (fadeOut(tween(100)) + scaleOut(targetScale = 1.12f, animationSpec = tween(100)))
+                    },
+                    label = "Like song",
+                ) { liked ->
+                    Icon(
+                        if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        if (liked) "Remove from Liked songs" else "Add to Liked songs",
+                        tint = if (liked) GroovioColors.Accent else GroovioColors.Text,
+                    )
+                }
             }
         }
 
@@ -255,11 +270,20 @@ fun PlayerScreen(
                         contentColor = GroovioColors.Background,
                     ),
                 ) {
-                    Icon(
-                        if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        if (state.isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(38.dp),
-                    )
+                    AnimatedContent(
+                        targetState = state.isPlaying,
+                        transitionSpec = {
+                            (fadeIn(tween(140)) + scaleIn(initialScale = 0.8f, animationSpec = tween(150))) togetherWith
+                                (fadeOut(tween(95)) + scaleOut(targetScale = 1.08f, animationSpec = tween(95)))
+                        },
+                        label = "Play pause",
+                    ) { playing ->
+                        Icon(
+                            if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            if (playing) "Pause" else "Play",
+                            modifier = Modifier.size(38.dp),
+                        )
+                    }
                 }
                 if (state.isBuffering) {
                     CircularProgressIndicator(

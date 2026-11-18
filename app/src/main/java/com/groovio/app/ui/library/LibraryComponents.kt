@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
+import com.groovio.app.ui.motion.groovioCombinedClickable
 import com.groovio.app.ui.theme.GroovioColors
 
 /** One song row: artwork, title, artist, optional trailing action; long-press opens the menu. */
@@ -53,7 +54,7 @@ fun StoredTrackRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .combinedClickable(
+            .groovioCombinedClickable(
                 onClickLabel = "Play ${track.title}",
                 onLongClickLabel = "More options",
                 onLongClick = onLongClick,

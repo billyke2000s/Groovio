@@ -2,6 +2,12 @@ package com.groovio.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -169,6 +175,10 @@ fun GroovioApp(
         navController = nav,
         startDestination = Routes.TABS,
         modifier = Modifier.fillMaxSize().background(GroovioColors.Background),
+        enterTransition = { fadeIn(tween(190)) + slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { it / 10 } },
+        exitTransition = { fadeOut(tween(140)) },
+        popEnterTransition = { fadeIn(tween(180)) },
+        popExitTransition = { fadeOut(tween(150)) + slideOutHorizontally(tween(210, easing = FastOutSlowInEasing)) { it / 10 } },
     ) {
         composable(Routes.TABS) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -224,7 +234,12 @@ fun GroovioApp(
                             onOpenArtist = { openDetail(Detail.Artist(it)) },
                             onMore = openMenu,
                         )
-                        null -> when (tab) {
+                        null -> Crossfade(
+                            targetState = tab,
+                            animationSpec = tween(190, easing = FastOutSlowInEasing),
+                            label = "Home and Library",
+                        ) { visibleTab ->
+                            when (visibleTab) {
                         Tab.HOME -> if (homeFilter == "Podcasts" || homeFilter == "Audiobooks") {
                             Column {
                                 Text(when (java.time.LocalTime.now().hour) { in 5..11 -> "Good morning"; in 12..17 -> "Good afternoon"; else -> "Good evening" },
@@ -325,10 +340,15 @@ fun GroovioApp(
                             updateMessage = updateMessage,
                             onCheckUpdates = { homeVm.checkForUpdates(manual = true) },
                         )
+                            }
                         }
                     }
                 }
-                if (state.hasItem) {
+                AnimatedVisibility(
+                    visible = state.hasItem,
+                    enter = slideInVertically(tween(220, easing = FastOutSlowInEasing)) { it / 2 } + fadeIn(tween(190)),
+                    exit = slideOutVertically(tween(180, easing = FastOutSlowInEasing)) { it / 2 } + fadeOut(tween(150)),
+                ) {
                     MiniPlayer(
                         state = state,
                         positionMs = position,

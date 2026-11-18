@@ -30,6 +30,7 @@ import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.playback.PlaybackText
 import com.groovio.app.ui.player.rememberArtworkTint
+import com.groovio.app.ui.motion.groovioClickable
 import com.groovio.app.ui.theme.GroovioColors
 
 /** Real catalogue data in a cover-led feed; no invented dates, descriptions or play counts. */
@@ -83,14 +84,14 @@ fun SpokenDiscovery(
         if (myShows.isNotEmpty() || podcast) item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(myShows, key = { it.album.url }) { show ->
-                    Column(Modifier.width(88.dp).clickable(onClickLabel = "Open ${show.album.title}") { onOpenSaved(show) }) {
+                    Column(Modifier.width(88.dp).groovioClickable(onClickLabel = "Open ${show.album.title}") { onOpenSaved(show) }) {
                         SpokenCover(show.album.thumbnailUrl, Modifier.size(88.dp))
                         Text(show.album.title, style = MaterialTheme.typography.labelMedium, maxLines = 2,
                             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
                 item {
-                    Column(Modifier.width(88.dp).clickable(onClickLabel = "Find more ${if (podcast) "shows" else "books"}") {
+                    Column(Modifier.width(88.dp).groovioClickable(onClickLabel = "Find more ${if (podcast) "shows" else "books"}") {
                         followingOnly = false; searching = true
                     }, horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.size(88.dp).clip(RoundedCornerShape(8.dp)).background(GroovioColors.SurfaceHigh), contentAlignment = Alignment.Center) {
@@ -124,7 +125,7 @@ fun SpokenDiscovery(
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(inProgress, key = { it.track.id }) { item ->
-                            Column(Modifier.width(136.dp).clickable(onClickLabel = "Resume ${item.track.title}") { onPlay(item.track) }) {
+                            Column(Modifier.width(136.dp).groovioClickable(onClickLabel = "Resume ${item.track.title}") { onPlay(item.track) }) {
                                 SpokenCover(item.track.thumbnailUrl, Modifier.size(136.dp))
                                 Text(item.track.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
                                 Text("${item.positionMs / 60_000} min played", color = GroovioColors.TextMuted, style = MaterialTheme.typography.labelSmall)
@@ -147,7 +148,7 @@ fun SpokenDiscovery(
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(collections.distinctBy { it.url }, key = { it.url }) { album ->
-                            Column(Modifier.width(148.dp).clickable(onClickLabel = "Open ${album.title}") { onOpen(album) }) {
+                            Column(Modifier.width(148.dp).groovioClickable(onClickLabel = "Open ${album.title}") { onOpen(album) }) {
                                 SpokenCover(album.thumbnailUrl, if (podcast) Modifier.size(148.dp) else Modifier.width(148.dp).height(196.dp))
                                 Text(album.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                                 album.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = GroovioColors.TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -221,7 +222,7 @@ internal fun SpokenCover(url: String?, modifier: Modifier) {
 
 @Composable
 private fun SpokenCollectionCard(album: OnlineAlbum, podcast: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(GroovioColors.Surface).clickable(onClickLabel = "Open ${album.title}", onClick = onClick).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(GroovioColors.Surface).groovioClickable(onClickLabel = "Open ${album.title}", onClick = onClick).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         SpokenCover(album.thumbnailUrl, Modifier.size(80.dp))
         Column(Modifier.weight(1f)) {
             Text(album.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
