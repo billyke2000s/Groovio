@@ -175,7 +175,7 @@ private fun LibraryRoot(
         }
         if (filter == null) item(span = full) {
             Column {
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Downloads", "Saved audio and transfer progress", onOpenDownloads)
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Downloads", "Saved audio and transfer progress", onClick = onOpenDownloads)
                 CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Podcasts", "Saved episodes and YouTube browsing") { onOpenSpoken("Podcasts") }
                 CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Audiobooks", "Saved books and YouTube browsing") { onOpenSpoken("Audiobooks") }
                 (liked + recent).mapNotNull { it.artist }.distinct().take(12).forEach { artist ->
@@ -192,9 +192,9 @@ private fun LibraryRoot(
         }
         if (showPlaylists) items(sortedPlaylists, key = { "p${it.id}" }) { p ->
             if (grid) {
-                CollectionTile(Icons.AutoMirrored.Filled.QueueMusic, p.name, "${p.trackCount} songs") { onViewChange(LibraryView.playlist(p.id)) }
+                CollectionTile(Icons.AutoMirrored.Filled.QueueMusic, p.name, "${p.trackCount} songs", p.artworkUri) { onViewChange(LibraryView.playlist(p.id)) }
             } else {
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs") {
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs", p.artworkUri) {
                     onViewChange(LibraryView.playlist(p.id))
                 }
             }
@@ -245,12 +245,14 @@ private fun LibraryRoot(
 }
 
 @Composable
-private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, artwork: String? = null, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, contentDescription = null, tint = GroovioColors.Accent, modifier = Modifier.size(40.dp)) }
+        ) { if (artwork != null) coil.compose.AsyncImage(model = artwork, contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else Icon(icon, contentDescription = null, tint = GroovioColors.Accent, modifier = Modifier.size(40.dp)) }
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
         Text(subtitle, color = GroovioColors.TextMuted, fontSize = 12.sp, maxLines = 1)
@@ -258,7 +260,7 @@ private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, o
 }
 
 @Composable
-private fun CollectionRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+private fun CollectionRow(icon: ImageVector, title: String, subtitle: String, artwork: String? = null, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -267,7 +269,9 @@ private fun CollectionRow(icon: ImageVector, title: String, subtitle: String, on
         Box(
             Modifier.size(56.dp).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, contentDescription = null, tint = GroovioColors.Accent) }
+        ) { if (artwork != null) coil.compose.AsyncImage(model = artwork, contentDescription = null,
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else Icon(icon, contentDescription = null, tint = GroovioColors.Accent) }
         Column(Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(subtitle, color = GroovioColors.TextMuted, fontSize = 13.sp)

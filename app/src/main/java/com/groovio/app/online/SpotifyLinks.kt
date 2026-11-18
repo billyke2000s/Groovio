@@ -17,7 +17,7 @@ data class SpotifyTrack(
     val uri: String?,
 )
 
-data class SpotifyCollection(val name: String, val type: String, val tracks: List<SpotifyTrack>)
+data class SpotifyCollection(val name: String, val type: String, val tracks: List<SpotifyTrack>, val sourceUrl: String? = null, val artworkUrl: String? = null)
 
 /**
  * Reads Spotify links without an account or API key, from Spotify's public embed page,
@@ -55,7 +55,9 @@ object SpotifyLinks {
         } else {
             listOfNotNull(toTrack(entity))
         }
-        return SpotifyCollection(name, type ?: "track", tracks.filterNot { it.uri?.contains(":episode:") == true })
+        val images = entity.getObject("coverArt")?.getArray("sources")
+        val art = images?.let { a -> (0 until a.size).mapNotNull { a.getObject(it).getString("url") }.firstOrNull() }
+        return SpotifyCollection(name, type ?: "track", tracks.filterNot { it.uri?.contains(":episode:") == true }, artworkUrl = art)
     }
 
     private fun toTrack(o: JsonObject): SpotifyTrack? {

@@ -88,7 +88,7 @@ data class PlaybackStateEntity(
     val repeatMode: Int,
 )
 
-data class PlaylistSummary(val id: Long, val name: String, val trackCount: Int)
+data class PlaylistSummary(val id: Long, val name: String, val trackCount: Int, val artworkUri: String? = null)
 
 data class PlaylistItem(val position: Int, @Embedded val track: TrackEntity)
 
@@ -156,7 +156,10 @@ abstract class LibraryDao {
     abstract suspend fun deletePlaylist(id: Long)
 
     @Query(
-        """SELECT p.id, p.name, COUNT(pt.mediaId) AS trackCount FROM playlists p
+        """SELECT p.id, p.name, COUNT(pt.mediaId) AS trackCount,
+           (SELECT t.artworkUri FROM tracks t JOIN playlist_tracks art ON art.mediaId = t.mediaId
+            WHERE art.playlistId = p.id AND t.artworkUri IS NOT NULL ORDER BY art.position LIMIT 1) AS artworkUri
+           FROM playlists p
            LEFT JOIN playlist_tracks pt ON pt.playlistId = p.id
            GROUP BY p.id ORDER BY p.createdAt DESC"""
     )
@@ -181,6 +184,16 @@ abstract class LibraryDao {
     open suspend fun addToPlaylist(playlistId: Long, track: TrackEntity) {
         upsertTrack(track)
         insertPlaylistTrack(PlaylistTrackEntity(playlistId, nextPosition(playlistId), track.mediaId))
+    }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract suspend fun replacePlaylistTrack(entry: PlaylistTrackEntity)
+
+    /** A durable import may retry any position without appending duplicates. */
+    @Transaction
+    open suspend fun importTrack(playlistId: Long, position: Int, track: TrackEntity) {
+        upsertTrack(track)
+        replacePlaylistTrack(PlaylistTrackEntity(playlistId, position, track.mediaId))
     }
 
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :id AND position = :position")

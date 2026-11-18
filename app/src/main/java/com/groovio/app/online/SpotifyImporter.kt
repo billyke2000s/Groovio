@@ -28,7 +28,7 @@ class SpotifyImporter(
         val html = get(ref.embedUrl)
         val collection = SpotifyLinks.parseEmbed(html)
         if (collection.tracks.isEmpty()) throw IllegalArgumentException("That Spotify link has no songs")
-        return collection
+        return collection.copy(sourceUrl = "https://open.spotify.com/${ref.type}/${ref.id}")
     }
 
     /** Best YouTube match for [track], or null if nothing plausible was found. */

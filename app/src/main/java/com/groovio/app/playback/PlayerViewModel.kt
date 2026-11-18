@@ -281,7 +281,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun playSpotify(collection: SpotifyCollection) = playSpotify(collection, false)
     fun playSpotify(collection: SpotifyCollection, download: Boolean) {
         importJob?.cancel()
-        if (download) (getApplication<Application>() as GroovioApplication).downloads.enqueueSpotify(collection.tracks)
+        if (download) getApplication<GroovioApplication>().appScope.launch {
+            runCatching { getApplication<GroovioApplication>().collectionImports.enqueue(collection) }
+                .onFailure { getApplication<GroovioApplication>().playbackNotice.value = "Couldn't save collection. Try again." }
+        }
         importJob = viewModelScope.launch {
             var started = false
             var found = 0

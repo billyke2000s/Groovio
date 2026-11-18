@@ -278,10 +278,12 @@ private fun SpotifyResult(
             ) {
                 Text("From Spotify · $kind", color = GroovioColors.Accent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text(collection.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                collection.artworkUrl?.let { art -> AsyncImage(model = art, contentDescription = null, modifier = Modifier.size(140.dp), contentScale = ContentScale.Crop) }
+                Text("Matched to YouTube audio. Offline saving continues in Downloads; unmatched songs aren't saved.", color = GroovioColors.TextMuted, fontSize = 12.sp)
                 Text("${collection.tracks.size} songs", color = GroovioColors.TextMuted, fontSize = 14.sp)
                 Spacer(Modifier.height(14.dp))
                 if (onDownload != null && (mine == null || mine.done)) {
-                    androidx.compose.material3.OutlinedButton(onClick = { onDownload(collection) }) { Text("Download & play") }
+                    androidx.compose.material3.OutlinedButton(onClick = { onDownload(collection) }) { Text("Save & play offline") }
                 }
                 when {
                     mine == null -> Button(onClick = { onPlay(collection) }) { Text("Play") }

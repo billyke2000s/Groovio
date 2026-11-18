@@ -49,6 +49,7 @@ class LibraryRepository(
     suspend fun renamePlaylist(id: Long, name: String) = dao.renamePlaylist(id, name.trim())
     suspend fun deletePlaylist(id: Long) = dao.deletePlaylist(id)
     suspend fun addToPlaylist(id: Long, track: TrackEntity) = dao.addToPlaylist(id, track)
+    suspend fun importTrack(id: Long, position: Int, track: TrackEntity) = dao.importTrack(id, position, track)
     suspend fun removeFromPlaylist(id: Long, position: Int) = dao.removeFromPlaylist(id, position)
 
     suspend fun saveQueue(items: List<MediaItem>, index: Int, positionMs: Long, shuffle: Boolean, repeatMode: Int) {

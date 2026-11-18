@@ -99,7 +99,7 @@ fun HomeScreen(
     val tiles = buildList {
         if (likedCount > 0) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onOpenLiked))
         playlists.take(3).forEach { p ->
-            add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, null) { onOpenPlaylist(p.id) })
+            add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri) { onOpenPlaylist(p.id) })
         }
         recent.take(6 - size).forEachIndexed { i, t ->
             add(Tile("r${t.mediaId}", t.title, null, t.artworkUri) { onPlayRecent(recent, i) })
@@ -218,7 +218,7 @@ fun HomeScreen(
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(playlists, key = { it.id }) { p ->
-                        SquareCard(p.name, "${p.trackCount} songs", null, false, Icons.AutoMirrored.Filled.QueueMusic) {
+                        SquareCard(p.name, "${p.trackCount} songs", p.artworkUri, false, Icons.AutoMirrored.Filled.QueueMusic) {
                             onOpenPlaylist(p.id)
                         }
                     }
