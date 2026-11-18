@@ -264,6 +264,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { library.addToPlaylist(library.createPlaylist(name), track) }
     }
 
+    /** Copies the whole collection without moving tracks or changing the original playlist. */
+    fun addCollectionToPlaylist(playlistId: Long, tracks: List<TrackEntity>) {
+        if (tracks.isEmpty()) return
+        viewModelScope.launch {
+            tracks.distinctBy { it.mediaId }.forEach { library.addToPlaylist(playlistId, it) }
+        }
+    }
+
+    fun addCollectionToNewPlaylist(name: String, tracks: List<TrackEntity>) {
+        if (name.isBlank() || tracks.isEmpty()) return
+        viewModelScope.launch {
+            val id = library.createPlaylist(name.trim())
+            tracks.distinctBy { it.mediaId }.forEach { library.addToPlaylist(id, it) }
+        }
+    }
+
     /** Inserts right after the current song (or starts playing if the queue is empty). */
     fun playNext(track: TrackEntity) {
         val c = controller ?: return
