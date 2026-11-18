@@ -55,6 +55,7 @@ import com.groovio.app.ui.home.HomeViewModel
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.library.LibraryScreen
 import com.groovio.app.ui.library.SongMenu
+import com.groovio.app.ui.library.CollectionMenu
 import com.groovio.app.ui.library.LibraryView
 import com.groovio.app.ui.library.LibraryViewModel
 import com.groovio.app.ui.player.MiniPlayer
@@ -106,6 +107,7 @@ fun GroovioApp(
     val discover by homeVm.discover.collectAsStateWithLifecycle()
     val chart by homeVm.chart.collectAsStateWithLifecycle()
     val personalMixes by homeVm.personalMixes.collectAsStateWithLifecycle()
+    val hiddenHomeCards by homeVm.hiddenHomeCards.collectAsStateWithLifecycle()
     val mixNotice by homeVm.mixNotice.collectAsStateWithLifecycle()
     val mix by homeVm.mix.collectAsStateWithLifecycle()
     val update by homeVm.update.collectAsStateWithLifecycle()
@@ -118,6 +120,11 @@ fun GroovioApp(
     // Song menu (⋮ / long press), shown over everything.
     var menuTrack by remember { mutableStateOf<TrackEntity?>(null) }
     val openMenu: (TrackEntity) -> Unit = { menuTrack = it }
+    var menuCollection by remember { mutableStateOf<Pair<RecentCollection, String>?>(null) }
+    val openCollectionMenu: (RecentCollection, String) -> Unit = { collection, section ->
+        menuTrack = null
+        menuCollection = collection to section
+    }
 
     // Artist/album pages stack over the current tab (back pops one level).
     val details = remember { mutableStateListOf<Detail>() }
@@ -267,6 +274,8 @@ fun GroovioApp(
                             onDownloadChart = { vm.playSpotify(it, true) },
                             downloadsEnabled = downloadsEnabled,
                             personalMixes = personalMixes, onSaveMix = homeVm::saveMix, mixNotice = mixNotice,
+                            hiddenHomeCards = hiddenHomeCards,
+                            onPlaylistLongPress = openCollectionMenu,
                             mix = if (offline) null else mix,
                             related = if (offline) null else related,
                             onPlayRelated = vm::playTracks,
@@ -471,6 +480,30 @@ fun GroovioApp(
             playlists = playlists,
             onOpenArtist = { openDetail(Detail.Artist(it)) },
             onDismiss = { menuTrack = null },
+        )
+    }
+    menuCollection?.let { (collection, section) ->
+        val resolvedTracks = if (collection.playlistId != null) {
+            val rows by remember(collection.playlistId) {
+                libraryVm.playlistItems(collection.playlistId)
+            }.collectAsStateWithLifecycle(initialValue = emptyList())
+            rows.map { it.track }
+        } else collection.tracks
+        CollectionMenu(
+            collection = collection,
+            tracks = resolvedTracks,
+            playlists = playlists,
+            onPlay = { tracks ->
+                if (tracks.isNotEmpty()) {
+                    vm.rememberCollection(collection.copy(
+                        tracks = tracks, playedAt = System.currentTimeMillis()))
+                    vm.playStored(tracks, 0)
+                }
+            },
+            onCopyTo = vm::addCollectionToPlaylist,
+            onCopyToNew = vm::addCollectionToNewPlaylist,
+            onRemoveFromSection = { homeVm.hideHomeCard(section, collection.id) },
+            onDismiss = { menuCollection = null },
         )
     }
 }
