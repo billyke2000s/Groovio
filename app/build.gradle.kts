@@ -110,6 +110,9 @@ dependencies {
 
 // Show each test and its output in CI logs.
 tasks.withType<Test>().configureEach {
+    // Robolectric fetches its Android runtime jars outside Gradle dependency resolution.
+    // Prefer Maven Central's canonical host to avoid intermittent repo1.maven.org HTTP 429s.
+    systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
     // Record screenshots only when asked (CI screenshot job), so normal tests stay fast.
     systemProperty("roborazzi.test.record", System.getenv("GROOVIO_SCREENSHOTS") == "1")
     testLogging {
