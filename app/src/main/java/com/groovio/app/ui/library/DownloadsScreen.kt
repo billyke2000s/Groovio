@@ -17,7 +17,11 @@ import com.groovio.app.data.TrackEntity
 import kotlinx.coroutines.launch
 
 @Composable
-fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit) {
+fun DownloadsScreen(
+    onBack: () -> Unit,
+    onPlay: (List<TrackEntity>, Int) -> Unit,
+    onMore: (TrackEntity) -> Unit,
+) {
     BackHandler(onBack = onBack)
     val app = LocalContext.current.applicationContext as GroovioApplication
     val tracks by app.downloads.tracks.collectAsStateWithLifecycle()
@@ -59,7 +63,9 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
                 Text("${title ?: "Song"} · $detail", modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
             items(tracks, key = { it.mediaId }) { track ->
-                StoredTrackRow(track, false, onClick = { onPlay(tracks, tracks.indexOf(track)) }, trailing = {
+                StoredTrackRow(track, false,
+                    onClick = { onPlay(tracks, tracks.indexOf(track)) },
+                    onLongClick = { onMore(track) }, trailing = {
                     TextButton(onClick = { deleting = track }) { Text("Remove") }
                 })
             }
