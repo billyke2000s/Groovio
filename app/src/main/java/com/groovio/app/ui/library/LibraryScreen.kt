@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.theme.GroovioColors
 
@@ -113,6 +114,8 @@ private fun LibraryRoot(
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
     val recent by vm.recent.collectAsStateWithLifecycle()
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.groovio.app.GroovioApplication
+    val recentCollections by app.collectionHistory.recent.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
     // Spotify-style filter chips: null shows everything.
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -206,19 +209,15 @@ private fun LibraryRoot(
                 modifier = Modifier.padding(start = if (grid) 8.dp else 20.dp, top = 20.dp, bottom = 4.dp),
             )
         }
-        if (showRecent && recent.isEmpty()) {
-            item(span = full) {
-                Text("Songs you play show up here.", color = GroovioColors.TextMuted,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-            }
+        if (showRecent && recentCollections.isEmpty()) item(span = full) {
+            Text("Play a playlist, album or mix and it'll appear here.", color = GroovioColors.TextMuted,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         }
-        // Songs are always rows, even in grid mode (as in Spotify).
-        if (showRecent) recent.forEachIndexed { i, track ->
-            item(key = "r${track.mediaId}", span = full) {
-                StoredTrackRow(track, currentMediaId == track.mediaId, onClick = { onPlay(recent, i) },
-                    onLongClick = { onMore(track) }) {
-                    IconButton(onClick = { onMore(track) }) { Icon(Icons.Default.MoreVert, "More options for ${track.title}") }
-                }
+        if (showRecent) items(recentCollections, key = { "recent:${it.id}" }, span = { full() }) { collection ->
+            CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, collection.title, collection.kind, collection.artworkUri) {
+                onPlay(collection.tracks, 0)
+                val replay = collection.copy(playedAt = System.currentTimeMillis())
+                app.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.collectionHistory.record(replay) }
             }
         }
         // About / updates.

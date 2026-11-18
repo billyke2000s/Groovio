@@ -26,6 +26,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import com.groovio.app.data.RecentCollection
+import com.groovio.app.data.TrackMapping
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -135,6 +140,30 @@ fun GroovioApp(
 
     // A link or text shared to Groovio opens in Search.
     val app = LocalContext.current.applicationContext as GroovioApplication
+    val recentCollections by app.collectionHistory.recent.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    fun replayCollection(collection: RecentCollection) {
+        scope.launch {
+            val tracks = when {
+                collection.id == "liked" -> liked
+                collection.playlistId != null -> app.library.playlistItems(collection.playlistId).first().map { it.track }
+                    .ifEmpty { collection.tracks }
+                else -> collection.tracks
+            }
+            if (tracks.isNotEmpty()) {
+                if (collection.kind == "Show" || collection.kind == "Audiobook") {
+                    val kind = if (collection.kind == "Show") "Podcasts" else "Audiobooks"
+                    tracks.forEach { track -> app.spoken.save(com.groovio.app.online.OnlineTrack(track.mediaId.removePrefix("yt:"), track.title, track.artist, null, track.artworkUri), kind) }
+                }
+                vm.rememberCollection(collection.copy(tracks = tracks, playedAt = System.currentTimeMillis()))
+                vm.playStored(tracks, 0)
+            }
+        }
+    }
+    fun rememberAlbum(album: com.groovio.app.online.OnlineAlbum, tracks: List<com.groovio.app.online.OnlineTrack>) {
+        if (tracks.isNotEmpty()) vm.rememberCollection(RecentCollection(album.url, album.title, album.kind, album.thumbnailUrl,
+            tracks.map(TrackMapping::fromOnline), source = album.url))
+    }
     val online by app.connectivity.online.collectAsStateWithLifecycle()
     val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
     val downloadsEnabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
@@ -182,8 +211,8 @@ fun GroovioApp(
                             album = detail.album,
                             currentMediaId = state.currentMediaId,
                             onBack = { details.removeAt(details.lastIndex) },
-                            onPlay = vm::playTracks,
-                            onShuffle = vm::shuffleTracks,
+                            onPlay = { tracks, index -> rememberAlbum(detail.album, tracks); vm.playTracks(tracks, index) },
+                            onShuffle = { tracks -> rememberAlbum(detail.album, tracks); vm.shuffleTracks(tracks) },
                             onOpenArtist = { openDetail(Detail.Artist(it)) },
                             onMore = openMenu,
                         )
@@ -199,14 +228,21 @@ fun GroovioApp(
                                     items(4) { index ->
                                         val label = listOf("All", "Music", "Podcasts", "Audiobooks")[index]
                                         androidx.compose.material3.FilterChip(selected = homeFilter == label, onClick = { homeFilter = label },
-                                            label = { Text(label) }, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                                                selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
+                                            label = { Text(label) }, shape = androidx.compose.foundation.shape.CircleShape, border = null, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                                containerColor = GroovioColors.SurfaceHigh, selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
                                     }
                                 }
                                 com.groovio.app.spoken.SpokenScreen(homeFilter, vm::playTracks, vm::downloadOnline)
                             }
                         } else HomeScreen(
                             filter = homeFilter, onFilter = { homeFilter = it },
+                            recentCollections = recentCollections,
+                            onReplayCollection = ::replayCollection,
+                            onPlayMix = { mix ->
+                                vm.rememberCollection(RecentCollection("mix:${mix.id}", mix.title, "Mix", mix.tracks.firstOrNull()?.thumbnailUrl,
+                                    mix.tracks.map(TrackMapping::fromOnline)))
+                                vm.playTracks(mix.tracks, 0)
+                            },
                             recent = recent,
                             likedCount = liked.size,
                             playlists = playlists,
@@ -248,7 +284,16 @@ fun GroovioApp(
                             view = libraryView,
                             onViewChange = { libraryView = it },
                             currentMediaId = state.currentMediaId,
-                            onPlay = vm::playStored,
+                            onPlay = { tracks, index ->
+                                val id = LibraryView.playlistId(libraryView)
+                                val playlist = playlists.firstOrNull { it.id == id }
+                                when {
+                                    playlist != null -> vm.rememberCollection(RecentCollection("playlist:${playlist.id}", playlist.name, "Playlist",
+                                        playlist.artworkUri, tracks, playlistId = playlist.id))
+                                    libraryView == LibraryView.LIKED -> vm.rememberCollection(RecentCollection("liked", "Liked songs", "Playlist", tracks.firstOrNull()?.artworkUri, tracks))
+                                }
+                                vm.playStored(tracks, index)
+                            },
                             onMore = openMenu,
                             onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) },
                             onOpenSpoken = { homeFilter = it; tab = Tab.HOME },
@@ -304,7 +349,7 @@ fun GroovioApp(
                 onDownloadSpotify = { vm.playSpotify(it, true) },
                 downloadsEnabled = downloadsEnabled && !offline,
                 onOpenAlbum = { openDetail(Detail.Album(it)) }, onMore = openMenu,
-                recent = recent, onPlayRecent = vm::playStored,
+                recentCollections = recentCollections, onReplayCollection = ::replayCollection,
                 onBack = { nav.popBackStack() },
                 modifier = Modifier.statusBarsPadding(),
             )

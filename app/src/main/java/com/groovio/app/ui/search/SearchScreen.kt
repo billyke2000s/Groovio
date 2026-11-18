@@ -73,8 +73,8 @@ fun SearchScreen(
     onDownload: ((List<OnlineTrack>, Int) -> Unit)? = null,
     onDownloadSpotify: ((SpotifyCollection) -> Unit)? = null,
     downloadsEnabled: Boolean = false,
-    recent: List<TrackEntity> = emptyList(),
-    onPlayRecent: (List<TrackEntity>, Int) -> Unit = { _, _ -> },
+    recentCollections: List<com.groovio.app.data.RecentCollection> = emptyList(),
+    onReplayCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -127,13 +127,12 @@ fun SearchScreen(
         Spacer(Modifier.height(8.dp))
 
         when {
-            input.isBlank() && recent.isNotEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
+            input.isBlank() && recentCollections.isNotEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
                 item { Text("Last Groove", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp)) }
-                itemsIndexed(recent, key = { _, track -> track.mediaId }) { index, track ->
+                items(recentCollections, key = { it.id }) { collection ->
                     com.groovio.app.ui.library.StoredTrackRow(
-                        track = track, playing = currentMediaId == track.mediaId,
-                        onClick = { keyboard?.hide(); onPlayRecent(recent, index) },
-                        onLongClick = { onMore(track) },
+                        track = TrackEntity(collection.id, collection.title, collection.kind, collection.artworkUri), playing = false,
+                        onClick = { keyboard?.hide(); onReplayCollection(collection) },
                     )
                 }
             }

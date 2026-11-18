@@ -64,3 +64,13 @@ The `v0.1.69` to `v0.1.71` diff confirms that several changes were removed toget
 - Automatic skipping covered generic playback errors, including network failures.
 
 These are observed code properties and plausible failure risks, **not an isolated explanation of the owner's phone regression**. Only comparative device testing or a bisect can identify that cause. The new code keeps the baseline renderer/sink, avoids a validated-network stream gate, allocates no effects when disabled, makes early preparation opt-in/ready-only, and limits skipping to unavailable content with a three-song budget. All audio additions remain experimental pending phone confirmation.
+
+## Follow-up: spoken discovery and collection history
+
+Requested after v0.1.87: replace the sparse podcast/book lists with Spotify-style card organisation using Groovio colours, and make Jump back in/history show collections instead of songs.
+
+The spoken feed now has cover-led tinted cards with actual available metadata, clear play/save actions, a Following row/filter, horizontal collection shelves and a separate episode/chapter view. Search and source information are behind toolbar actions. No fake previews, dates, descriptions or play counts are shown. Existing audio sources, saved content, progress and downloads remain connected.
+
+A new independent collection history stores title/type/artwork, source identity, ordered track snapshots and timestamps. Home shortcuts, Jump back in, Last Groove and Library recents consume this history. Local playlist/liked collections, YouTube albums/playlists, Spotify collections, daily mixes and spoken collections record their context. Per-song history is retained for recommendations and is not relabelled as a playlist. Older song-only events cannot reconstruct past playlist context reliably; collections populate the new history as they are played. New backup fields are optional and the Room schema remains unchanged.
+
+Added deterministic tests for collection ordering/deduplication/recreation, clear-history races, restored snapshot identity, Home and search collection replay, and spoken card/following controls. Optional live-catalogue screenshot tests load real YouTube entries and artwork for review. Verification results will be recorded after CI completes. Playback service, renderer/sink and audio effect implementation are unchanged in this follow-up.

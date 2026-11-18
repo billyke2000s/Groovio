@@ -80,6 +80,9 @@ fun HomeScreen(
     onPlayChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
     onDownloadChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
     downloadsEnabled: Boolean = false,
+    recentCollections: List<com.groovio.app.data.RecentCollection> = emptyList(),
+    onReplayCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
+    onPlayMix: ((PersonalMix) -> Unit)? = null,
     personalMixes: List<PersonalMix> = emptyList(),
     onSaveMix: (PersonalMix) -> Unit = {},
     mixNotice: String? = null,
@@ -97,12 +100,10 @@ fun HomeScreen(
 ) {
     val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty()
     val tiles = buildList {
-        if (likedCount > 0) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onOpenLiked))
-        playlists.take(3).forEach { p ->
+        recentCollections.take(6).forEach { c -> add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri) { onReplayCollection(c) }) }
+        if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onOpenLiked))
+        playlists.filter { p -> recentCollections.none { it.playlistId == p.id } }.take(6 - size).forEach { p ->
             add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri) { onOpenPlaylist(p.id) })
-        }
-        recent.take(6 - size).forEachIndexed { i, t ->
-            add(Tile("r${t.mediaId}", t.title, null, t.artworkUri) { onPlayRecent(recent, i) })
         }
     }.take(6)
 
@@ -124,8 +125,8 @@ fun HomeScreen(
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(listOf("All", "Music", "Podcasts", "Audiobooks")) { label ->
                     androidx.compose.material3.FilterChip(selected = filter == label, onClick = { onFilter(label) },
-                        label = { Text(label) }, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
+                        label = { Text(label) }, shape = androidx.compose.foundation.shape.CircleShape, border = null, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                            containerColor = GroovioColors.SurfaceHigh, selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
                 }
             }
         }
@@ -151,14 +152,14 @@ fun HomeScreen(
             }
         }
 
-        if (recent.isNotEmpty()) {
+        if (recentCollections.isNotEmpty()) {
             item { Shelf("Jump back in") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    itemsIndexed(recent.take(20), key = { _, t -> t.mediaId }) { i, t ->
-                        SquareCard(t.title, t.artist, t.artworkUri, currentMediaId == t.mediaId, onLongClick = { onMore(t) }) {
-                            onPlayRecent(recent, i)
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(recentCollections, key = { it.id }) { collection ->
+                        SquareCard(collection.title, collection.kind, collection.artworkUri, false,
+                            artworkUris = if (collection.artworkUri == null) collection.tracks.mapNotNull { it.artworkUri }.distinct().take(4) else emptyList()) {
+                            onReplayCollection(collection)
                         }
                     }
                 }
@@ -183,7 +184,7 @@ fun HomeScreen(
                     items(mixes, key = { it.id }) { mix ->
                         Column {
                             SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false,
-                                artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onPlayRelated(mix.tracks, 0) }
+                                artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onPlayMix?.invoke(mix) ?: onPlayRelated(mix.tracks, 0) }
                             androidx.compose.material3.TextButton(onClick = { onSaveMix(mix) }) { Text("Save playlist") }
                         }
                     }
