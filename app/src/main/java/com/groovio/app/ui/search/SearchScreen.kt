@@ -75,6 +75,7 @@ fun SearchScreen(
     downloadsEnabled: Boolean = false,
     recentCollections: List<com.groovio.app.data.RecentCollection> = emptyList(),
     onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
+    onLongPressCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -133,6 +134,7 @@ fun SearchScreen(
                     com.groovio.app.ui.library.StoredTrackRow(
                         track = TrackEntity(collection.id, collection.title, collection.kind, collection.artworkUri), playing = false,
                         onClick = { keyboard?.hide(); onOpenCollection(collection) },
+                        onLongClick = { keyboard?.hide(); onLongPressCollection(collection) },
                     )
                 }
             }
