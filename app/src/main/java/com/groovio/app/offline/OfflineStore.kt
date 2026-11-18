@@ -24,15 +24,21 @@ class OfflineStore(private val context: Context) {
     fun publishToMusicFolder(track: TrackEntity, codec: String? = null) {
         localFile(track.mediaId)?.let { publicMusic.publish(track, it, codec) }
     }
-    /** Safely migrates existing downloads to the shared folder without deleting private originals. */
-    fun syncToMusicFolder(): Int {
-        if (!PublicMusicFolder.available()) return 0
+    data class ExportSummary(val copied: Int, val failed: Int)
+
+    /**
+     * Optional export for Files apps, never needed to listen inside Groovio.
+     * Process each item separately so one unavailable MediaStore target does
+     * not prevent the remaining songs from being exported.
+     */
+    fun syncToMusicFolder(): ExportSummary {
+        if (!PublicMusicFolder.available()) return ExportSummary(0, tracks.value.size)
         var copied = 0
+        var failed = 0
         tracks.value.forEach { track ->
-            publishToMusicFolder(track)
-            copied++
+            if (runCatching { publishToMusicFolder(track) }.isSuccess) copied++ else failed++
         }
-        return copied
+        return ExportSummary(copied, failed)
     }
     private fun key(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
     fun file(id: String) = File(directory, key(id) + ".audio")
