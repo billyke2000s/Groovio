@@ -42,6 +42,12 @@ class GroovioSettings(context: Context) {
     fun setNormalise(on: Boolean) { prefs.edit().putBoolean("normalise", on).apply(); _normalise.value = on }
     fun setSkipFailed(on: Boolean) { prefs.edit().putBoolean("skip_failed", on).apply(); _skipFailed.value = on }
     fun setOfflineOnly(on: Boolean) { prefs.edit().putBoolean("offline_only", on).apply(); _offlineOnly.value = on }
+    private val _experimentalUpdates = MutableStateFlow(prefs.getBoolean("experimental_updates", false))
+    val experimentalUpdates = _experimentalUpdates.asStateFlow()
+    fun setExperimentalUpdates(on: Boolean) {
+        prefs.edit().putBoolean("experimental_updates", on).apply()
+        _experimentalUpdates.value = on
+    }
     fun export(): org.json.JSONObject = org.json.JSONObject().apply {
         put("dataSaver", dataSaver.value); put("autoplay", autoplay.value)
         put("downloads", downloadsEnabled.value); put("wifi", wifiOnly.value)

@@ -16,6 +16,7 @@ data class AvailableUpdate(val version: String, val apkUrl: String, val pageUrl:
  */
 class UpdateChecker(
     private val currentBuild: Int,
+    private val experimental: Boolean = false,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -30,24 +31,27 @@ class UpdateChecker(
             if (!r.isSuccessful) return null
             r.body?.string() ?: return null
         }
-        return newest(JsonParser.array().from(body), currentBuild)
+        return newest(JsonParser.array().from(body), currentBuild, experimental)
     }
 
     companion object {
-        const val RELEASES_URL = "https://api.github.com/repos/billyke2000s/Groovio/releases?per_page=10"
+        const val RELEASES_URL = "https://api.github.com/repos/billyke2000s/Groovio/releases?per_page=100"
 
         /** "v0.1.42" -> 42; anything else -> null. */
         fun buildNumber(tag: String): Int? =
             Regex("""^v?\d+\.\d+\.(\d+)$""").find(tag.trim())?.groupValues?.get(1)?.toIntOrNull()
 
         /** The newest non-draft release above [currentBuild] that has an APK attached. */
-        fun newest(releases: JsonArray, currentBuild: Int): AvailableUpdate? =
+        fun newest(releases: JsonArray, currentBuild: Int, experimental: Boolean = false): AvailableUpdate? =
             (0 until releases.size).asSequence()
                 .map { releases.getObject(it) }
                 .filter { !it.getBoolean("draft") }
                 .mapNotNull { r ->
                     val tag = r.getString("tag_name") ?: return@mapNotNull null
-                    val build = buildNumber(tag) ?: return@mapNotNull null
+                    val experimentalTag = tag.startsWith("experimental-v")
+                    if (!experimental && (r.getBoolean("prerelease") || experimentalTag)) return@mapNotNull null
+                    val build = buildNumber(if (experimentalTag) tag.removePrefix("experimental-") else tag)
+                        ?: return@mapNotNull null
                     val assets = r.getArray("assets")
                     val apk = (0 until assets.size).map { assets.getObject(it) }
                         .firstOrNull { it.getString("name")?.endsWith(".apk") == true }

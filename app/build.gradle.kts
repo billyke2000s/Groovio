@@ -21,7 +21,7 @@ android {
         // CI passes the commit count on main, so every release has a higher version.
         val build = (System.getenv("GROOVIO_BUILD_NUMBER") ?: "1").toInt()
         versionCode = build
-        versionName = "0.1.$build"
+        versionName = "0.1.$build" + if (System.getenv("GROOVIO_EXPERIMENTAL") == "1") "-experimental" else ""
     }
 
     // One fixed key for every build, so in-app updates install over the previous version.

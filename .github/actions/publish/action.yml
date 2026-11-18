@@ -14,14 +14,25 @@ runs:
     - name: Test and build
       shell: bash
       run: |
-        # Commit count on main: always increases, so each release is a higher version.
-        echo "GROOVIO_BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
-        export GROOVIO_BUILD_NUMBER=$(git rev-list --count HEAD)
+        # Shared release concurrency serialises stable and experimental publishing.
+        # Include both channels when allocating a code; never collide with an installed build.
+        git fetch origin --tags
+        count=$(git rev-list --count HEAD)
+        highest=$(git tag --list | sed -nE 's/^(experimental-)?v[0-9]+\.[0-9]+\.([0-9]+)$/\2/p' | sort -n | tail -1)
+        build=$(( ${highest:-0} + 1 ))
+        if [ "$count" -gt "$build" ]; then build="$count"; fi
+        echo "GROOVIO_BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+        export GROOVIO_BUILD_NUMBER="$build"
         ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
     - name: Publish release
       shell: bash
       run: |
         tag="v0.1.${GROOVIO_BUILD_NUMBER}"
+        flags=(--latest)
+        if [ "${GROOVIO_EXPERIMENTAL:-0}" = "1" ]; then
+          tag="experimental-$tag"
+          flags=(--prerelease --latest=false)
+        fi
         if gh release view "$tag" >/dev/null 2>&1; then
           echo "Release $tag already exists; nothing to publish."
           exit 0
@@ -29,4 +40,4 @@ runs:
         apk="groovio-${tag}.apk"
         cp app/build/outputs/apk/debug/*.apk "$apk"
         gh release create "$tag" "$apk" --target "$(git rev-parse HEAD)" \
-          --title "Groovio ${tag#v}" --notes-file .github/release-notes.md --latest
+          --title "Groovio ${tag#v}" --notes-file .github/release-notes.md "${flags[@]}"

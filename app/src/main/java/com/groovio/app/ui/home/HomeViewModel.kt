@@ -135,7 +135,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (manual) _updateMessage.value = "Checking…"
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { UpdateChecker(BuildConfig.VERSION_CODE).check() }
+                runCatching { UpdateChecker(BuildConfig.VERSION_CODE, experimental = groovio.settings.experimentalUpdates.value).check() }
             }
             result.onSuccess { found ->
                 if (found != null) {

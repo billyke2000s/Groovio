@@ -35,4 +35,15 @@ class UpdateCheckerTest {
         val list = parse(release("v0.1.50", draft = true), release("v0.1.49", apk = false), release("v0.1.48"))
         assertEquals("v0.1.48", UpdateChecker.newest(list, currentBuild = 1)?.version)
     }
+    @Test fun `stable excludes prereleases even with numeric tags`() {
+        val preview = release("v0.1.99").replace("\"draft\":false", "\"draft\":false,\"prerelease\":true")
+        assertNull(UpdateChecker.newest(parse(preview), 71))
+    }
+
+    @Test fun `experimental requires consent and chooses higher build`() {
+        val list = parse(release("experimental-v0.1.80"), release("v0.1.72"), release("experimental-baseline-v0.1.71"))
+        assertEquals("v0.1.72", UpdateChecker.newest(list, 71)?.version)
+        assertEquals("experimental-v0.1.80", UpdateChecker.newest(list, 71, experimental = true)?.version)
+        assertNull(UpdateChecker.newest(list, 80, experimental = true))
+    }
 }

@@ -1,10 +1,10 @@
-## Playback compatibility hotfix
+Experimental stage 1: navigation and update channels. The v0.1.71 playback service is unchanged.
 
-- Restores the player construction and stream-retry behaviour from the last working version.
-- Removes the network-status gate that could reject a playable online song before trying it.
-- Temporarily rolls back volume processing, next-track pre-resolution and automatic failed-track skipping while phone playback is verified. The corresponding settings are hidden during this rollback.
-- Keeps saved downloads, offline listening, library backups and your existing library.
-- Removes the permanent Downloads counter and extra top spacing from the normal app screen. Downloads remains in Settings; the encouraging message appears only when offline.
-- Shows buffering and playback errors in the mini-player so failures aren't presented as an ordinary paused song.
+- Animated full-screen search, with artwork and replay from Last Groove before typing.
+- Create playlists from bottom navigation using the existing library.
+- Explicit experimental update preference; stable selection excludes prereleases.
+- Signed with the existing app identity. No library schema changes.
 
-Android build checks do not substitute for phone playback verification.
+Tests, lint and APK build run before publication. Phone playback, Bluetooth, background listening and screen behaviour still need device verification; a build does not establish these work. This is an experimental prerelease, not a replacement for the confirmed baseline.
+
+Recovery: experimental-baseline-v0.1.71 remains available. Android normally blocks downgrading version codes; export your library before testing. Installing an older APK may require uninstalling first, which removes app data and downloads.

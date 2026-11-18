@@ -1,0 +1,28 @@
+name: Experimental release
+on:
+  push:
+    branches: [experimental]
+    paths:
+      - 'app/**'
+      - '.github/actions/publish/**'
+      - '.github/workflows/experimental.yml'
+      - '.github/release-notes.md'
+  workflow_dispatch:
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/experimental'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GROOVIO_EXPERIMENTAL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish

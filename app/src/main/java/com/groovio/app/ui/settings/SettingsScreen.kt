@@ -59,6 +59,7 @@ fun SettingsScreen(
     val app = context.applicationContext as GroovioApplication
     val settings = app.settings
     val dataSaver by settings.dataSaver.collectAsStateWithLifecycle()
+    val experimentalUpdates by settings.experimentalUpdates.collectAsStateWithLifecycle()
     val autoplay by settings.autoplay.collectAsStateWithLifecycle()
     val downloadsEnabled by settings.downloadsEnabled.collectAsStateWithLifecycle()
     val wifiOnly by settings.wifiOnly.collectAsStateWithLifecycle()
@@ -196,6 +197,10 @@ fun SettingsScreen(
             }
             note?.let { item { Text(it, color = GroovioColors.Accent, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 20.dp)) } }
 
+            item { Section("Updates") }
+            item { Toggle("Experimental updates", "Opt in to test builds. These may contain unfinished changes.", experimentalUpdates) {
+                settings.setExperimentalUpdates(it); onCheckUpdates()
+            } }
             item { Section("About") }
             item { Action("Groovio $versionName", updateMessage ?: "Check for updates", onCheckUpdates) }
             item {
