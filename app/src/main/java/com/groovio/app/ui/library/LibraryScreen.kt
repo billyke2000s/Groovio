@@ -159,7 +159,7 @@ private fun LibraryRoot(
         icon = Icons.Default.Favorite, onOpen = { onViewChange(LibraryView.LIKED) },
         onLongPress = { onLongPressCollection(com.groovio.app.data.RecentCollection(
             "liked", "Liked songs", "Playlist", liked.firstOrNull()?.artworkUri, liked)) })
-    val filesEntry = LibraryEntry("local-files", "Local Files", "Music/Groovio · songs on your phone",
+    val filesEntry = LibraryEntry("local-files", "Your music", "Downloaded songs and music on this phone",
         icon = Icons.Default.FolderOpen, onOpen = onOpenFiles)
     val collectionEntries = recentCollections.map { collection ->
         LibraryEntry("recent:${collection.id}", collection.title, collection.kind,
