@@ -149,13 +149,17 @@ fun GroovioApp(
         modifier = Modifier.fillMaxSize().background(GroovioColors.Background),
     ) {
         composable(Routes.TABS) {
-            Column(Modifier.fillMaxSize()) {
-                androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
-                    modifier = Modifier.statusBarsPadding().fillMaxWidth()) {
-                    Text(if (offline) com.groovio.app.ui.library.offlineMessage(downloaded.size) else "Downloads · ${downloaded.size} songs saved")
+            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+                if (offline) {
+                    androidx.compose.material3.TextButton(
+                        onClick = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(com.groovio.app.ui.library.offlineMessage(downloaded.size))
+                    }
                 }
                 notice?.let { Text(it, modifier = Modifier.padding(horizontal = 20.dp)) }
-                Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding()) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
                     when (val detail = details.lastOrNull()) {
                         is Detail.Artist -> ArtistScreen(
                             name = detail.name,
