@@ -131,7 +131,7 @@ fun GroovioApp(
     }
     fun selectTab(t: Tab) {
         if (t == Tab.CREATE) { creatingPlaylist = true; return }
-        if (t == Tab.SEARCH) { nav.navigate(Routes.SEARCH) { launchSingleTop = true }; return }
+        if (t == Tab.SEARCH) { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true }; return }
         details.clear()
         // Tapping Library again returns to its top level.
         if (t == Tab.LIBRARY && tab == Tab.LIBRARY) libraryView = LibraryView.ROOT
@@ -250,7 +250,7 @@ fun GroovioApp(
                             onPlayRecent = vm::playStored,
                             onOpenLiked = { libraryView = LibraryView.LIKED; tab = Tab.LIBRARY },
                             onOpenPlaylist = { libraryView = LibraryView.playlist(it); tab = Tab.LIBRARY },
-                            onSearch = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
+                            onSearch = { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
                             onOpenFiles = { picker.launch(arrayOf("audio/*")) },
                             onMore = openMenu,
                             chart = if (offline) null else chart,

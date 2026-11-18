@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -164,7 +166,7 @@ private fun SpokenFeatureCard(track: OnlineTrack, podcast: Boolean, saved: Boole
     canDownload: Boolean, onPlay: () -> Unit, onSave: () -> Unit, onRemove: () -> Unit, onDownload: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val tint = rememberArtworkTint(null, track.thumbnailUrl)
-    val background = lerp(tint, GroovioColors.Accent, 0.12f)
+    val background = spokenCardColor(tint)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(background).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
             SpokenCover(track.thumbnailUrl, if (podcast) Modifier.size(88.dp) else Modifier.width(78.dp).height(110.dp))
@@ -192,7 +194,8 @@ private fun SpokenFeatureCard(track: OnlineTrack, podcast: Boolean, saved: Boole
                 Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp))
                 Text(if (positionMs > 0) "Resume" else if (podcast) "Play episode" else "Listen", style = MaterialTheme.typography.labelLarge)
             }
-            IconButton(onClick = if (saved) onRemove else onSave) {
+            IconButton(onClick = if (saved) onRemove else onSave,
+                modifier = Modifier.background(GroovioColors.Background, CircleShape)) {
                 Icon(if (saved) Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,
                     if (saved) "Remove ${track.title} from library" else "Save ${track.title}", tint = GroovioColors.Accent, modifier = Modifier.size(30.dp))
             }
@@ -217,4 +220,15 @@ private fun SpokenCollectionCard(album: OnlineAlbum, podcast: Boolean, onClick: 
             Text(if (podcast) "Show · Following" else "Book collection", color = GroovioColors.TextMuted, style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+/** Keep small white metadata readable even when a cover's dominant colour is very bright. */
+internal fun spokenCardColor(tint: Color): Color {
+    var result = lerp(tint, GroovioColors.Accent, 0.12f)
+    repeat(16) {
+        val contrast = (GroovioColors.Text.luminance() + 0.05f) / (result.luminance() + 0.05f)
+        if (contrast >= 4.5f) return result
+        result = lerp(result, GroovioColors.Background, 0.15f)
+    }
+    return GroovioColors.Surface
 }
