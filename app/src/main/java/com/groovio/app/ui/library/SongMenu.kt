@@ -58,6 +58,12 @@ fun SongMenu(
     onOpenArtist: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.groovio.app.GroovioApplication
+    val downloadsEnabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
+    val online by app.connectivity.online.collectAsStateWithLifecycle()
+    val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
+    val downloaded by app.downloads.tracks.collectAsStateWithLifecycle()
+    val saved = downloaded.any { it.mediaId == track.mediaId }
     val liked by remember(track.mediaId) { vm.isFavourite(track.mediaId) }.collectAsStateWithLifecycle(false)
     var pickingPlaylist by rememberSaveable { mutableStateOf(false) }
 
@@ -92,6 +98,10 @@ fun SongMenu(
                 }
             }
             HorizontalDivider(color = GroovioColors.SurfaceHigh, modifier = Modifier.padding(vertical = 8.dp))
+            MenuItem(Icons.Default.MusicNote, if (saved) "Play · saved offline" else "Play") { vm.playStored(listOf(track), 0); onDismiss() }
+            if (downloadsEnabled && online && !offlineOnly && track.mediaId.startsWith("yt:") && !saved) {
+                MenuItem(Icons.Default.MusicNote, "Download & play") { vm.downloadTracks(listOf(track)); onDismiss() }
+            }
             MenuItem(
                 if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 if (liked) "Remove from Liked songs" else "Add to Liked songs",

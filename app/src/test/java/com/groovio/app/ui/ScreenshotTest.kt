@@ -60,6 +60,23 @@ class ScreenshotTest {
         compose.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
+    @Test fun settings() = shot("settings") {
+        com.groovio.app.ui.settings.SettingsScreen("0.1.test", null, {}, {})
+    }
+
+    @Test fun downloadsOffline() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<com.groovio.app.GroovioApplication>()
+        try { androidx.work.WorkManager.getInstance(context) }
+        catch (_: IllegalStateException) { androidx.work.WorkManager.initialize(context, androidx.work.Configuration.Builder().build()) }
+        context.settings.setOfflineOnly(true)
+        val track = TrackEntity("yt:sample", "Your favourite song", "Favourite artist", null)
+        val temporary = java.io.File(context.downloads.file(track.mediaId).path + ".part").apply { writeText("sample") }
+        context.downloads.complete(track, temporary) { false }
+        shot("downloads_offline") {
+            com.groovio.app.ui.library.DownloadsScreen(onBack = {}, onPlay = { _, _ -> })
+        }
+    }
+
     @Test fun home() = shot("home") {
         HomeScreen(
             recent = recent, likedCount = 12,

@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -143,6 +144,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             audioLabel = AudioFormatLabel.selectedAudioFormat(player.currentTracks)
                 ?.let(AudioFormatLabel::from),
             queue = queue,
+            upcomingIndices = QueueOrder.upcoming(player.currentTimeline, player.currentMediaItemIndex, player.shuffleModeEnabled),
             currentIndex = if (count > 0) player.currentMediaItemIndex else -1,
             currentMediaId = player.currentMediaItem?.mediaId,
             error = player.playerError?.let(::describeError),
@@ -156,6 +158,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException || it is InnertubeAudio.BlockedException } ->
                 "YouTube is blocking this network right now. Try again later or switch network."
             causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
+            causes.any { it.message?.contains("not downloaded") == true || it.message?.contains("not saved for offline") == true } ->
+                "This song isn't saved for offline listening. Open Downloads to play your saved music."
             else -> "Couldn't play this track."
         }
     }
@@ -274,8 +278,10 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
      * Plays a Spotify album/playlist/song: each song is matched to YouTube in order; the
      * first match starts playing straight away and later matches are appended to the queue.
      */
-    fun playSpotify(collection: SpotifyCollection) {
+    fun playSpotify(collection: SpotifyCollection) = playSpotify(collection, false)
+    fun playSpotify(collection: SpotifyCollection, download: Boolean) {
         importJob?.cancel()
+        if (download) (getApplication<Application>() as GroovioApplication).downloads.enqueueSpotify(collection.tracks)
         importJob = viewModelScope.launch {
             var started = false
             var found = 0
@@ -283,6 +289,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             val total = collection.tracks.size
             _import.value = SpotifyImportProgress(collection.name, 0, 0, total, done = false)
             for (track in collection.tracks) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                val app = getApplication<GroovioApplication>()
+                if (app.settings.offlineOnly.value || !app.connectivity.online.value) {
+                    missed += total - found - missed
+                    break
+                }
                 val match = withContext(Dispatchers.IO) { runCatching { spotify.match(track) }.getOrNull() }
                 val c = controller ?: break
                 if (match == null) {
@@ -304,6 +316,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
             _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = true)
         }
+    }
+
+    fun downloadTracks(tracks: List<TrackEntity>, play: Boolean = true) {
+        val app = getApplication<Application>() as GroovioApplication
+        app.downloads.enqueue(tracks)
+        if (play) playStored(tracks, 0)
+    }
+    fun downloadOnline(tracks: List<OnlineTrack>, startIndex: Int = 0) {
+        val app = getApplication<Application>() as GroovioApplication
+        app.downloads.enqueue(tracks.map(TrackMapping::fromOnline))
+        playTracks(tracks, startIndex)
     }
 
     private fun stopImport() {

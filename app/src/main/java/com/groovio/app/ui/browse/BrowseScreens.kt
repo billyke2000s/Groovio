@@ -227,7 +227,7 @@ fun AlbumScreen(
                             modifier = Modifier.padding(top = 4.dp).clickable(onClickLabel = "Open artist") { onOpenArtist(artist) },
                         )
                     }
-                    Text("Album", color = GroovioColors.TextMuted, fontSize = 13.sp)
+                    Text(album.kind, color = GroovioColors.TextMuted, fontSize = 13.sp)
                 }
                 val tracks = (load as? Load.Ready)?.value.orEmpty()
                 IconButton(onClick = { onShuffle(tracks) }, enabled = tracks.isNotEmpty()) {
@@ -235,6 +235,8 @@ fun AlbumScreen(
                 }
                 if (tracks.isNotEmpty()) PlayButton { onPlay(tracks, 0) }
             }
+            val albumTracks = (load as? Load.Ready)?.value.orEmpty()
+            com.groovio.app.ui.library.DownloadCollectionButton(albumTracks.map(TrackMapping::fromOnline)) { onPlay(albumTracks, 0) }
             Spacer(Modifier.height(8.dp))
         }
         when (load) {

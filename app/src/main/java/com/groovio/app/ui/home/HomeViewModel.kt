@@ -51,19 +51,37 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private var lastCheck = 0L
     private var downloadJob: kotlinx.coroutines.Job? = null
 
+    private val _chart = MutableStateFlow<com.groovio.app.online.SpotifyCollection?>(null)
+    val chart = _chart.asStateFlow()
+    private val _mix = MutableStateFlow<RelatedShelf?>(null)
+    val mix = _mix.asStateFlow()
     private var loadingDiscover = false
     private val _discover = MutableStateFlow<List<DiscoverShelf>>(emptyList())
     val discover: StateFlow<List<DiscoverShelf>> = _discover.asStateFlow()
 
     init {
         loadDiscover()
+        viewModelScope.launch {
+            groovio.library.favourites.collectLatest { favourites ->
+                if (favourites.isEmpty()) { _mix.value = null; return@collectLatest }
+                if (!groovio.connectivity.online.value || groovio.settings.offlineOnly.value) return@collectLatest
+                val seeds = favourites.filter { it.mediaId.startsWith("yt:") }.take(3)
+                val results = withContext(Dispatchers.IO) {
+                    seeds.flatMap { seed ->
+                        runCatching { groovio.youtube.related(seed.mediaId.removePrefix("yt:")) }.getOrDefault(emptyList())
+                    }.distinctBy { it.id }.filter { song -> favourites.none { it.mediaId == "yt:${song.id}" } }.take(20)
+                }
+                _mix.value = results.takeIf { it.isNotEmpty() }?.let { RelatedShelf("your favourites", it) }
+            }
+        }
         checkForUpdates()
         viewModelScope.launch {
             groovio.library.recent(10)
                 .map { list -> list.firstOrNull { it.mediaId.startsWith("yt:") } }
                 .distinctUntilChanged { a, b -> a?.mediaId == b?.mediaId }
                 .collectLatest { seed ->
-                    if (seed == null) return@collectLatest
+                    if (seed == null) { _related.value = null; return@collectLatest }
+                    if (groovio.settings.offlineOnly.value || !groovio.connectivity.online.value) return@collectLatest
                     val tracks = try {
                         withContext(Dispatchers.IO) { groovio.youtube.related(seed.mediaId.removePrefix("yt:")) }
                     } catch (e: CancellationException) {
@@ -79,15 +97,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Loads all shelves in parallel; a shelf that fails or comes back empty is left out. */
     fun loadDiscover() {
-        if (_discover.value.isNotEmpty() || loadingDiscover) return
+        if (_discover.value.isNotEmpty() || loadingDiscover || groovio.settings.offlineOnly.value || !groovio.connectivity.online.value) return
         loadingDiscover = true
         viewModelScope.launch {
+            _chart.value = withContext(Dispatchers.IO) {
+                runCatching { com.groovio.app.online.ChartDiscovery().ukChart() }.getOrNull()
+            }
             val year = java.time.Year.now().value
             val yt = groovio.youtube
             val specs: List<suspend () -> DiscoverShelf> = listOf(
-                { DiscoverShelf("Today's top hits", tracks = yt.searchSongs("top hits $year").songLength().take(15)) },
-                { DiscoverShelf("New releases", albums = yt.searchAlbums("new album $year").take(12)) },
-                { DiscoverShelf("Charts: Top 50", tracks = yt.searchSongs("top 50 global $year").songLength().take(20)) },
+                { DiscoverShelf("Popular song search", tracks = yt.searchSongs("top hits $year").songLength().take(15)) },
+                { DiscoverShelf("Discover albums", albums = yt.searchAlbums("new album $year").take(12)) },
+                { DiscoverShelf("Trending song search", tracks = yt.searchSongs("top 50 global $year").songLength().take(20)) },
                 { DiscoverShelf("Popular albums", albums = yt.searchAlbums("top albums $year").take(12)) },
                 { DiscoverShelf("Pop", albums = yt.searchAlbums("pop hits").take(12)) },
                 { DiscoverShelf("Hip-hop", albums = yt.searchAlbums("hip hop").take(12)) },

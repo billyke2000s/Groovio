@@ -22,12 +22,13 @@ data class OnlineTrack(
     val thumbnailUrl: String?,
 )
 
-/** An album on YouTube Music (a playlist under the hood). */
+/** An album or playlist on YouTube Music. */
 data class OnlineAlbum(
     val url: String,
     val title: String,
     val artist: String?,
     val thumbnailUrl: String?,
+    val kind: String = "Album",
 )
 
 data class ArtistPage(
@@ -57,13 +58,17 @@ class YouTubeMusic(
     private val clock: () -> Long = System::currentTimeMillis,
     /** Settings → Audio quality → Data saver. */
     private val dataSaver: () -> Boolean = { false },
+    private val onlineAllowed: () -> Boolean = { true },
 ) {
+
+    private fun requireOnline() { if (!onlineAllowed()) throw java.io.IOException("Offline mode is enabled") }
 
     private val service = ServiceList.YouTube
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
 
     /** Songs only (YouTube Music "songs" filter), so videos, covers and uploads rank lower. */
     fun searchSongs(query: String): List<OnlineTrack> {
+        requireOnline()
         val extractor = service.getSearchExtractor(
             query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_SONGS), "",
         )
@@ -74,6 +79,7 @@ class YouTubeMusic(
     }
 
     fun searchAlbums(query: String): List<OnlineAlbum> {
+        requireOnline()
         val extractor = service.getSearchExtractor(
             query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_ALBUMS), "",
         )
@@ -90,17 +96,40 @@ class YouTubeMusic(
             }
     }
 
-    /** An album's songs, in order. Songs take the album's square artwork. */
+    fun searchPlaylists(query: String): List<OnlineAlbum> {
+        requireOnline()
+        val extractor = service.getSearchExtractor(query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_PLAYLISTS), "")
+        extractor.fetchPage()
+        return extractor.initialPage.items.filterIsInstance<PlaylistInfoItem>().map {
+            OnlineAlbum(it.url, it.name, it.uploaderName, bestImage(it.thumbnails), "Playlist")
+        }
+    }
+
+    /** Full collection in order. Do not silently download just its first page. */
     fun albumTracks(album: OnlineAlbum): List<OnlineTrack> {
+        requireOnline()
         val info = PlaylistInfo.getInfo(service, album.url)
-        return info.relatedItems
-            .filterIsInstance<StreamInfoItem>()
-            .mapNotNull(::toTrack)
-            .map { t -> t.copy(artist = t.artist ?: album.artist, thumbnailUrl = album.thumbnailUrl ?: t.thumbnailUrl) }
+        val items = info.relatedItems.filterIsInstance<StreamInfoItem>().toMutableList()
+        var next = info.nextPage
+        val seenPages = mutableSetOf<String>()
+        var pages = 0
+        while (org.schabi.newpipe.extractor.Page.isValid(next)) {
+            if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Cancelled")
+            require(++pages <= 50 && items.size < 5000) { "This playlist is too large; try a smaller playlist." }
+            val key = next.url.orEmpty() + next.id.orEmpty() + next.ids.orEmpty().joinToString()
+            require(seenPages.add(key)) { "Playlist returned a repeated page. Try again later." }
+            val page = PlaylistInfo.getMoreItems(service, album.url, next)
+            items.addAll(page.items)
+            next = page.nextPage
+        }
+        return items.mapNotNull(::toTrack).map { t ->
+            t.copy(artist = t.artist ?: album.artist, thumbnailUrl = if (album.kind == "Album") album.thumbnailUrl ?: t.thumbnailUrl else t.thumbnailUrl)
+        }
     }
 
     /** Top songs and albums by an artist (YouTube Music search, filtered to that artist). */
     fun artist(name: String): ArtistPage {
+        requireOnline()
         // The artist entry gives the photo; a failure there must not hide songs/albums.
         val channel = runCatching {
             val extractor = service.getSearchExtractor(
@@ -123,6 +152,7 @@ class YouTubeMusic(
 
     /** Songs YouTube suggests after [videoId] (its "up next" list), song-length only. */
     fun related(videoId: String): List<OnlineTrack> = relatedCache.getOrPut(videoId) {
+        requireOnline()
         val info = StreamInfo.getInfo(service, service.streamLHFactory.fromId(videoId).url)
         info.relatedItems
             .filterIsInstance<StreamInfoItem>()
@@ -137,6 +167,7 @@ class YouTubeMusic(
     private val innertube = InnertubeAudio(clock = clock)
 
     fun resolve(videoId: String): ResolvedAudio {
+        requireOnline()
         val saver = dataSaver()
         val key = if (saver) "$videoId|saver" else videoId
         cache[key]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }

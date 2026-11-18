@@ -19,8 +19,12 @@ import java.util.Locale
 /** App-wide singletons (manual DI). The playback service runs in this same process. */
 class GroovioApplication : Application() {
 
+    val connectivity by lazy { com.groovio.app.data.Connectivity(this) }
+    val downloads by lazy { com.groovio.app.offline.OfflineStore(this) }
+    val playbackNotice = MutableStateFlow<String?>(null)
+
     val settings: GroovioSettings by lazy { GroovioSettings(this) }
-    val youtube: YouTubeMusic by lazy { YouTubeMusic(dataSaver = { settings.dataSaver.value }) }
+    val youtube: YouTubeMusic by lazy { YouTubeMusic(dataSaver = { settings.dataSaver.value }, onlineAllowed = { !settings.offlineOnly.value }) }
 
     /** The player's audio session, for the system equalizer (set by the playback service). */
     @Volatile var audioSessionId: Int = 0

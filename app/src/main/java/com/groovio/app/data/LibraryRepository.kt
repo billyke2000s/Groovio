@@ -32,6 +32,12 @@ class LibraryRepository(
         dao.recordPlay(track, clock())
     }
 
+    suspend fun exportBackup(): String = dao.exportBackup()
+    suspend fun restoreBackup(text: String) {
+        val data = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { LibraryBackup.parse(text) }
+        dao.restoreBackup(data.tracks, data.likes, data.playlists, data.entries)
+    }
+
     suspend fun clearHistory() = dao.clearHistory()
 
     /** Keeps history bounded; called occasionally. */
