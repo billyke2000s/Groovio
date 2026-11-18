@@ -1,6 +1,9 @@
 package com.groovio.app.ui
 
 import androidx.compose.ui.test.*
+import androidx.test.core.app.ApplicationProvider
+import androidx.work.testing.WorkManagerTestInitHelper
+import org.junit.Before
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.groovio.app.GroovioApplication
 import com.groovio.app.data.RecentCollection
@@ -19,6 +22,12 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34], application = GroovioApplication::class)
 class CollectionDetailTest {
     @get:Rule val compose = createComposeRule()
+
+    @Before fun initialiseDownloads() {
+        WorkManagerTestInitHelper.initializeTestWorkManager(
+            ApplicationProvider.getApplicationContext<GroovioApplication>()
+        )
+    }
     private val songs = listOf(
         TrackEntity("yt:one", "Que Sera, Sera", "Doris Day", null),
         TrackEntity("yt:two", "That's Amore", "Dean Martin", null),
