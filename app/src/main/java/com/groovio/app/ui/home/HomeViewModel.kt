@@ -59,7 +59,48 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _discover = MutableStateFlow<List<DiscoverShelf>>(emptyList())
     val discover: StateFlow<List<DiscoverShelf>> = _discover.asStateFlow()
 
+    private val mixStore = PersonalMixStore(app)
+    private val _personalMixes = MutableStateFlow(mixStore.read(java.time.LocalDate.now().toString()))
+    val personalMixes = _personalMixes.asStateFlow()
+    private val _mixNotice = MutableStateFlow<String?>(null)
+    val mixNotice = _mixNotice.asStateFlow()
+
+    fun saveMix(mix: PersonalMix) {
+        viewModelScope.launch {
+            runCatching {
+                val id = groovio.library.createPlaylist(mix.title)
+                mix.tracks.forEach { groovio.library.addToPlaylist(id, com.groovio.app.data.TrackMapping.fromOnline(it)) }
+            }.onSuccess { _mixNotice.value = "${mix.title} saved to Your Library" }
+             .onFailure { _mixNotice.value = "Couldn't save this mix. Please try again." }
+        }
+    }
+
     init {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(groovio.library.favourites, groovio.library.recent(50), groovio.settings.offlineOnly) {
+                likes, history, offline -> Triple(likes, history, offline)
+            }.collectLatest { (likes, history, offline) ->
+                if (likes.isEmpty() && history.isEmpty()) {
+                    mixStore.clear(); _personalMixes.value = emptyList(); return@collectLatest
+                }
+                if (offline) return@collectLatest
+                val day = java.time.LocalDate.now().toString()
+                val cached = mixStore.read(day)
+                if (cached.isNotEmpty()) { _personalMixes.value = cached; return@collectLatest }
+                val mixes = withContext(Dispatchers.IO) {
+                    MixSelection.seeds(likes, history).mapIndexedNotNull { index, seed ->
+                        val tracks = try { groovio.youtube.related(seed.mediaId.removePrefix("yt:")) }
+                        catch (e: CancellationException) { throw e }
+                        catch (_: Exception) { emptyList() }
+                        tracks.takeIf { it.isNotEmpty() }?.let {
+                            PersonalMix("$day-${seed.mediaId}", "Daily Mix ${index + 1}",
+                                "Based on ${seed.artist ?: seed.title}", it)
+                        }
+                    }.let(MixSelection::diversify)
+                }
+                if (mixes.isNotEmpty()) { mixStore.write(day, mixes); _personalMixes.value = mixes }
+            }
+        }
         loadDiscover()
         viewModelScope.launch {
             groovio.library.favourites.collectLatest { favourites ->

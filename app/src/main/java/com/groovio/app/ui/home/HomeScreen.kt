@@ -32,6 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +80,9 @@ fun HomeScreen(
     onPlayChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
     onDownloadChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
     downloadsEnabled: Boolean = false,
+    personalMixes: List<PersonalMix> = emptyList(),
+    onSaveMix: (PersonalMix) -> Unit = {},
+    mixNotice: String? = null,
     mix: RelatedShelf? = null,
     related: RelatedShelf? = null,
     discover: List<DiscoverShelf> = emptyList(),
@@ -84,6 +91,8 @@ fun HomeScreen(
     update: UpdateState? = null,
     onUpdate: () -> Unit = {},
     onPlayRelated: (List<OnlineTrack>, Int) -> Unit = { _, _ -> },
+    filter: String = "All",
+    onFilter: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty()
@@ -111,6 +120,21 @@ fun HomeScreen(
             }
         }
 
+        item {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf("All", "Music", "Podcasts", "Audiobooks")) { label ->
+                    androidx.compose.material3.FilterChip(selected = filter == label, onClick = { onFilter(label) },
+                        label = { Text(label) }, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
+                }
+            }
+        }
+        if (filter == "All") item {
+            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.TextButton(onClick = { onFilter("Podcasts") }) { Text("Discover podcasts") }
+                androidx.compose.material3.TextButton(onClick = { onFilter("Audiobooks") }) { Text("Discover audiobooks") }
+            }
+        }
         if (update != null) item { UpdateBanner(update, onUpdate) }
 
         // New users get the welcome card, then the discovery shelves below.
@@ -151,7 +175,21 @@ fun HomeScreen(
                 chart.tracks.take(5).forEachIndexed { i, t -> Text("${i + 1}. ${t.title} · ${t.artist.orEmpty()}", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
             }
         }
-        if (mix != null) {
+        if (personalMixes.isNotEmpty()) {
+            item { Shelf("Made for you") }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(personalMixes, key = { it.id }) { mix ->
+                        Column {
+                            SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false) { onPlayRelated(mix.tracks, 0) }
+                            androidx.compose.material3.TextButton(onClick = { onSaveMix(mix) }) { Text("Save playlist") }
+                        }
+                    }
+                }
+            }
+        }
+        mixNotice?.let { item { Text(it, color = GroovioColors.Accent, modifier = Modifier.padding(16.dp)) } }
+        if (mix != null && personalMixes.isEmpty()) {
             item { Shelf("Made from your favourites") }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

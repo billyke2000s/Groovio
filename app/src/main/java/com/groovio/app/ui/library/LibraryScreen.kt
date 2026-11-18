@@ -79,13 +79,16 @@ fun LibraryScreen(
     versionName: String = "",
     updateMessage: String? = null,
     onCheckUpdates: () -> Unit = {},
+    onOpenDownloads: () -> Unit = {},
+    onOpenSpoken: (String) -> Unit = {},
+    onOpenArtist: (String) -> Unit = {},
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist)
     }
 }
 
@@ -103,6 +106,9 @@ private fun LibraryRoot(
     versionName: String,
     updateMessage: String?,
     onCheckUpdates: () -> Unit,
+    onOpenDownloads: () -> Unit,
+    onOpenSpoken: (String) -> Unit,
+    onOpenArtist: (String) -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -164,6 +170,16 @@ private fun LibraryRoot(
                         if (grid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                         if (grid) "Show as list" else "Show as grid",
                     )
+                }
+            }
+        }
+        if (filter == null) item(span = full) {
+            Column {
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Downloads", "Saved audio and transfer progress", onOpenDownloads)
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Podcasts", "Saved episodes and YouTube browsing") { onOpenSpoken("Podcasts") }
+                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Audiobooks", "Saved books and YouTube browsing") { onOpenSpoken("Audiobooks") }
+                (liked + recent).mapNotNull { it.artist }.distinct().take(12).forEach { artist ->
+                    CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, artist, "Artist") { onOpenArtist(artist) }
                 }
             }
         }

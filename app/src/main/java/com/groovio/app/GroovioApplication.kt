@@ -23,6 +23,8 @@ class GroovioApplication : Application() {
     val downloads by lazy { com.groovio.app.offline.OfflineStore(this) }
     val playbackNotice = MutableStateFlow<String?>(null)
 
+    val spoken by lazy { com.groovio.app.spoken.SpokenStore(this) }
+
     val settings: GroovioSettings by lazy { GroovioSettings(this) }
     val youtube: YouTubeMusic by lazy { YouTubeMusic(dataSaver = { settings.dataSaver.value }, onlineAllowed = { !settings.offlineOnly.value }) }
 

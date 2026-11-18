@@ -95,6 +95,7 @@ fun GroovioApp(
         vm.playFiles(uris)
     }
 
+    var homeFilter by rememberSaveable { mutableStateOf("All") }
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var creatingPlaylist by rememberSaveable { mutableStateOf(false) }
     var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
@@ -103,6 +104,8 @@ fun GroovioApp(
     val related by homeVm.related.collectAsStateWithLifecycle()
     val discover by homeVm.discover.collectAsStateWithLifecycle()
     val chart by homeVm.chart.collectAsStateWithLifecycle()
+    val personalMixes by homeVm.personalMixes.collectAsStateWithLifecycle()
+    val mixNotice by homeVm.mixNotice.collectAsStateWithLifecycle()
     val mix by homeVm.mix.collectAsStateWithLifecycle()
     val update by homeVm.update.collectAsStateWithLifecycle()
     val updateMessage by homeVm.updateMessage.collectAsStateWithLifecycle()
@@ -185,7 +188,23 @@ fun GroovioApp(
                             onMore = openMenu,
                         )
                         null -> when (tab) {
-                        Tab.HOME -> HomeScreen(
+                        Tab.HOME -> if (homeFilter == "Podcasts" || homeFilter == "Audiobooks") {
+                            Column {
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                                ) {
+                                    items(4) { index ->
+                                        val label = listOf("All", "Music", "Podcasts", "Audiobooks")[index]
+                                        androidx.compose.material3.FilterChip(selected = homeFilter == label, onClick = { homeFilter = label },
+                                            label = { Text(label) }, colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
+                                    }
+                                }
+                                com.groovio.app.spoken.SpokenScreen(homeFilter, vm::playTracks, vm::downloadOnline)
+                            }
+                        } else HomeScreen(
+                            filter = homeFilter, onFilter = { homeFilter = it },
                             recent = recent,
                             likedCount = liked.size,
                             playlists = playlists,
@@ -200,6 +219,7 @@ fun GroovioApp(
                             onPlayChart = vm::playSpotify,
                             onDownloadChart = { vm.playSpotify(it, true) },
                             downloadsEnabled = downloadsEnabled,
+                            personalMixes = personalMixes, onSaveMix = homeVm::saveMix, mixNotice = mixNotice,
                             mix = if (offline) null else mix,
                             related = if (offline) null else related,
                             onPlayRelated = vm::playTracks,
@@ -228,6 +248,9 @@ fun GroovioApp(
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playStored,
                             onMore = openMenu,
+                            onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) },
+                            onOpenSpoken = { homeFilter = it; tab = Tab.HOME },
+                            onOpenArtist = { openDetail(Detail.Artist(it)) },
                             versionName = BuildConfig.VERSION_NAME,
                             updateMessage = updateMessage,
                             onCheckUpdates = { homeVm.checkForUpdates(manual = true) },
@@ -343,6 +366,31 @@ fun GroovioApp(
         onConfirm = { libraryVm.createPlaylist(it); tab = Tab.LIBRARY; libraryView = LibraryView.ROOT },
         onDismiss = { creatingPlaylist = false },
     )
+
+    var dismissedUpdate by rememberSaveable { mutableStateOf<String?>(null) }
+    update?.takeIf { it.update.version != dismissedUpdate }?.let { available ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { dismissedUpdate = available.update.version },
+            title = { Text("Groovio update") },
+            text = { Column {
+                Text(available.update.version)
+                when (available) {
+                    is com.groovio.app.ui.home.UpdateState.Downloading -> {
+                        Text("Downloading…")
+                        androidx.compose.material3.LinearProgressIndicator(progress = { available.progress.coerceIn(0f, 1f) })
+                    }
+                    is com.groovio.app.ui.home.UpdateState.Failed -> Text(available.message)
+                    is com.groovio.app.ui.home.UpdateState.NeedsPermission -> Text("Allow installation, then return to Groovio.")
+                    else -> Text("Install the latest build while keeping your library.")
+                }
+            } },
+            confirmButton = { if (available !is com.groovio.app.ui.home.UpdateState.Downloading)
+                androidx.compose.material3.TextButton(onClick = homeVm::startUpdate) { Text(
+                    if (available is com.groovio.app.ui.home.UpdateState.Failed) "Retry" else "Install update") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { dismissedUpdate = available.update.version }) { Text("Later") } },
+        )
+    }
 
     menuTrack?.let { track ->
         SongMenu(
