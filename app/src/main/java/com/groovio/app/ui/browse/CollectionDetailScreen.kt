@@ -39,6 +39,7 @@ fun CollectionDetailScreen(
     onBack: () -> Unit,
     onPlay: (List<TrackEntity>, Int) -> Unit,
     onMore: (TrackEntity) -> Unit,
+    onOptions: (() -> Unit)? = null,
 ) {
     BackHandler(onBack = onBack)
     LazyColumn(Modifier.fillMaxSize()) {
@@ -51,6 +52,12 @@ fun CollectionDetailScreen(
                 Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 6.dp)) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    onOptions?.let { showOptions ->
+                        IconButton(onClick = showOptions) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Playlist options")
+                        }
                     }
                 }
                 CollectionArtwork(
