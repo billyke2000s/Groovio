@@ -139,6 +139,13 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             isBuffering = player.playbackState == Player.STATE_BUFFERING,
             durationMs = player.duration.takeIf { it != C.TIME_UNSET && it > 0 },
             hasNext = player.hasNextMediaItem(),
+            hasPrevious = player.hasPreviousMediaItem(),
+            nextArtworkUri = player.nextMediaItemIndex
+                .takeIf { it in 0 until count }
+                ?.let { player.getMediaItemAt(it).mediaMetadata.artworkUri?.toString() },
+            previousArtworkUri = player.previousMediaItemIndex
+                .takeIf { it in 0 until count }
+                ?.let { player.getMediaItemAt(it).mediaMetadata.artworkUri?.toString() },
             shuffle = player.shuffleModeEnabled,
             repeatMode = player.repeatMode,
             audioLabel = AudioFormatLabel.selectedAudioFormat(player.currentTracks)
@@ -199,6 +206,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun seekTo(ms: Long) { controller?.seekTo(ms) }
     fun next() { controller?.seekToNextMediaItem() }
     fun previous() { controller?.seekToPrevious() }
+    /** A rightward artwork swipe changes to the previous track, even if this song has played >3 seconds. */
+    fun swipePrevious() { controller?.seekToPreviousMediaItem() }
 
     fun toggleShuffle() {
         controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }

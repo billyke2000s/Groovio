@@ -87,6 +87,7 @@ fun PlayerScreen(
     onSeek: (Long) -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
+    onSwipePrevious: () -> Unit = onPrevious,
     onToggleShuffle: () -> Unit,
     onCycleRepeat: () -> Unit,
     isFavourite: Boolean,
@@ -161,11 +162,12 @@ fun PlayerScreen(
         }
 
         Spacer(Modifier.weight(0.6f))
-        ArtworkImage(
+        SwipeArtwork(
+            state = state,
             bitmap = artwork,
-            url = state.artworkUri,
-            iconSize = 120.dp,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(10.dp)),
+            onNext = onNext,
+            onPrevious = onSwipePrevious,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
         Spacer(Modifier.weight(0.6f))
 

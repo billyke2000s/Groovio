@@ -383,6 +383,7 @@ fun GroovioApp(
                 onSeek = vm::seekTo,
                 onNext = vm::next,
                 onPrevious = vm::previous,
+                onSwipePrevious = vm::swipePrevious,
                 onToggleShuffle = vm::toggleShuffle,
                 onCycleRepeat = vm::cycleRepeat,
                 isFavourite = isFavourite,
