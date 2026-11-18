@@ -42,6 +42,16 @@ class GroovioSettings(context: Context) {
     fun setNormalise(on: Boolean) { prefs.edit().putBoolean("normalise", on).apply(); _normalise.value = on }
     fun setSkipFailed(on: Boolean) { prefs.edit().putBoolean("skip_failed", on).apply(); _skipFailed.value = on }
     fun setOfflineOnly(on: Boolean) { prefs.edit().putBoolean("offline_only", on).apply(); _offlineOnly.value = on }
+    private val _equalizerEnabled = MutableStateFlow(prefs.getBoolean("equalizer_enabled", false))
+    val equalizerEnabled = _equalizerEnabled.asStateFlow()
+    private val _equalizerBands = MutableStateFlow((0..4).map { prefs.getInt("eq_$it", 0).coerceIn(-6, 6) })
+    val equalizerBands = _equalizerBands.asStateFlow()
+    fun setEqualizerEnabled(on: Boolean) { prefs.edit().putBoolean("equalizer_enabled", on).apply(); _equalizerEnabled.value = on }
+    fun setEqualizerBands(bands: List<Int>) {
+        val values = (0..4).map { bands.getOrElse(it) { 0 }.coerceIn(-6, 6) }
+        prefs.edit().apply { values.forEachIndexed { i, value -> putInt("eq_$i", value) } }.apply()
+        _equalizerBands.value = values
+    }
     private val _experimentalUpdates = MutableStateFlow(prefs.getBoolean("experimental_updates", false))
     val experimentalUpdates = _experimentalUpdates.asStateFlow()
     fun setExperimentalUpdates(on: Boolean) {
@@ -53,12 +63,15 @@ class GroovioSettings(context: Context) {
         put("downloads", downloadsEnabled.value); put("wifi", wifiOnly.value)
         put("normalise", normalise.value); put("skipFailed", skipFailed.value)
         put("offlineOnly", offlineOnly.value)
+        put("equalizerEnabled", equalizerEnabled.value); put("equalizerBands", org.json.JSONArray(equalizerBands.value))
     }
     fun restore(json: org.json.JSONObject) {
         setDataSaver(json.optBoolean("dataSaver", false)); setAutoplay(json.optBoolean("autoplay", true))
         setDownloadsEnabled(json.optBoolean("downloads", true)); setWifiOnly(json.optBoolean("wifi", true))
         setNormalise(json.optBoolean("normalise", false)); setSkipFailed(json.optBoolean("skipFailed", false))
         setOfflineOnly(json.optBoolean("offlineOnly", false))
+        setEqualizerEnabled(json.optBoolean("equalizerEnabled", false))
+        json.optJSONArray("equalizerBands")?.let { a -> setEqualizerBands((0..4).map { a.optInt(it, 0) }) }
     }
 
     private companion object {

@@ -32,6 +32,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,6 +60,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     val app = context.applicationContext as GroovioApplication
     val settings = app.settings
+    val equalizerEnabled by settings.equalizerEnabled.collectAsStateWithLifecycle()
+    val equalizerBands by settings.equalizerBands.collectAsStateWithLifecycle()
+    val effectStatus by app.effectStatus.collectAsStateWithLifecycle()
     val dataSaver by settings.dataSaver.collectAsStateWithLifecycle()
     val experimentalUpdates by settings.experimentalUpdates.collectAsStateWithLifecycle()
     val autoplay by settings.autoplay.collectAsStateWithLifecycle()
@@ -116,11 +121,6 @@ fun SettingsScreen(
         }
     }
 
-    val eqIntent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-        .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, app.audioSessionId)
-        .putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-        .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-    val hasEqualizer = remember { eqIntent.resolveActivity(context.packageManager) != null }
 
     Column(Modifier.fillMaxSize().systemBarsPadding()) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -139,19 +139,23 @@ fun SettingsScreen(
                     settings.setDataSaver(true); app.youtube.clearCache()
                 }
             }
-            item {
-                Row(
-                    Modifier.fillMaxWidth().clickable(enabled = hasEqualizer) { context.startActivity(eqIntent) }
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                ) {
-                    Column {
-                        Text("Equalizer", color = if (hasEqualizer) GroovioColors.Text else GroovioColors.TextMuted)
-                        Text(
-                            if (hasEqualizer) "Opens your phone's equalizer" else "No equalizer on this phone",
-                            color = GroovioColors.TextMuted, fontSize = 13.sp,
-                        )
+            item { Section("Built-in equaliser") }
+            item { Toggle("Equaliser", "Relative boosts use headroom to prevent clipping", equalizerEnabled, settings::setEqualizerEnabled) }
+            if (equalizerEnabled) {
+                item { Row(Modifier.padding(horizontal = 16.dp)) {
+                    TextButton(onClick = { settings.setEqualizerBands(listOf(0, 0, 0, 0, 0)) }) { Text("Reset") }
+                    TextButton(onClick = { settings.setEqualizerBands(listOf(5, 3, 0, -1, 0)) }) { Text("Bass") }
+                    TextButton(onClick = { settings.setEqualizerBands(listOf(-2, 0, 3, 2, -1)) }) { Text("Voice") }
+                } }
+                com.groovio.app.playback.EqualizerPolicy.frequencies.forEachIndexed { index, frequency -> item {
+                    Column(Modifier.padding(horizontal = 20.dp)) {
+                        Text("$frequency Hz · ${equalizerBands[index]} dB")
+                        androidx.compose.material3.Slider(value = equalizerBands[index].toFloat(), valueRange = -6f..6f, steps = 11,
+                            onValueChange = { value -> settings.setEqualizerBands(equalizerBands.toMutableList().apply { set(index, value.toInt()) }) },
+                            modifier = Modifier.semantics { contentDescription = "Equaliser $frequency Hertz" })
                     }
-                }
+                } }
+                effectStatus?.let { item { Text(it, modifier = Modifier.padding(20.dp)) } }
             }
 
             item { Section("Playback") }

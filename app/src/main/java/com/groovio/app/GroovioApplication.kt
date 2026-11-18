@@ -22,6 +22,7 @@ class GroovioApplication : Application() {
     val connectivity by lazy { com.groovio.app.data.Connectivity(this) }
     val collectionImports by lazy { com.groovio.app.offline.CollectionImports(this) }
     val downloads by lazy { com.groovio.app.offline.OfflineStore(this) }
+    val effectStatus = MutableStateFlow<String?>(null)
     val playbackNotice = MutableStateFlow<String?>(null)
 
     val spoken by lazy { com.groovio.app.spoken.SpokenStore(this) }

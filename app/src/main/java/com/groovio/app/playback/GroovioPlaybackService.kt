@@ -49,6 +49,7 @@ class GroovioPlaybackService : MediaSessionService() {
     /** The item whose play has been recorded in history, reset on every transition. */
     private var recordedMediaId: String? = null
     private var saveJob: Job? = null
+    private val equalizer = SessionEffects()
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -100,7 +101,16 @@ class GroovioPlaybackService : MediaSessionService() {
                 .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
         )
 
+        scope.launch {
+            kotlinx.coroutines.flow.combine(app.settings.equalizerEnabled, app.settings.equalizerBands) { enabled, bands -> enabled to bands }
+                .collect { (enabled, bands) -> app.effectStatus.value = equalizer.apply(player.audioSessionId, enabled, bands) }
+        }
         player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                app.audioSessionId = audioSessionId
+                app.effectStatus.value = equalizer.apply(audioSessionId, app.settings.equalizerEnabled.value, app.settings.equalizerBands.value)
+            }
+
             // Autoplay: when the queue runs out, continue with similar songs.
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED && app.settings.autoplay.value && !app.settings.offlineOnly.value) autoplay(player)
@@ -279,6 +289,7 @@ class GroovioPlaybackService : MediaSessionService() {
             player.release()
             release()
         }
+        equalizer.close()
         session = null
         scope.cancel()
         super.onDestroy()
