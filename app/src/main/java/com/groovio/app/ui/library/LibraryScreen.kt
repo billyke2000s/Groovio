@@ -92,14 +92,14 @@ fun LibraryScreen(
     onOpenSpoken: (String) -> Unit = {},
     onOpenArtist: (String) -> Unit = {},
     onSearch: () -> Unit = {},
-    onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)? = null,
+    onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenFiles, onOpenSpoken, onOpenArtist, onSearch, onReplayCollection)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenFiles, onOpenSpoken, onOpenArtist, onSearch, onOpenCollection)
     }
 }
 
@@ -134,7 +134,7 @@ private fun LibraryRoot(
     onOpenSpoken: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
     onSearch: () -> Unit,
-    onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)?,
+    onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -156,14 +156,7 @@ private fun LibraryRoot(
     val collectionEntries = recentCollections.map { collection ->
         LibraryEntry("recent:${collection.id}", collection.title, collection.kind,
             collection.artworkUri ?: collection.tracks.firstOrNull()?.artworkUri,
-            onOpen = {
-                if (onReplayCollection != null) onReplayCollection(collection)
-                else {
-                    onPlay(collection.tracks, 0)
-                    val replay = collection.copy(playedAt = System.currentTimeMillis())
-                    app.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.collectionHistory.record(replay) }
-                }
-            })
+            onOpen = { onOpenCollection(collection) })
     }
     val playlistEntries = playlists.map { playlist ->
         LibraryEntry("playlist:${playlist.id}", playlist.name, "Playlist · ${playlist.trackCount} songs",
