@@ -74,6 +74,9 @@ fun SearchScreen(
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
+    val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.groovio.app.GroovioApplication
+    val online by app.connectivity.online.collectAsStateWithLifecycle()
+    val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
     var selected by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
 
@@ -120,13 +123,22 @@ fun SearchScreen(
                 Button(onClick = vm::retry) { Text("Try again") }
             }
             state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify, if (downloadsEnabled) onDownloadSpotify else null)
+            state.query.isEmpty() && input.isBlank() && (!online || offlineOnly) -> Centered {
+                Text("Search your saved songs here, or open Downloads above. Your rhythm can keep going offline.")
+            }
             state.query.isEmpty() && input.isBlank() -> BrowseAll { vm.onQueryChange(it) }
             // Typing, waiting for the first results: show nothing rather than "no songs".
             state.query.isEmpty() -> Box(Modifier.fillMaxSize())
-            state.results.isEmpty() -> Centered {
-                Text("No songs found for “${state.query}”.", color = GroovioColors.TextMuted)
+            state.results.isEmpty() && state.albums.isEmpty() && state.playlists.isEmpty() -> Centered {
+                Text(if (!online || offlineOnly) "No saved songs found for “${state.query}”." else "No songs found for “${state.query}”.", color = GroovioColors.TextMuted)
             }
             else -> LazyColumn(Modifier.fillMaxSize()) {
+                if (state.playlists.isNotEmpty()) item {
+                    Text("Playlists", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp))
+                    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(state.playlists, key = { it.url }) { playlist -> AlbumCard(playlist) { onOpenAlbum(playlist) } }
+                    }
+                }
                 if (state.albums.isNotEmpty()) {
                     item {
                         Text("Albums", fontSize = 18.sp, fontWeight = FontWeight.Bold,

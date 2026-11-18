@@ -31,6 +31,7 @@ data class SearchState(
     val loading: Boolean = false,
     val results: List<OnlineTrack> = emptyList(),
     val albums: List<OnlineAlbum> = emptyList(),
+    val playlists: List<OnlineAlbum> = emptyList(),
     /** Set when the query is a Spotify link that was read successfully. */
     val spotify: SpotifyCollection? = null,
     val error: String? = null,
@@ -56,7 +57,8 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
             .debounce(DEBOUNCE_MS)
             .distinctUntilChanged()
         viewModelScope.launch {
-            combine(debounced, retryTick) { q, _ -> q }.collectLatest { q ->
+            val app = getApplication<GroovioApplication>()
+            combine(debounced, retryTick, app.settings.offlineOnly, app.connectivity.online, app.downloads.tracks) { q, _, _, _, _ -> q }.collectLatest { q ->
                 if (q.length < MIN_QUERY) {
                     _state.value = SearchState()
                     return@collectLatest
@@ -80,7 +82,10 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                         val albums = withContext(Dispatchers.IO) {
                             runCatching { youtube.searchAlbums(q).take(8) }.getOrDefault(emptyList())
                         }
-                        SearchState(query = q, results = results, albums = albums)
+                        val playlists = withContext(Dispatchers.IO) {
+                            runCatching { youtube.searchPlaylists(q).take(8) }.getOrDefault(emptyList())
+                        }
+                        SearchState(query = q, results = results, albums = albums, playlists = playlists)
                     }
                 } catch (e: CancellationException) {
                     throw e

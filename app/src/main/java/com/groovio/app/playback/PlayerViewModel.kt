@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /**
@@ -285,6 +286,12 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             val total = collection.tracks.size
             _import.value = SpotifyImportProgress(collection.name, 0, 0, total, done = false)
             for (track in collection.tracks) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                val app = getApplication<GroovioApplication>()
+                if (app.settings.offlineOnly.value || !app.connectivity.online.value) {
+                    missed += total - found - missed
+                    break
+                }
                 val match = withContext(Dispatchers.IO) { runCatching { spotify.match(track) }.getOrNull() }
                 val c = controller ?: break
                 if (match == null) {

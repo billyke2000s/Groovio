@@ -46,8 +46,8 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
         if (tracks.isEmpty()) Text("Save a song or playlist using Download & play. It'll be here whenever you need it.", modifier = Modifier.padding(20.dp))
         LazyColumn(Modifier.weight(1f)) {
             items(active, key = { it.id }) { job ->
-                val id = job.tags.firstOrNull { it.startsWith("yt:") }
-                Text("${id ?: "Song"} · ${if (job.state == WorkInfo.State.RUNNING) "${job.progress.getInt("percent", 0)}%" else "Waiting"}", modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                val title = job.tags.firstOrNull { it.startsWith("title:") }?.removePrefix("title:")
+                Text("${title ?: "Song"} · ${if (job.state == WorkInfo.State.RUNNING) "${job.progress.getInt("percent", 0)}%" else "Waiting"}", modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
             items(tracks, key = { it.mediaId }) { track ->
                 Row(Modifier.fillMaxWidth().clickable { onPlay(tracks, tracks.indexOf(track)) }.padding(horizontal = 20.dp, vertical = 8.dp)) {

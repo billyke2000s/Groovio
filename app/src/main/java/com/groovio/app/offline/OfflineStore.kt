@@ -18,7 +18,7 @@ class OfflineStore(private val context: Context) {
     private val work get() = WorkManager.getInstance(context)
     private val mutable = MutableStateFlow(readTracks())
     val tracks = mutable.asStateFlow()
-    val jobs = work.getWorkInfosByTagFlow("audio-download")
+    val jobs get() = work.getWorkInfosByTagFlow("audio-download")
     private fun key(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
     fun file(id: String) = File(directory, key(id) + ".audio")
     private fun metadata(id: String) = File(directory, key(id) + ".json")
@@ -33,14 +33,14 @@ class OfflineStore(private val context: Context) {
     @Synchronized fun refresh() { mutable.value = readTracks() }
     fun enqueue(tracks: List<TrackEntity>) {
         val app = context.applicationContext as GroovioApplication
-        if (!app.settings.downloadsEnabled.value) return
+        if (!app.settings.downloadsEnabled.value || app.settings.offlineOnly.value) return
         tracks.distinctBy { it.mediaId }.filter { it.mediaId.startsWith("yt:") && localFile(it.mediaId) == null }.forEach { track ->
             val request = OneTimeWorkRequestBuilder<AudioDownloadWorker>()
                 .setInputData(workDataOf("id" to track.mediaId, "title" to track.title, "artist" to track.artist, "art" to track.artworkUri))
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(
                     if (app.settings.wifiOnly.value) NetworkType.UNMETERED else NetworkType.CONNECTED
                 ).setRequiresStorageNotLow(true).build())
-                .addTag("audio-download").addTag(track.mediaId).build()
+                .addTag("audio-download").addTag(track.mediaId).addTag("title:" + track.title.take(200)).build()
             work.enqueueUniqueWork("download:" + track.mediaId, ExistingWorkPolicy.KEEP, request)
         }
     }
@@ -52,7 +52,13 @@ class OfflineStore(private val context: Context) {
             metadata(track.mediaId).delete(); file(track.mediaId).delete(); refresh()
         }
     }
-    suspend fun clear() { tracks.value.toList().forEach { remove(it) } }
+    suspend fun clear() = withContext(Dispatchers.IO) {
+        work.cancelAllWorkByTag("audio-download").result.get()
+        synchronized(this@OfflineStore) {
+            directory.listFiles().orEmpty().forEach { it.delete() }
+            refresh()
+        }
+    }
     @Synchronized fun complete(track: TrackEntity, temporary: File, cancelled: () -> Boolean) {
         if (cancelled()) throw java.io.IOException("Download cancelled")
         check(temporary.renameTo(file(track.mediaId))) { "Couldn't save audio" }

@@ -138,12 +138,12 @@ class GroovioPlaybackService : MediaSessionService() {
             // An expired or rejected stream URL: resolve it again once and resume.
             override fun onPlayerError(error: PlaybackException) {
                 val uri = player.currentMediaItem?.localConfiguration?.uri?.toString()
-                val id = OnlineMedia.youtubeId(uri) ?: return
+                val id = OnlineMedia.youtubeId(uri)
                 val httpError = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
                 val transient = httpError || error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-                if (transient && !app.settings.offlineOnly.value && retried.add(id)) {
+                if (id != null && transient && !app.settings.offlineOnly.value && app.connectivity.online.value && retried.add(id)) {
                     val resume = player.playWhenReady
                     youtube.invalidate(id)
                     player.prepare()
@@ -185,7 +185,7 @@ class GroovioPlaybackService : MediaSessionService() {
     private var warmingJob: Job? = null
     /** Resolve the next URL ahead of time; ExoPlayer handles gapless compatible media. */
     private fun warmNext(player: Player) {
-        if (!player.playWhenReady || app.settings.offlineOnly.value || !player.hasNextMediaItem()) return
+        if (!player.playWhenReady || app.settings.offlineOnly.value || !app.connectivity.online.value || !player.hasNextMediaItem()) return
         val item = player.getMediaItemAt(player.nextMediaItemIndex)
         val id = OnlineMedia.youtubeId(item.localConfiguration?.uri?.toString()) ?: return
         if (warmingId == id || app.downloads.localFile("yt:$id") != null) return

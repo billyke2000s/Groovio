@@ -227,7 +227,7 @@ fun AlbumScreen(
                             modifier = Modifier.padding(top = 4.dp).clickable(onClickLabel = "Open artist") { onOpenArtist(artist) },
                         )
                     }
-                    Text("Album", color = GroovioColors.TextMuted, fontSize = 13.sp)
+                    Text(album.kind, color = GroovioColors.TextMuted, fontSize = 13.sp)
                 }
                 val tracks = (load as? Load.Ready)?.value.orEmpty()
                 IconButton(onClick = { onShuffle(tracks) }, enabled = tracks.isNotEmpty()) {
