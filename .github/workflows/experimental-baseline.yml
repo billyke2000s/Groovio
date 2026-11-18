@@ -1,0 +1,45 @@
+name: Publish confirmed experimental baseline
+on:
+  push:
+    branches: [experimental]
+    paths:
+      - '.github/workflows/experimental-baseline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: experimental-baseline
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the confirmed working artifact
+        shell: bash
+        run: |
+          mkdir -p baseline
+          gh release download v0.1.71 --pattern 'groovio-v0.1.71.apk' --dir baseline
+          printf '%s  %s\n' '7410f75ec1c1137e7721e01468c3bd99d8634aba0772d6ed8acf83fdbf78a654' 'baseline/groovio-v0.1.71.apk' | sha256sum --check
+          mv baseline/groovio-v0.1.71.apk baseline/groovio-experimental-baseline-v0.1.71.apk
+      - name: Publish unchanged experimental baseline
+        shell: bash
+        run: |
+          tag='experimental-baseline-v0.1.71'
+          if gh release view "$tag" >/dev/null 2>&1; then
+            mkdir -p existing
+            gh release download "$tag" --pattern 'groovio-experimental-baseline-v0.1.71.apk' --dir existing
+            printf '%s  %s\n' '7410f75ec1c1137e7721e01468c3bd99d8634aba0772d6ed8acf83fdbf78a654' 'existing/groovio-experimental-baseline-v0.1.71.apk' | sha256sum --check
+            exit 0
+          fi
+          gh release create "$tag" baseline/groovio-experimental-baseline-v0.1.71.apk \
+            --target '6d2c55a372b2f7d6598032c78e3dee574b5e2085' \
+            --title 'Experimental baseline — confirmed working v0.1.71' \
+            --prerelease --latest=false --notes-file docs/EXPERIMENTAL_BASELINE.md
