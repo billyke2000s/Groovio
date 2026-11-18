@@ -37,6 +37,12 @@ data class DiscoverShelf(
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val groovio = app as GroovioApplication
+    private val cardVisibility = HomeCardVisibility(app)
+    val hiddenHomeCards = cardVisibility.hidden
+
+    /** Hiding a Home card never deletes a saved playlist or the playback history. */
+    fun hideHomeCard(section: String, id: String) = cardVisibility.hide(section, id)
+
 
     private val _related = MutableStateFlow<RelatedShelf?>(null)
     val related: StateFlow<RelatedShelf?> = _related.asStateFlow()
