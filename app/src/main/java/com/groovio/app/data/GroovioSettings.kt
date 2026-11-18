@@ -42,6 +42,9 @@ class GroovioSettings(context: Context) {
     fun setNormalise(on: Boolean) { prefs.edit().putBoolean("normalise", on).apply(); _normalise.value = on }
     fun setSkipFailed(on: Boolean) { prefs.edit().putBoolean("skip_failed", on).apply(); _skipFailed.value = on }
     fun setOfflineOnly(on: Boolean) { prefs.edit().putBoolean("offline_only", on).apply(); _offlineOnly.value = on }
+    private val _prepareNext = MutableStateFlow(prefs.getBoolean("prepare_next", false))
+    val prepareNext = _prepareNext.asStateFlow()
+    fun setPrepareNext(on: Boolean) { prefs.edit().putBoolean("prepare_next", on).apply(); _prepareNext.value = on }
     private val _spokenSpeed = MutableStateFlow(prefs.getFloat("spoken_speed", 1f).coerceIn(0.5f, 2f))
     val spokenSpeed = _spokenSpeed.asStateFlow()
     fun setSpokenSpeed(speed: Float) { val s = speed.coerceIn(0.5f, 2f); prefs.edit().putFloat("spoken_speed", s).apply(); _spokenSpeed.value = s }
@@ -64,6 +67,7 @@ class GroovioSettings(context: Context) {
     fun export(): org.json.JSONObject = org.json.JSONObject().apply {
         put("dataSaver", dataSaver.value); put("autoplay", autoplay.value)
         put("downloads", downloadsEnabled.value); put("wifi", wifiOnly.value)
+        put("prepareNext", prepareNext.value); put("spokenSpeed", spokenSpeed.value)
         put("normalise", normalise.value); put("skipFailed", skipFailed.value)
         put("offlineOnly", offlineOnly.value)
         put("equalizerEnabled", equalizerEnabled.value); put("equalizerBands", org.json.JSONArray(equalizerBands.value))
@@ -71,6 +75,7 @@ class GroovioSettings(context: Context) {
     fun restore(json: org.json.JSONObject) {
         setDataSaver(json.optBoolean("dataSaver", false)); setAutoplay(json.optBoolean("autoplay", true))
         setDownloadsEnabled(json.optBoolean("downloads", true)); setWifiOnly(json.optBoolean("wifi", true))
+        setPrepareNext(json.optBoolean("prepareNext", false)); setSpokenSpeed(json.optDouble("spokenSpeed", 1.0).toFloat())
         setNormalise(json.optBoolean("normalise", false)); setSkipFailed(json.optBoolean("skipFailed", false))
         setOfflineOnly(json.optBoolean("offlineOnly", false))
         setEqualizerEnabled(json.optBoolean("equalizerEnabled", false))

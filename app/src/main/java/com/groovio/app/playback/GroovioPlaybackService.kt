@@ -49,6 +49,24 @@ class GroovioPlaybackService : MediaSessionService() {
     /** The item whose play has been recorded in history, reset on every transition. */
     private var recordedMediaId: String? = null
     private var saveJob: Job? = null
+    private var nextPreparation: Job? = null
+    private var preparedNextId: String? = null
+
+    /** Speculation only fills the next URL's cache. It never touches the active item/player. */
+    private fun prepareNext(player: Player) {
+        if (!app.settings.prepareNext.value || app.settings.offlineOnly.value || app.settings.dataSaver.value ||
+            !player.isPlaying || player.playbackState != Player.STATE_READY || !player.hasNextMediaItem()) return
+        val next = player.getMediaItemAt(player.nextMediaItemIndex)
+        val id = OnlineMedia.youtubeId(next.localConfiguration?.uri?.toString()) ?: return
+        if (id == preparedNextId || app.downloads.localFile(next.mediaId) != null) return
+        preparedNextId = id
+        nextPreparation?.cancel()
+        nextPreparation = scope.launch {
+            try { kotlinx.coroutines.withTimeout(8000) { withContext(Dispatchers.IO) { app.youtube.resolve(id) } } }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { /* Playback resolves normally when the item is actually needed. */ }
+        }
+    }
     private val equalizer = SessionEffects()
     private val normalisation = SessionEffects(::createNormalisation)
     private fun updateEffects(sessionId: Int) {
@@ -123,6 +141,7 @@ class GroovioPlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                nextPreparation?.cancel(); preparedNextId = null
                 recovery.transition()
                 player.setPlaybackSpeed(if (mediaItem?.mediaId?.let(app.spoken::contains) == true) app.settings.spokenSpeed.value else 1f)
                 recordedMediaId = null
@@ -137,6 +156,7 @@ class GroovioPlaybackService : MediaSessionService() {
             override fun onEvents(player: Player, events: Player.Events) {
                 if (player.isPlaying) recovery.started()
                 recordPlayIfStarted(player)
+                prepareNext(player)
                 if (events.containsAny(
                         Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                         Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
@@ -272,7 +292,7 @@ class GroovioPlaybackService : MediaSessionService() {
         val position = player.currentPosition
         val shuffle = player.shuffleModeEnabled
         val repeat = player.repeatMode
-        app.appScope.launch {
+        app.appScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
             runCatching { library.saveQueue(items, index, position, shuffle, repeat) }
         }
     }

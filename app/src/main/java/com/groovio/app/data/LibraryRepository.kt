@@ -2,6 +2,8 @@ package com.groovio.app.data
 
 import androidx.media3.common.MediaItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class SavedQueue(
     val items: List<MediaItem>,
@@ -16,6 +18,7 @@ class LibraryRepository(
     private val dao: LibraryDao,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
+    private val queueWrites = Mutex()
     val favourites: Flow<List<TrackEntity>> = dao.favourites()
     val playlists: Flow<List<PlaylistSummary>> = dao.playlists()
 
@@ -56,7 +59,7 @@ class LibraryRepository(
         val tracks = items.mapNotNull(TrackMapping::fromMediaItem)
         // Only save when every item can be stored; otherwise indexes would shift.
         if (tracks.size != items.size) return
-        dao.saveQueue(tracks, PlaybackStateEntity(0, index, positionMs.coerceAtLeast(0), shuffle, repeatMode))
+        queueWrites.withLock { dao.saveQueue(tracks, PlaybackStateEntity(0, index, positionMs.coerceAtLeast(0), shuffle, repeatMode)) }
     }
 
     suspend fun loadQueue(): SavedQueue? {
