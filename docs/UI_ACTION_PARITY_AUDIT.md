@@ -36,3 +36,7 @@ Scope: read-only examination of the Kotlin/Compose navigation, Home, Search, Lib
 - GitHub status/PR-run queries returned no result for the most recent write at inspection time. The local environment has neither an Android SDK nor a Gradle build environment; therefore **compilation, tests, installation and phone playback are not claimed as verified**.
 - Existing `AGENTS.md` rules and `docs/EXPERIMENTAL_BASELINE.md` apply. The proven v0.1.71 baseline (commit `6d2c55a372b2f7d6598032c78e3dee574b5e2085`) remains the recovery point. No commits were made to `main` in this pass.
 - No Share button, new music source, account requirement, schema migration, redesigned Home, or audio engine change was introduced.
+
+## Follow-up: unified music library (18 November 2026)
+
+The earlier audit's two separate music screens were replaced by a single **Your music** UI, reachable through both original routes. Verified private Groovio downloads are visible without MediaStore export, imported phone tracks remain accessible, and previously failed public export jobs do not incorrectly count as failed downloads when their originals are present. Existing optional export functionality remains via the overflow menu. Search, Settings and playback-error copy now refer to Your music. The large historical Downloads failure summary is no longer presented above all songs; unresolved issues and unmatched playlist items are available via Download activity. See `docs/EXPERIMENTAL_STATUS.md` for implementation details and verification limits.
