@@ -299,6 +299,7 @@ private fun Welcome(onSearch: () -> Unit, onOpenFiles: () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun QuickTile(tile: Tile, modifier: Modifier) {
     Row(
