@@ -73,7 +73,7 @@ class ScreenshotTest {
         val temporary = java.io.File(context.downloads.file(track.mediaId).path + ".part").apply { writeText("sample") }
         context.downloads.complete(track, temporary) { false }
         shot("downloads_offline") {
-            com.groovio.app.ui.library.DownloadsScreen(onBack = {}, onPlay = { _, _ -> })
+            com.groovio.app.ui.library.DownloadsScreen(onBack = {}, onPlay = { _, _ -> }, onMore = {})
         }
     }
 
