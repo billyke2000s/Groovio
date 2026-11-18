@@ -1,5 +1,7 @@
 # Status
 
+Current experimental work: [18 November status and verification](docs/EXPERIMENTAL_STATUS.md). Older phase notes below are historical.
+
 Only items with evidence are marked verified. Update this file with each phase.
 
 ## Phase 1 — Foundation (CI green; device checks outstanding)

@@ -1,16 +1,16 @@
-Experimental stage 1: navigation and update channels. The v0.1.71 playback service is unchanged.
+Experimental feature and audio verification build. Main and the confirmed v0.1.71 recovery tag remain unchanged.
 
-- Animated full-screen search, with artwork and replay from Last Groove before typing.
-- Create playlists from bottom navigation using the existing library.
-- Explicit experimental update preference; stable selection excludes prereleases.
-- Signed with the existing app identity. No library schema changes.
+- Animated search with Last Groove and immediate replay; Create playlist navigation.
+- Persisted daily/artist related-song mixes, library saving and real artwork collages.
+- Functional Home filters and YouTube podcast/book searches; saved playlist episode/chapter collections.
+- Durable, ordered Spotify Save & play offline imports, honest matching progress, library/download artwork and truncated-file detection.
+- Built-in equaliser, off by default; optional gentle platform loudness levelling (supported Android 9+ outputs).
+- Bounded recovery preserving pause intent; optional unavailable-track skipping; isolated optional next preparation; separate spoken progress/speed.
+- Explicit experimental update consent, popup/progress/retry and stable-publication phone confirmation guard.
+- User-facing README and separate contributor guide.
 
-Tests, lint and APK build run before publication. Phone playback, Bluetooth, background listening and screen behaviour still need device verification; a build does not establish these work. This is an experimental prerelease, not a replacement for the confirmed baseline.
+Unit tests, lint and signed APK assembly run before publication. Successful builds do not prove audible playback. This build requires phone tests with effects disabled/enabled, seeking, background/lock-screen controls, Bluetooth, network handover and offline replay. YouTube blocks runner watch requests with a bot challenge; that is inconclusive for phones.
 
-Recovery: experimental-baseline-v0.1.71 remains available. Android normally blocks downgrading version codes; export your library before testing. Installing an older APK may require uninstalling first, which removes app data and downloads.
+Known gaps: reliable personalised genre metadata, automatic new-episode refresh, timestamp chapters inside single uploads, exact shuffle-order restoration across process death, source/import provenance in exported backups and real device screenshots. See docs/EXPERIMENTAL_STATUS.md for evidence and limitations.
 
-Stage 2 additions: daily related-song mixes cached for the day and savable to the library; functional orange Home filters; YouTube podcast/book browsing and saved episodes/books; Library shortcuts; update popup; durable Spotify Save & play offline imports using idempotent original track positions. No change to ExoPlayer creation or streaming resolution in this stage.
-
-Known gaps: saved shows/subscriptions and structured chapters are not finished. Spoken progress/speed controls and built-in audio effects are next. Recommendations currently use artist-diverse related-song seeds; genre metadata and collage artwork are not finished. README device screenshots remain outstanding.
-
-Stage 3 audio changes (phone verification required): session equaliser with headroom and no effect allocation when disabled; opt-in gentle platform loudness levelling (Android 9+ support varies); one transient retry preserving pause intent; at most three unavailable-song skips; optional next-URL preparation isolated from the active player; separate spoken progress and speed. The Media3 renderer, sink and stream-resolution request path remain the baseline implementation.
+Recovery: experimental-baseline-v0.1.71 remains available. Android normally prevents APK downgrades; export the library before testing. Uninstalling removes local app data and downloaded audio. No promotion to main without phone playback confirmation and owner approval.

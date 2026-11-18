@@ -38,4 +38,15 @@ class OfflineStoreTest {
         assertNull(store.localFile(track.mediaId))
         assertTrue(store.tracks.value.isEmpty())
     }
+    @Test fun truncatedSavedFilesAreNotAdvertisedAsDownloaded() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        File(context.filesDir, "downloads").deleteRecursively()
+        val store = OfflineStore(context)
+        val track = TrackEntity("yt:truncated", "Truncated", null, null)
+        val partial = File(store.file(track.mediaId).path + ".part").apply { writeBytes(ByteArray(20)) }
+        store.complete(track, partial) { false }
+        store.file(track.mediaId).writeBytes(ByteArray(5))
+        assertNull(store.localFile(track.mediaId))
+        assertTrue(OfflineStore(context).tracks.value.isEmpty())
+    }
 }

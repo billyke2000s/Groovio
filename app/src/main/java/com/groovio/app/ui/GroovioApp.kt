@@ -190,6 +190,8 @@ fun GroovioApp(
                         null -> when (tab) {
                         Tab.HOME -> if (homeFilter == "Podcasts" || homeFilter == "Audiobooks") {
                             Column {
+                                Text(when (java.time.LocalTime.now().hour) { in 5..11 -> "Good morning"; in 12..17 -> "Good afternoon"; else -> "Good evening" },
+                                    modifier = Modifier.padding(16.dp), style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
                                 androidx.compose.foundation.lazy.LazyRow(
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),

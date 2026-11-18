@@ -3,6 +3,7 @@ package com.groovio.app.spoken
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -71,7 +72,7 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
                 collection.tracks.forEach { app.spoken.save(it, kind) }
                 onDownload(collection.tracks, 0)
             }, enabled = downloadsEnabled && !offline && collection.tracks.isNotEmpty()) { Text("Download collection & play") } }
-            items(collection.tracks, key = { "episode:${it.id}" }) { track ->
+            itemsIndexed(collection.tracks, key = { i, t -> "episode:$i:${t.id}" }) { _, track ->
                 StoredTrackRow(TrackMapping.fromOnline(track), false, {
                     app.spoken.save(track, kind); onPlay(listOf(track), 0)
                 })

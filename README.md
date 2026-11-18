@@ -42,7 +42,7 @@ Experimental audio controls include a built-in five-band equaliser, presets and 
 
 Experimental Home filters browse public YouTube uploads for podcasts and audiobooks. Search by show, episode, author or book title, save individual episodes/books, adjust playback speed and download available audio. Saved spoken content keeps its progress separately from music history.
 
-This is an early implementation: show subscriptions, automatic new-episode discovery and structured chapter navigation are not finished. It does not provide paid books or Spotify-exclusive programmes.
+This is an early implementation: shows/books can be saved as YouTube playlist collections, with their uploads listed as episodes/chapters. Automatic new-episode refresh and chapter timestamps inside a single upload are not implemented. It does not provide paid books or Spotify-exclusive programmes.
 
 ## What to expect
 

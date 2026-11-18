@@ -93,7 +93,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                         catch (e: CancellationException) { throw e }
                         catch (_: Exception) { emptyList() }
                         tracks.takeIf { it.isNotEmpty() }?.let {
-                            PersonalMix("$day-${seed.mediaId}", "Daily Mix ${index + 1}",
+                            PersonalMix("$day-${seed.mediaId}", if (index < 3) "Daily Mix ${index + 1}" else "${seed.artist ?: seed.title} Mix",
                                 "Based on ${seed.artist ?: seed.title}", it)
                         }
                     }.let(MixSelection::diversify)

@@ -11,6 +11,12 @@ runs:
       with:
         packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
     - uses: gradle/actions/setup-gradle@v4
+    - name: Require phone confirmation before stable publication
+      shell: bash
+      run: |
+        if [ "${GROOVIO_EXPERIMENTAL:-0}" != "1" ]; then
+          python3 scripts/check_playback_approval.py
+        fi
     - name: Test and build
       shell: bash
       run: |

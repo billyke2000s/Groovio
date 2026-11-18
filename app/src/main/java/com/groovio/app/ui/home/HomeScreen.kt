@@ -152,7 +152,7 @@ fun HomeScreen(
         }
 
         if (recent.isNotEmpty()) {
-            item { Shelf("Recently played") }
+            item { Shelf("Jump back in") }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -176,17 +176,20 @@ fun HomeScreen(
             }
         }
         if (personalMixes.isNotEmpty()) {
-            item { Shelf("Made for you") }
+            personalMixes.groupBy { if (it.title.startsWith("Daily Mix")) "Made for you" else "Your top mixes" }.forEach { (title, mixes) ->
+            item { Shelf(title) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(personalMixes, key = { it.id }) { mix ->
+                    items(mixes, key = { it.id }) { mix ->
                         Column {
-                            SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false) { onPlayRelated(mix.tracks, 0) }
+                            SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false,
+                                artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onPlayRelated(mix.tracks, 0) }
                             androidx.compose.material3.TextButton(onClick = { onSaveMix(mix) }) { Text("Save playlist") }
                         }
                     }
                 }
             }
+        }
         }
         mixNotice?.let { item { Text(it, color = GroovioColors.Accent, modifier = Modifier.padding(16.dp)) } }
         if (mix != null && personalMixes.isEmpty()) {
@@ -302,12 +305,22 @@ private fun SquareCard(
     playing: Boolean,
     icon: ImageVector = Icons.Default.MusicNote,
     onLongClick: (() -> Unit)? = null,
+    artworkUris: List<String> = emptyList(),
     onClick: () -> Unit,
 ) {
     Column(Modifier.width(140.dp).combinedClickable(onClickLabel = "Play $title", onLongClick = onLongClick, onClick = onClick)) {
         Box(Modifier.size(140.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.ArtworkFallback),
             contentAlignment = Alignment.Center) {
-            if (artworkUri != null) {
+            if (artworkUris.size >= 4) {
+                Column(Modifier.fillMaxSize()) {
+                    artworkUris.take(4).chunked(2).forEach { pair ->
+                        Row(Modifier.weight(1f)) { pair.forEach { art ->
+                            AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxSize())
+                        } }
+                    }
+                }
+            } else if (artworkUri != null) {
                 AsyncImage(model = artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize())
             } else {

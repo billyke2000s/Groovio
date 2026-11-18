@@ -181,7 +181,11 @@ class GroovioPlaybackService : MediaSessionService() {
                     player.prepare()
                     player.playWhenReady = wantsPlay
                 } else {
-                    val unavailable = generateSequence<Throwable>(error) { it.cause }.take(10).any {
+                    val causes = generateSequence<Throwable>(error) { it.cause }.take(10).toList()
+                    val blocked = causes.any { it is org.schabi.newpipe.extractor.exceptions.ReCaptchaException ||
+                        it is org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException ||
+                        it is com.groovio.app.online.InnertubeAudio.BlockedException }
+                    val unavailable = !blocked && causes.any {
                         it is com.groovio.app.online.NoPlayableAudioException ||
                             it is org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
                     }
