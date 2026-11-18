@@ -19,17 +19,19 @@ class CollectionHomeTest {
     @Test fun `jump back in displays the playlist rather than its last song`() {
         val song = TrackEntity("yt:one", "A song inside", "Artist", null)
         val collection = RecentCollection("playlist:1", "Road trip", "Playlist", null, listOf(song))
-        var replayed = false
+        var opened = false
+        var playStarted = false
         compose.setContent { GroovioTheme {
             HomeScreen(recent = listOf(song), likedCount = 0, playlists = emptyList(), currentMediaId = null,
-                onPlayRecent = { _, _ -> error("Collection replay must not use song history") }, onOpenLiked = {}, onOpenPlaylist = {},
+                onPlayRecent = { _, _ -> playStarted = true }, onOpenLiked = {}, onOpenPlaylist = {},
                 onSearch = {}, onOpenFiles = {}, onMore = {}, recentCollections = listOf(collection),
-                onReplayCollection = { replayed = it.id == collection.id })
+                onOpenCollection = { opened = it.id == collection.id })
         } }
         compose.onNodeWithText("Jump back in").assertIsDisplayed()
         compose.onAllNodesWithText("Road trip").onFirst().performClick()
         compose.onNodeWithText("A song inside").assertDoesNotExist()
-        assertTrue(replayed)
+        assertTrue(opened)
+        assertFalse(playStarted)
     }
 
     @Test fun `existing collection history is not treated as first run`() {
