@@ -120,8 +120,8 @@ fun GroovioApp(
     // Song menu (⋮ / long press), shown over everything.
     var menuTrack by remember { mutableStateOf<TrackEntity?>(null) }
     val openMenu: (TrackEntity) -> Unit = { menuTrack = it }
-    var menuCollection by remember { mutableStateOf<Pair<RecentCollection, String>?>(null) }
-    val openCollectionMenu: (RecentCollection, String) -> Unit = { collection, section ->
+    var menuCollection by remember { mutableStateOf<Pair<RecentCollection, String?>?>(null) }
+    val openCollectionMenu: (RecentCollection, String?) -> Unit = { collection, section ->
         menuTrack = null
         menuCollection = collection to section
     }
@@ -212,6 +212,7 @@ fun GroovioApp(
                                     }
                                 },
                                 onMore = openMenu,
+                                onOptions = { openCollectionMenu(chosen, null) },
                             )
                         }
                         is Detail.Album -> AlbumScreen(
@@ -300,6 +301,7 @@ fun GroovioApp(
                         Tab.LIBRARY -> LibraryScreen(
                             vm = libraryVm,
                             onOpenCollection = { openDetail(Detail.Collection(it)) },
+                            onLongPressCollection = { openCollectionMenu(it, null) },
                             view = libraryView,
                             onViewChange = { libraryView = it },
                             currentMediaId = state.currentMediaId,
@@ -372,6 +374,7 @@ fun GroovioApp(
                 onOpenAlbum = { openDetail(Detail.Album(it)) }, onMore = openMenu,
                 recentCollections = recentCollections,
                 onOpenCollection = { openDetail(Detail.Collection(it)) },
+                onLongPressCollection = { openCollectionMenu(it, null) },
                 onBack = { nav.popBackStack() },
                 modifier = Modifier.statusBarsPadding(),
             )
@@ -504,7 +507,9 @@ fun GroovioApp(
             onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
             onCopyTo = vm::addCollectionToPlaylist,
             onCopyToNew = vm::addCollectionToNewPlaylist,
-            onRemoveFromSection = { homeVm.hideHomeCard(section, collection.id) },
+            onRemoveFromSection = section?.let { selectedSection ->
+                { homeVm.hideHomeCard(selectedSection, collection.id) }
+            },
             onDismiss = { menuCollection = null },
         )
     }
