@@ -18,15 +18,16 @@ class ChartDiscovery {
         return parse(text)
     }
     companion object {
-    fun parse(text: String): SpotifyCollection {
-        val entries = JsonParser.`object`().from(text).getObject("feed").getArray("entry")
-        val tracks = (0 until entries.length()).map { i ->
-            val item = entries.getObject(i)
-            SpotifyTrack(title = item.getObject("im:name").getString("label"),
-                artist = item.getObject("im:artist").getString("label"), durationMs = null, uri = null)
+        fun parse(text: String): SpotifyCollection {
+            val entries = JsonParser.`object`().from(text).getObject("feed").getArray("entry")
+            val tracks = (0 until entries.size).map { i ->
+                val item = entries.getObject(i)
+                SpotifyTrack(title = item.getObject("im:name").getString("label"),
+                    artist = item.getObject("im:artist").getString("label"), durationMs = null, uri = null)
+            }
+            require(tracks.isNotEmpty()) { "Chart is empty" }
+            return SpotifyCollection("UK top songs · Apple", "playlist", tracks)
         }
-        require(tracks.isNotEmpty()) { "Chart is empty" }
-        return SpotifyCollection("UK top songs · Apple", "playlist", tracks)
-    }
     }
 }
+
