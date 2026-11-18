@@ -43,11 +43,15 @@ class PublicMusicFolder(private val context: Context) {
 
         /** The actual file signature takes precedence over a codec description. */
         internal fun formatFor(file: File, codec: String? = null): Pair<String, String> {
-            val header = file.inputStream().use { it.readNBytes(16) }
+            val header = file.inputStream().use { stream ->
+                val data = ByteArray(16)
+                val count = stream.read(data)
+                if (count < 0) byteArrayOf() else data.copyOf(count)
+            }
             val start = header.toString(Charsets.ISO_8859_1)
             return when {
-                start.startsWith("ID3") || (header.size >= 2 && header[0].toInt() and 0xff == 0xff &&
-                    header[1].toInt() and 0xe0 == 0xe0) -> "mp3" to "audio/mpeg"
+                start.startsWith("ID3") || (header.size >= 2 && (header[0].toInt() and 0xff) == 0xff &&
+                    (header[1].toInt() and 0xe0) == 0xe0) -> "mp3" to "audio/mpeg"
                 start.startsWith("OggS") -> "ogg" to "audio/ogg"
                 start.startsWith("fLaC") -> "flac" to "audio/flac"
                 start.startsWith("RIFF") -> "wav" to "audio/wav"
