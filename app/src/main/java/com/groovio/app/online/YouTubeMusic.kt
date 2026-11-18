@@ -58,13 +58,17 @@ class YouTubeMusic(
     private val clock: () -> Long = System::currentTimeMillis,
     /** Settings → Audio quality → Data saver. */
     private val dataSaver: () -> Boolean = { false },
+    private val onlineAllowed: () -> Boolean = { true },
 ) {
+
+    private fun requireOnline() { if (!onlineAllowed()) throw java.io.IOException("Offline mode is enabled") }
 
     private val service = ServiceList.YouTube
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
 
     /** Songs only (YouTube Music "songs" filter), so videos, covers and uploads rank lower. */
     fun searchSongs(query: String): List<OnlineTrack> {
+        requireOnline()
         val extractor = service.getSearchExtractor(
             query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_SONGS), "",
         )
@@ -75,6 +79,7 @@ class YouTubeMusic(
     }
 
     fun searchAlbums(query: String): List<OnlineAlbum> {
+        requireOnline()
         val extractor = service.getSearchExtractor(
             query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_ALBUMS), "",
         )
@@ -92,6 +97,7 @@ class YouTubeMusic(
     }
 
     fun searchPlaylists(query: String): List<OnlineAlbum> {
+        requireOnline()
         val extractor = service.getSearchExtractor(query, listOf(YoutubeSearchQueryHandlerFactory.MUSIC_PLAYLISTS), "")
         extractor.fetchPage()
         return extractor.initialPage.items.filterIsInstance<PlaylistInfoItem>().map {
@@ -101,6 +107,7 @@ class YouTubeMusic(
 
     /** Full collection in order. Do not silently download just its first page. */
     fun albumTracks(album: OnlineAlbum): List<OnlineTrack> {
+        requireOnline()
         val info = PlaylistInfo.getInfo(service, album.url)
         val items = info.relatedItems.filterIsInstance<StreamInfoItem>().toMutableList()
         var next = info.nextPage
@@ -122,6 +129,7 @@ class YouTubeMusic(
 
     /** Top songs and albums by an artist (YouTube Music search, filtered to that artist). */
     fun artist(name: String): ArtistPage {
+        requireOnline()
         // The artist entry gives the photo; a failure there must not hide songs/albums.
         val channel = runCatching {
             val extractor = service.getSearchExtractor(
@@ -144,6 +152,7 @@ class YouTubeMusic(
 
     /** Songs YouTube suggests after [videoId] (its "up next" list), song-length only. */
     fun related(videoId: String): List<OnlineTrack> = relatedCache.getOrPut(videoId) {
+        requireOnline()
         val info = StreamInfo.getInfo(service, service.streamLHFactory.fromId(videoId).url)
         info.relatedItems
             .filterIsInstance<StreamInfoItem>()
@@ -158,6 +167,7 @@ class YouTubeMusic(
     private val innertube = InnertubeAudio(clock = clock)
 
     fun resolve(videoId: String): ResolvedAudio {
+        requireOnline()
         val saver = dataSaver()
         val key = if (saver) "$videoId|saver" else videoId
         cache[key]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }

@@ -24,7 +24,7 @@ class GroovioApplication : Application() {
     val playbackNotice = MutableStateFlow<String?>(null)
 
     val settings: GroovioSettings by lazy { GroovioSettings(this) }
-    val youtube: YouTubeMusic by lazy { YouTubeMusic(dataSaver = { settings.dataSaver.value }) }
+    val youtube: YouTubeMusic by lazy { YouTubeMusic(dataSaver = { settings.dataSaver.value }, onlineAllowed = { !settings.offlineOnly.value }) }
 
     /** The player's audio session, for the system equalizer (set by the playback service). */
     @Volatile var audioSessionId: Int = 0

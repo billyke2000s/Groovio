@@ -181,6 +181,24 @@ class GroovioPlaybackService : MediaSessionService() {
                 }
             }
         }
+        scope.launch {
+            app.settings.offlineOnly.collect { offline ->
+                if (offline) {
+                    warmingJob?.cancel(); autoplayJob?.cancel()
+                    val item = player.currentMediaItem
+                    val resume = player.playWhenReady
+                    if (item != null && OnlineMedia.youtubeId(item.localConfiguration?.uri?.toString()) != null) {
+                        player.stop()
+                        if (app.downloads.localFile(item.mediaId) != null) {
+                            player.prepare(); player.playWhenReady = resume
+                        } else {
+                            player.pause()
+                            app.playbackNotice.value = "Offline mode is on. Your saved music is waiting in Downloads."
+                        }
+                    }
+                }
+            }
+        }
         restoreQueue(player)
         scope.launch { library.trimHistory() }
         scope.launch {
