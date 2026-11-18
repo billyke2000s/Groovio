@@ -27,6 +27,7 @@ data class PlayerUiState(
     /** e.g. "OPUS · 160K · 48kHz"; null when nothing is known. */
     val audioLabel: String? = null,
     val queue: List<QueueEntry> = emptyList(),
+    val upcomingIndices: List<Int> = emptyList(),
     val currentIndex: Int = -1,
     val currentMediaId: String? = null,
     val error: String? = null,
@@ -42,14 +43,14 @@ data class PlayerUiState(
             isBuffering == other.isBuffering && durationMs == other.durationMs &&
             hasNext == other.hasNext && shuffle == other.shuffle &&
             repeatMode == other.repeatMode && audioLabel == other.audioLabel &&
-            queue == other.queue && currentIndex == other.currentIndex &&
+            queue == other.queue && upcomingIndices == other.upcomingIndices && currentIndex == other.currentIndex &&
             currentMediaId == other.currentMediaId &&
             error == other.error
 
     override fun hashCode(): Int =
         listOf(connected, hasItem, title, artist, System.identityHashCode(artworkData), artworkUri,
             isPlaying, isBuffering, durationMs, hasNext, shuffle, repeatMode,
-            audioLabel, queue, currentIndex, currentMediaId, error).hashCode()
+            audioLabel, queue, upcomingIndices, currentIndex, currentMediaId, error).hashCode()
 }
 
 object PlaybackText {

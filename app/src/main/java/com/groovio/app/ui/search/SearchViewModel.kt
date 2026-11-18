@@ -62,6 +62,13 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                     return@collectLatest
                 }
                 _state.value = _state.value.copy(query = q, loading = true, error = null)
+                val app = getApplication<GroovioApplication>()
+                if (!app.connectivity.online.value || app.settings.offlineOnly.value) {
+                    val tracks = app.downloads.tracks.value.filter { (it.title + " " + it.artist.orEmpty()).contains(q, true) }
+                        .map { OnlineTrack(it.mediaId.removePrefix("yt:"), it.title, it.artist, null, it.artworkUri) }
+                    _state.value = SearchState(query = q, results = tracks)
+                    return@collectLatest
+                }
                 val link = SpotifyLinks.findLink(q)
                 _state.value = try {
                     if (link != null) {

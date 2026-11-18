@@ -280,6 +280,7 @@ private fun LikedSongs(
     val liked by vm.favourites.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         ListHeader("Liked songs", onBack)
+        DownloadCollectionButton(liked) { onPlay(liked, 0) }
         if (liked.isEmpty()) {
             Text("Tap the heart in the player to save songs here.", color = GroovioColors.TextMuted,
                 modifier = Modifier.padding(20.dp))
@@ -317,6 +318,7 @@ private fun PlaylistDetail(
             IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, "Rename playlist") }
             IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Default.Delete, "Delete playlist") }
         }
+        DownloadCollectionButton(tracks) { onPlay(tracks, 0) }
         if (items.isEmpty()) {
             Text("Add songs from the player with the playlist button.", color = GroovioColors.TextMuted,
                 modifier = Modifier.padding(20.dp))

@@ -186,6 +186,34 @@ abstract class LibraryDao {
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :id AND position = :position")
     abstract suspend fun removeFromPlaylist(id: Long, position: Int)
 
+    @Query("SELECT * FROM tracks") abstract suspend fun allTracks(): List<TrackEntity>
+    @Query("SELECT * FROM favourites") abstract suspend fun allFavourites(): List<FavouriteEntity>
+    @Query("SELECT * FROM playlists") abstract suspend fun allPlaylists(): List<PlaylistEntity>
+    @Query("SELECT * FROM playlist_tracks ORDER BY playlistId, position") abstract suspend fun allPlaylistTracks(): List<PlaylistTrackEntity>
+    @Insert(onConflict = OnConflictStrategy.REPLACE) abstract suspend fun restoreFavourite(item: FavouriteEntity)
+
+    /** Merge a validated backup atomically; existing playlists and likes remain. */
+    @Transaction
+    open suspend fun restoreBackup(tracks: List<TrackEntity>, likes: List<FavouriteEntity>,
+        playlists: List<PlaylistEntity>, entries: List<PlaylistTrackEntity>) {
+        upsertTracks(tracks)
+        likes.forEach { restoreFavourite(it) }
+        val ids = playlists.associate { p -> p.id to insertPlaylist(p.copy(id = 0)) }
+        entries.forEach { e -> insertPlaylistTrack(e.copy(playlistId = ids.getValue(e.playlistId))) }
+    }
+
+    @Transaction
+    open suspend fun exportBackup(): String = org.json.JSONObject().apply {
+        put("format", "groovio"); put("version", 1)
+        put("tracks", org.json.JSONArray().apply { allTracks().forEach { t -> put(org.json.JSONObject()
+            .put("id", t.mediaId).put("title", t.title).put("artist", t.artist ?: "").put("art", t.artworkUri ?: "")) } })
+        put("likes", org.json.JSONArray().apply { allFavourites().forEach { f -> put(org.json.JSONObject().put("id", f.mediaId).put("at", f.addedAt)) } })
+        put("playlists", org.json.JSONArray().apply { allPlaylists().forEach { p -> put(org.json.JSONObject()
+            .put("id", p.id).put("name", p.name).put("at", p.createdAt)) } })
+        put("entries", org.json.JSONArray().apply { allPlaylistTracks().forEach { e -> put(org.json.JSONObject()
+            .put("playlist", e.playlistId).put("position", e.position).put("id", e.mediaId)) } })
+    }.toString()
+
     // Saved queue
     @Query("DELETE FROM queue") protected abstract suspend fun clearQueue()
     @Insert protected abstract suspend fun insertQueue(entries: List<QueueEntity>)

@@ -77,6 +77,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-session:1.5.1")
     implementation("androidx.media3:media3-common:1.5.1")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // Online: on-device YouTube Music search and stream extraction (GPL-3.0).
     // v0.26.5, as in NewPipe 0.29.1. v0.27.0 (NewPipe 0.29.2) gets "confirm you're not a bot"

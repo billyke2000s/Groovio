@@ -64,6 +64,10 @@ class GroovioPlaybackService : MediaSessionService() {
         // thread (never the main thread) right before data is read.
         val dataSource = ResolvingDataSource.Factory(DefaultDataSource.Factory(this, http)) { spec ->
             val id = OnlineMedia.youtubeId(spec.uri.toString()) ?: return@Factory spec
+            app.downloads.localFile("yt:$id")?.let { local ->
+                return@Factory spec.withUri(Uri.fromFile(local))
+            }
+            if (app.settings.offlineOnly.value) throw IOException("Song is not downloaded")
             val audio = try {
                 youtube.resolve(id)
             } catch (e: Exception) {
@@ -79,7 +83,16 @@ class GroovioPlaybackService : MediaSessionService() {
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
-        val player = ExoPlayer.Builder(this)
+        val renderers = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildAudioSink(context: android.content.Context, enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean): androidx.media3.exoplayer.audio.AudioSink =
+                androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(false)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(NormalisingAudioProcessor { app.settings.normalise.value }))
+                    .build()
+        }
+        val player = ExoPlayer.Builder(this, renderers)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
             // true = request/abandon audio focus and duck/pause for calls and other apps.
             .setAudioAttributes(audioAttributes, true)
@@ -99,16 +112,19 @@ class GroovioPlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             // Autoplay: when the queue runs out, continue with similar songs.
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_ENDED && app.settings.autoplay.value) autoplay(player)
+                if (state == Player.STATE_ENDED && app.settings.autoplay.value && !app.settings.offlineOnly.value && app.connectivity.online.value) autoplay(player)
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                retried.clear()
+                // Keep failures for this queue, including repeat-all, to avoid endless skip loops.
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) { retried.clear(); failedItems.clear() }
+                app.playbackNotice.value = null
                 recordedMediaId = null
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
                 recordPlayIfStarted(player)
+                warmNext(player)
                 if (events.containsAny(
                         Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                         Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
@@ -125,10 +141,21 @@ class GroovioPlaybackService : MediaSessionService() {
                 val id = OnlineMedia.youtubeId(uri) ?: return
                 val httpError = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
                     error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
-                if (httpError && retried.add(id)) {
+                val transient = httpError || error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                    error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+                if (transient && !app.settings.offlineOnly.value && retried.add(id)) {
+                    val resume = player.playWhenReady
                     youtube.invalidate(id)
                     player.prepare()
-                    player.play()
+                    player.playWhenReady = resume
+                } else if (app.settings.skipFailed.value && failedItems.add(player.currentMediaItemIndex)) {
+                    val next = player.nextMediaItemIndex
+                    if (next != C.INDEX_UNSET && next !in failedItems && next != player.currentMediaItemIndex) {
+                        val title = player.mediaMetadata.title ?: "a song"
+                        player.seekToDefaultPosition(next)
+                        player.prepare()
+                        app.playbackNotice.value = "Skipped $title because it couldn't play."
+                    }
                 }
             }
         })
@@ -145,8 +172,27 @@ class GroovioPlaybackService : MediaSessionService() {
 
         restoreQueue(player)
         scope.launch { library.trimHistory() }
+        scope.launch {
+            while (true) {
+                delay(5_000)
+                if (player.isPlaying) saveNow(player)
+            }
+        }
     }
 
+    private val failedItems = mutableSetOf<Int>()
+    private var warmingId: String? = null
+    private var warmingJob: Job? = null
+    /** Resolve the next URL ahead of time; ExoPlayer handles gapless compatible media. */
+    private fun warmNext(player: Player) {
+        if (!player.playWhenReady || app.settings.offlineOnly.value || !player.hasNextMediaItem()) return
+        val item = player.getMediaItemAt(player.nextMediaItemIndex)
+        val id = OnlineMedia.youtubeId(item.localConfiguration?.uri?.toString()) ?: return
+        if (warmingId == id || app.downloads.localFile("yt:$id") != null) return
+        warmingId = id
+        warmingJob?.cancel()
+        warmingJob = scope.launch(Dispatchers.IO) { runCatching { app.youtube.resolve(id) } }
+    }
     private var autoplayJob: Job? = null
 
     /** Appends YouTube's related songs for the last online song and keeps playing. */

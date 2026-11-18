@@ -72,6 +72,11 @@ fun HomeScreen(
     onSearch: () -> Unit,
     onOpenFiles: () -> Unit,
     onMore: (TrackEntity) -> Unit,
+    chart: com.groovio.app.online.SpotifyCollection? = null,
+    onPlayChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
+    onDownloadChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
+    downloadsEnabled: Boolean = false,
+    mix: RelatedShelf? = null,
     related: RelatedShelf? = null,
     discover: List<DiscoverShelf> = emptyList(),
     onOpenAlbum: (OnlineAlbum) -> Unit = {},
@@ -131,6 +136,28 @@ fun HomeScreen(
                         SquareCard(t.title, t.artist, t.artworkUri, currentMediaId == t.mediaId, onLongClick = { onMore(t) }) {
                             onPlayRecent(recent, i)
                         }
+                    }
+                }
+            }
+        }
+        if (chart != null) item {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text("UK top songs", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Apple chart · matched to YouTube for playback", color = GroovioColors.TextMuted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.Button(onClick = { onPlayChart(chart) }) { Text("Play") }
+                    if (downloadsEnabled) androidx.compose.material3.OutlinedButton(onClick = { onDownloadChart(chart) }) { Text("Download & play") }
+                }
+                chart.tracks.take(5).forEachIndexed { i, t -> Text("${i + 1}. ${t.title} · ${t.artist.orEmpty()}", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+            }
+        }
+        if (mix != null) {
+            item { Shelf("Made from your favourites") }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    itemsIndexed(mix.tracks, key = { _, t -> t.id }) { i, t ->
+                        SquareCard(t.title, t.artist, t.thumbnailUrl, currentMediaId == "yt:${t.id}",
+                            onLongClick = { onMore(com.groovio.app.data.TrackMapping.fromOnline(t)) }) { onPlayRelated(mix.tracks, i) }
                     }
                 }
             }

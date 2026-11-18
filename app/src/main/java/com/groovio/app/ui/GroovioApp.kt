@@ -65,6 +65,7 @@ private object Routes {
     const val PLAYER = "player"
     const val QUEUE = "queue"
     const val SETTINGS = "settings"
+    const val DOWNLOADS = "downloads"
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -97,6 +98,8 @@ fun GroovioApp(
     val liked by libraryVm.favourites.collectAsStateWithLifecycle()
     val related by homeVm.related.collectAsStateWithLifecycle()
     val discover by homeVm.discover.collectAsStateWithLifecycle()
+    val chart by homeVm.chart.collectAsStateWithLifecycle()
+    val mix by homeVm.mix.collectAsStateWithLifecycle()
     val update by homeVm.update.collectAsStateWithLifecycle()
     val updateMessage by homeVm.updateMessage.collectAsStateWithLifecycle()
     // Check for updates whenever Groovio comes back to the foreground.
@@ -123,6 +126,13 @@ fun GroovioApp(
 
     // A link or text shared to Groovio opens in Search.
     val app = LocalContext.current.applicationContext as GroovioApplication
+    val online by app.connectivity.online.collectAsStateWithLifecycle()
+    val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
+    val downloadsEnabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
+    val downloaded by app.downloads.tracks.collectAsStateWithLifecycle()
+    val notice by app.playbackNotice.collectAsStateWithLifecycle()
+    val offline = !online || offlineOnly
+    LaunchedEffect(online, offlineOnly) { if (online && !offlineOnly) homeVm.loadDiscover() }
     val shared by app.sharedText.collectAsStateWithLifecycle()
     LaunchedEffect(shared) {
         val text = shared ?: return@LaunchedEffect
@@ -140,6 +150,11 @@ fun GroovioApp(
     ) {
         composable(Routes.TABS) {
             Column(Modifier.fillMaxSize()) {
+                androidx.compose.material3.TextButton(onClick = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
+                    modifier = Modifier.statusBarsPadding().fillMaxWidth()) {
+                    Text(if (offline) com.groovio.app.ui.library.offlineMessage(downloaded.size) else "Downloads · ${downloaded.size} songs saved")
+                }
+                notice?.let { Text(it, modifier = Modifier.padding(horizontal = 20.dp)) }
                 Box(Modifier.weight(1f).fillMaxWidth().statusBarsPadding()) {
                     when (val detail = details.lastOrNull()) {
                         is Detail.Artist -> ArtistScreen(
@@ -171,9 +186,14 @@ fun GroovioApp(
                             onSearch = { tab = Tab.SEARCH },
                             onOpenFiles = { picker.launch(arrayOf("audio/*")) },
                             onMore = openMenu,
-                            related = related,
+                            chart = if (offline) null else chart,
+                            onPlayChart = vm::playSpotify,
+                            onDownloadChart = { vm.playSpotify(it, true) },
+                            downloadsEnabled = downloadsEnabled,
+                            mix = if (offline) null else mix,
+                            related = if (offline) null else related,
                             onPlayRelated = vm::playTracks,
-                            discover = discover,
+                            discover = if (offline) emptyList() else discover,
                             update = update,
                             onUpdate = homeVm::startUpdate,
                             onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
@@ -185,6 +205,9 @@ fun GroovioApp(
                             onPlay = vm::playTracks,
                             spotifyImport = spotifyImport,
                             onPlaySpotify = vm::playSpotify,
+                            onDownload = { tracks, index -> vm.downloadOnline(tracks, index) },
+                            onDownloadSpotify = { vm.playSpotify(it, true) },
+                            downloadsEnabled = downloadsEnabled && !offline,
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                             onMore = openMenu,
                         )
@@ -262,12 +285,17 @@ fun GroovioApp(
                 onSetSleepTimer = vm::setSleepTimer,
             )
         }
+        composable(Routes.DOWNLOADS) {
+            com.groovio.app.ui.library.DownloadsScreen(onBack = { nav.popBackStack() }, onPlay = vm::playStored)
+        }
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 versionName = BuildConfig.VERSION_NAME,
                 updateMessage = updateMessage,
                 onCheckUpdates = { homeVm.checkForUpdates(manual = true) },
                 onBack = { nav.popBackStack() },
+                onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
+                onSleepTimer = vm::setSleepTimer,
             )
         }
         composable(Routes.QUEUE) {

@@ -52,7 +52,8 @@ fun QueueScreen(
     onMove: (Int, Int) -> Unit,
 ) {
     val current = state.queue.getOrNull(state.currentIndex)
-    val upcoming = state.queue.drop(state.currentIndex + 1)
+    val upcoming = if (state.upcomingIndices.isNotEmpty()) state.upcomingIndices.mapNotNull { index -> state.queue.find { it.index == index } }
+        else if (state.shuffle) emptyList() else state.queue.drop(state.currentIndex + 1)
     // Row being dragged (queue index) and how far it has moved.
     var dragging by remember { mutableStateOf<Int?>(null) }
     var dragY by remember { mutableFloatStateOf(0f) }
@@ -76,7 +77,9 @@ fun QueueScreen(
                 item { Header("Now playing") }
                 item(key = "now") { QueueRow(current, isCurrent = true, onClick = {}, onRemove = null, handle = null) }
             }
-            if (upcoming.isNotEmpty()) item { Header("Next up") }
+            if (upcoming.isNotEmpty()) item { Header(if (state.shuffle) "Next up · shuffled" else "Next up") }
+            if (state.shuffle) item { Text("Turn shuffle off to drag songs into a fixed order.", color = GroovioColors.TextMuted,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
             items(upcoming, key = { it.index }) { entry ->
                 val isDragged = dragging == entry.index
                 Column(
@@ -89,7 +92,7 @@ fun QueueScreen(
                         entry, isCurrent = false,
                         onClick = { onPlayAt(entry.index) },
                         onRemove = { onRemoveAt(entry.index) },
-                        handle = Modifier.pointerInput(entry.index) {
+                        handle = if (state.shuffle) null else Modifier.pointerInput(entry.index) {
                             detectDragGestures(
                                 onDragStart = { dragging = entry.index; dragY = 0f },
                                 onDragEnd = {

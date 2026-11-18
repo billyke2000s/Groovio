@@ -143,6 +143,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             audioLabel = AudioFormatLabel.selectedAudioFormat(player.currentTracks)
                 ?.let(AudioFormatLabel::from),
             queue = queue,
+            upcomingIndices = QueueOrder.upcoming(player.currentTimeline, player.currentMediaItemIndex, player.shuffleModeEnabled),
             currentIndex = if (count > 0) player.currentMediaItemIndex else -1,
             currentMediaId = player.currentMediaItem?.mediaId,
             error = player.playerError?.let(::describeError),
@@ -274,7 +275,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
      * Plays a Spotify album/playlist/song: each song is matched to YouTube in order; the
      * first match starts playing straight away and later matches are appended to the queue.
      */
-    fun playSpotify(collection: SpotifyCollection) {
+    fun playSpotify(collection: SpotifyCollection) = playSpotify(collection, false)
+    fun playSpotify(collection: SpotifyCollection, download: Boolean) {
         importJob?.cancel()
         importJob = viewModelScope.launch {
             var started = false
@@ -289,6 +291,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     missed++
                 } else {
                     found++
+                    if (download) (getApplication<Application>() as GroovioApplication).downloads.enqueue(listOf(
+                        TrackMapping.fromOnline(match.copy(title = track.title, artist = track.artist ?: match.artist))))
                     // Spotify's title/artist read better than YouTube's upload titles.
                     val item = OnlineMedia.mediaItem(match.copy(title = track.title, artist = track.artist ?: match.artist))
                     if (!started) {
@@ -304,6 +308,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             }
             _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = true)
         }
+    }
+
+    fun downloadTracks(tracks: List<TrackEntity>, play: Boolean = true) {
+        val app = getApplication<Application>() as GroovioApplication
+        app.downloads.enqueue(tracks)
+        if (play) playStored(tracks, 0)
+    }
+    fun downloadOnline(tracks: List<OnlineTrack>, startIndex: Int = 0) {
+        val app = getApplication<Application>() as GroovioApplication
+        app.downloads.enqueue(tracks.map(TrackMapping::fromOnline))
+        playTracks(tracks, startIndex)
     }
 
     private fun stopImport() {

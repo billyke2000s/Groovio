@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,11 +67,15 @@ fun SearchScreen(
     onPlaySpotify: (SpotifyCollection) -> Unit,
     onOpenAlbum: (OnlineAlbum) -> Unit,
     onMore: (TrackEntity) -> Unit,
+    onDownload: ((List<OnlineTrack>, Int) -> Unit)? = null,
+    onDownloadSpotify: ((SpotifyCollection) -> Unit)? = null,
+    downloadsEnabled: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
     val state by vm.state.collectAsStateWithLifecycle()
     val keyboard = LocalSoftwareKeyboardController.current
+    var selected by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
 
     Column(modifier.fillMaxSize()) {
         Text(
@@ -114,7 +119,7 @@ fun SearchScreen(
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = vm::retry) { Text("Try again") }
             }
-            state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify)
+            state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify, if (downloadsEnabled) onDownloadSpotify else null)
             state.query.isEmpty() && input.isBlank() -> BrowseAll { vm.onQueryChange(it) }
             // Typing, waiting for the first results: show nothing rather than "no songs".
             state.query.isEmpty() -> Box(Modifier.fillMaxSize())
@@ -142,13 +147,28 @@ fun SearchScreen(
                         playing = currentMediaId == "yt:${track.id}",
                         onClick = {
                             keyboard?.hide()
-                            onPlay(state.results, index)
+                            if (downloadsEnabled && onDownload != null) selected = index
+                            else onPlay(state.results, index)
                         },
                         onMore = { onMore(TrackMapping.fromOnline(track)) },
                     )
                 }
             }
         }
+    }
+    selected?.let { index ->
+        val results = state.results
+        val track = results.getOrNull(index)
+        if (track != null) androidx.compose.material3.AlertDialog(
+            onDismissRequest = { selected = null }, title = { Text(track.title) },
+            text = { Text("Play now, or save this song for offline listening too.") },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = {
+                selected = null; onDownload?.invoke(listOf(track), 0)
+            }) { Text("Download & play") } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = {
+                selected = null; onPlay(results, index)
+            }) { Text("Play") } },
+        )
     }
 }
 
@@ -208,6 +228,7 @@ private fun SpotifyResult(
     collection: SpotifyCollection,
     progress: SpotifyImportProgress?,
     onPlay: (SpotifyCollection) -> Unit,
+    onDownload: ((SpotifyCollection) -> Unit)?,
 ) {
     val kind = when (collection.type) {
         "album" -> "Album"
@@ -229,6 +250,9 @@ private fun SpotifyResult(
                 Text(collection.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text("${collection.tracks.size} songs", color = GroovioColors.TextMuted, fontSize = 14.sp)
                 Spacer(Modifier.height(14.dp))
+                if (onDownload != null && (mine == null || mine.done)) {
+                    androidx.compose.material3.OutlinedButton(onClick = { onDownload(collection) }) { Text("Download & play") }
+                }
                 when {
                     mine == null -> Button(onClick = { onPlay(collection) }) { Text("Play") }
                     !mine.done -> Row(verticalAlignment = Alignment.CenterVertically) {

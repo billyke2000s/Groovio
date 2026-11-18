@@ -153,11 +153,15 @@ Only items with evidence are marked verified. Update this file with each phase.
 | Auto-update workflows and in-app update banner | Built; **first run pending** | |
 
 ## Known limitations
-- No persistence yet: queue, favourites, playlists and history are lost when the app is closed (Phase 3).
+- Persistence exists (Phase 4); phone restart and background playback still need the device checklist.
 - Dependencies are a year behind current releases (lint warnings); upgrade in a dedicated pass.
 - Local files show the file name as title. Artist and artwork should come from embedded tags when present [not yet verified on a device].
 - YouTube can block a network ("not a bot" check) or change its site; playback then fails until it lifts or NewPipe Extractor is updated.
 - No lyrics (would need a licensed source; owner decision), no canvas videos.
-- Queue "Next up" assumes normal order; with shuffle on, the real play order differs.
+- Queue now follows actual shuffle traversal; drag reordering is offered with shuffle off.
 - Spotify playlists: the embed page may list only the first part of very long playlists [Unverified: not yet tested with a 100+ song playlist].
 - Streams are fetched without chunked range requests; if YouTube throttles long songs on some networks, that is the next fix.
+
+## Offline library and playback improvements
+
+Implemented on feature/offline-library-and-playback; verification pending CI. See [behaviour and phone acceptance checks](docs/OFFLINE_AND_PLAYBACK.md). Adds persistent song downloads, offline playback/search, download management, expanded settings, library backup/merge restore, optional live volume levelling, recovery/skip behaviour, next-URL preparation, periodic position checkpoints, actual shuffled queue order, a real UK chart metadata feed and favourites mixes. Device and real-network checks remain pending.

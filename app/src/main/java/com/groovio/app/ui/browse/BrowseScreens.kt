@@ -235,6 +235,8 @@ fun AlbumScreen(
                 }
                 if (tracks.isNotEmpty()) PlayButton { onPlay(tracks, 0) }
             }
+            val albumTracks = (load as? Load.Ready)?.value.orEmpty()
+            com.groovio.app.ui.library.DownloadCollectionButton(albumTracks.map(TrackMapping::fromOnline)) { onPlay(albumTracks, 0) }
             Spacer(Modifier.height(8.dp))
         }
         when (load) {
