@@ -415,6 +415,7 @@ fun GroovioApp(
             com.groovio.app.ui.library.LocalFilesScreen(
                 currentMediaId = state.currentMediaId,
                 onPlay = vm::playStored,
+                onMore = openMenu,
                 onPlayLegacy = vm::playFiles,
                 onBack = { nav.popBackStack() },
                 onDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
@@ -422,7 +423,8 @@ fun GroovioApp(
             )
         }
         composable(Routes.DOWNLOADS) {
-            com.groovio.app.ui.library.DownloadsScreen(onBack = { nav.popBackStack() }, onPlay = vm::playStored)
+            com.groovio.app.ui.library.DownloadsScreen(
+                onBack = { nav.popBackStack() }, onPlay = vm::playStored, onMore = openMenu)
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
@@ -482,6 +484,7 @@ fun GroovioApp(
             vm = vm,
             playlists = playlists,
             onOpenArtist = { openDetail(Detail.Artist(it)) },
+            onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
             onDismiss = { menuTrack = null },
         )
     }
