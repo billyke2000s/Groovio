@@ -3,6 +3,8 @@ package com.groovio.app.ui.library
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -93,13 +95,14 @@ fun LibraryScreen(
     onOpenArtist: (String) -> Unit = {},
     onSearch: () -> Unit = {},
     onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
+    onLongPressCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenFiles, onOpenSpoken, onOpenArtist, onSearch, onOpenCollection)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenFiles, onOpenSpoken, onOpenArtist, onSearch, onOpenCollection, onLongPressCollection)
     }
 }
 
@@ -116,6 +119,7 @@ private data class LibraryEntry(
     val artwork: String? = null,
     val icon: ImageVector = Icons.AutoMirrored.Filled.QueueMusic,
     val onOpen: () -> Unit,
+    val onLongPress: (() -> Unit)? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,6 +139,7 @@ private fun LibraryRoot(
     onOpenArtist: (String) -> Unit,
     onSearch: () -> Unit,
     onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit,
+    onLongPressCollection: (com.groovio.app.data.RecentCollection) -> Unit,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -150,17 +155,23 @@ private fun LibraryRoot(
     // These are real saved collections and listening contexts, not the individual song history.
     // Keep the pinned Liked Songs first in Recents and avoid repeating playlists already in history.
     val likedEntry = LibraryEntry("liked", "Liked songs", "Playlist · ${liked.size} songs",
-        icon = Icons.Default.Favorite, onOpen = { onViewChange(LibraryView.LIKED) })
+        icon = Icons.Default.Favorite, onOpen = { onViewChange(LibraryView.LIKED) },
+        onLongPress = { onLongPressCollection(com.groovio.app.data.RecentCollection(
+            "liked", "Liked songs", "Playlist", liked.firstOrNull()?.artworkUri, liked)) })
     val filesEntry = LibraryEntry("local-files", "Local Files", "Music/Groovio · songs on your phone",
         icon = Icons.Default.FolderOpen, onOpen = onOpenFiles)
     val collectionEntries = recentCollections.map { collection ->
         LibraryEntry("recent:${collection.id}", collection.title, collection.kind,
             collection.artworkUri ?: collection.tracks.firstOrNull()?.artworkUri,
-            onOpen = { onOpenCollection(collection) })
+            onOpen = { onOpenCollection(collection) },
+            onLongPress = { onLongPressCollection(collection) })
     }
     val playlistEntries = playlists.map { playlist ->
         LibraryEntry("playlist:${playlist.id}", playlist.name, "Playlist · ${playlist.trackCount} songs",
-            playlist.artworkUri, onOpen = { onViewChange(LibraryView.playlist(playlist.id)) })
+            playlist.artworkUri, onOpen = { onViewChange(LibraryView.playlist(playlist.id)) },
+            onLongPress = { onLongPressCollection(com.groovio.app.data.RecentCollection(
+                "playlist:${playlist.id}", playlist.name, "Playlist", playlist.artworkUri,
+                emptyList(), playlistId = playlist.id)) })
     }
     val podcastEntries = followed.filter { it.kind == "Podcasts" }.map { c ->
         LibraryEntry("podcast:${c.album.url}", c.album.title, "Podcast · Following",
@@ -262,9 +273,9 @@ private fun LibraryRoot(
         }
         items(displayed, key = { it.key }, span = { if (grid) GridItemSpan(1) else full() }) { entry ->
             if (grid) {
-                CollectionTile(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen)
+                CollectionTile(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
             } else {
-                CollectionRow(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen)
+                CollectionRow(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen, entry.onLongPress)
             }
         }
         item(span = full) {
@@ -278,9 +289,13 @@ private fun LibraryRoot(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, artwork: String? = null, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp)) {
+private fun CollectionTile(
+    icon: ImageVector, title: String, subtitle: String, artwork: String? = null,
+    onClick: () -> Unit, onLongClick: (() -> Unit)? = null,
+) {
+    Column(Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(vertical = 8.dp)) {
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
@@ -293,10 +308,15 @@ private fun CollectionTile(icon: ImageVector, title: String, subtitle: String, a
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CollectionRow(icon: ImageVector, title: String, subtitle: String, artwork: String? = null, onClick: () -> Unit) {
+private fun CollectionRow(
+    icon: ImageVector, title: String, subtitle: String, artwork: String? = null,
+    onClick: () -> Unit, onLongClick: (() -> Unit)? = null,
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
