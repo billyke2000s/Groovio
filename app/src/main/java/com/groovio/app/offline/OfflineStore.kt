@@ -19,6 +19,21 @@ class OfflineStore(private val context: Context) {
     private val mutable = MutableStateFlow(readTracks())
     val tracks = mutable.asStateFlow()
     val jobs by lazy { work.getWorkInfosByTagFlow("audio-download") }
+    val publicMusic by lazy { PublicMusicFolder(context) }
+    /** Makes a separately browsable copy while keeping the already-tested offline player source. */
+    fun publishToMusicFolder(track: TrackEntity, codec: String? = null) {
+        localFile(track.mediaId)?.let { publicMusic.publish(track, it, codec) }
+    }
+    /** Safely migrates existing downloads to the shared folder without deleting private originals. */
+    fun syncToMusicFolder(): Int {
+        if (!PublicMusicFolder.available()) return 0
+        var copied = 0
+        tracks.value.forEach { track ->
+            publishToMusicFolder(track)
+            copied++
+        }
+        return copied
+    }
     private fun key(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
     fun file(id: String) = File(directory, key(id) + ".audio")
     private fun metadata(id: String) = File(directory, key(id) + ".json")

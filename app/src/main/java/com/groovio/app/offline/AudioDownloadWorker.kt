@@ -31,7 +31,13 @@ class AudioDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
             catch (_: Exception) { return@withContext if (runAttemptCount < 2) Result.retry() else Result.failure() }
         }
         val id = track.mediaId
-        if (app.downloads.localFile(id) != null) return@withContext Result.success()
+        if (app.downloads.localFile(id) != null) return@withContext try {
+            app.downloads.publishToMusicFolder(track)
+            Result.success()
+        } catch (e: IOException) {
+            if (runAttemptCount < 2) Result.retry()
+            else Result.failure(workDataOf("error" to "Couldn't save to Music/Groovio"))
+        }
         val temporary = File(app.downloads.file(id).path + ".${this@AudioDownloadWorker.id}.part")
         try {
             val audio = app.youtube.resolve(id.removePrefix("yt:"))
@@ -39,6 +45,9 @@ class AudioDownloadWorker(context: Context, params: WorkerParameters) : Coroutin
                 setProgress(workDataOf("percent" to percent))
             }
             app.downloads.complete(track, temporary) { isStopped }
+            // The private original stays playable even if Android's public storage is unavailable.
+            // WorkManager retries only the public copy, never re-downloads an already completed song.
+            app.downloads.publishToMusicFolder(track, audio.codec)
             Result.success()
         } catch (e: CancellationException) {
             throw e
