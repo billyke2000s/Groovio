@@ -86,7 +86,7 @@ fun SettingsScreen(
         if (uri != null) scope.launch {
             busy = true
             try {
-                val text = org.json.JSONObject(app.library.exportBackup()).put("settings", settings.export()).put("spoken", app.spoken.export()).toString(2)
+                val text = org.json.JSONObject(app.library.exportBackup()).put("settings", settings.export()).put("spoken", app.spoken.export()).put("spokenCollections", app.spoken.exportCollections()).toString(2)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(text) }
                         ?: error("Couldn't open backup")
@@ -256,6 +256,7 @@ fun SettingsScreen(
                         app.library.restoreBackup(text)
                         org.json.JSONObject(text).optJSONObject("settings")?.let(settings::restore)
                         org.json.JSONObject(text).optJSONArray("spoken")?.let(app.spoken::restore)
+                        org.json.JSONObject(text).optJSONArray("spokenCollections")?.let(app.spoken::restoreCollections)
                         app.youtube.clearCache(); app.downloads.cancelAll()
                         note = "Library restored"
                     } catch (_: Exception) { note = "Couldn't restore this backup" }

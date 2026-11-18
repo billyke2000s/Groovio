@@ -67,6 +67,15 @@ class YouTubeMusic(
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
 
     /** Songs only (YouTube Music "songs" filter), so videos, covers and uploads rank lower. */
+    fun searchSpokenCollections(query: String): List<OnlineAlbum> {
+        requireOnline()
+        val extractor = service.getSearchExtractor(query, listOf(YoutubeSearchQueryHandlerFactory.PLAYLISTS), "")
+        extractor.fetchPage()
+        return extractor.initialPage.items.filterIsInstance<PlaylistInfoItem>().map {
+            OnlineAlbum(it.url, it.name, it.uploaderName, bestImage(it.thumbnails), "Playlist")
+        }
+    }
+
     fun searchSpoken(query: String): List<OnlineTrack> {
         requireOnline()
         val extractor = service.getSearchExtractor(query, listOf(YoutubeSearchQueryHandlerFactory.VIDEOS), "")

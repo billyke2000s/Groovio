@@ -21,12 +21,15 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownload: (List<OnlineTrack>, Int) -> Unit) {
     val app = LocalContext.current.applicationContext as GroovioApplication
+    val followed by app.spoken.followed.collectAsStateWithLifecycle()
     val saved by app.spoken.saved.collectAsStateWithLifecycle()
     val offline by app.settings.offlineOnly.collectAsStateWithLifecycle()
     val downloads by app.downloads.tracks.collectAsStateWithLifecycle()
     val downloadsEnabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
     var query by remember(kind) { mutableStateOf("") }
     var results by remember(kind) { mutableStateOf<List<OnlineTrack>>(emptyList()) }
+    var collections by remember(kind) { mutableStateOf<List<com.groovio.app.online.OnlineAlbum>>(emptyList()) }
+    var opened by remember(kind) { mutableStateOf<SpokenCollection?>(null) }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -37,6 +40,9 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
                 results = withContext(Dispatchers.IO) { app.youtube.searchSpoken(
                     query.ifBlank { if (kind == "Podcasts") "podcast full episode" else "public domain audiobook full book" }
                 ) }
+                collections = withContext(Dispatchers.IO) { runCatching { app.youtube.searchSpokenCollections(
+                    query.ifBlank { if (kind == "Podcasts") "podcast episodes" else "public domain audiobook chapters" }
+                ) }.getOrDefault(emptyList()) }
                 if (results.isEmpty()) message = "No results. Try a show, author or book title."
             } catch (e: kotlinx.coroutines.CancellationException) { throw e }
             catch (_: Exception) { message = "Couldn't load YouTube results. Your saved content is still below." }
@@ -53,6 +59,38 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
         } }
         if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(16.dp)) }
         message?.let { item { Text(it, modifier = Modifier.padding(16.dp)) } }
+        followed.filter { it.kind == kind }.forEach { collection -> item(key = "followed:${collection.album.url}") {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                TextButton(onClick = { opened = collection }) { Text(collection.album.title) }
+                TextButton(onClick = { app.spoken.unfollow(collection.album.url) }) { Text(if (kind == "Podcasts") "Unfollow show" else "Remove book collection") }
+            }
+        } }
+        opened?.let { collection ->
+            item { Text(if (kind == "Podcasts") "Episodes · ${collection.album.title}" else "Chapters · ${collection.album.title}", modifier = Modifier.padding(16.dp)) }
+            item { TextButton(onClick = {
+                collection.tracks.forEach { app.spoken.save(it, kind) }
+                onDownload(collection.tracks, 0)
+            }, enabled = downloadsEnabled && !offline && collection.tracks.isNotEmpty()) { Text("Download collection & play") } }
+            items(collection.tracks, key = { "episode:${it.id}" }) { track ->
+                StoredTrackRow(TrackMapping.fromOnline(track), false, {
+                    app.spoken.save(track, kind); onPlay(listOf(track), 0)
+                })
+            }
+        }
+        if (!offline) collections.forEach { album -> item(key = "show:${album.url}") {
+            Column(Modifier.padding(16.dp)) {
+                Text(album.title)
+                TextButton(onClick = { scope.launch {
+                    loading = true
+                    try {
+                        val tracks = withContext(Dispatchers.IO) { app.youtube.albumTracks(album) }
+                        app.spoken.follow(album, kind, tracks); opened = SpokenCollection(album, kind, tracks)
+                    } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                    catch (_: Exception) { message = "Couldn't load this collection. Try again." }
+                    finally { loading = false }
+                } }, enabled = !loading) { Text(if (kind == "Podcasts") "Follow & show episodes" else "Save & show chapters") }
+            }
+        } }
         val myItems = saved.filter { it.kind == kind }
         if (myItems.isNotEmpty()) item { Text(if (kind == "Podcasts") "Followed episodes" else "Saved books", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp)) }
         items(myItems, key = { "saved:${it.track.id}" }) { item ->
