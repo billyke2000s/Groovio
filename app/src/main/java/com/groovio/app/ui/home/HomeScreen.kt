@@ -82,8 +82,8 @@ fun HomeScreen(
     onDownloadChart: (com.groovio.app.online.SpotifyCollection) -> Unit = {},
     downloadsEnabled: Boolean = false,
     recentCollections: List<com.groovio.app.data.RecentCollection> = emptyList(),
-    onReplayCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
-    onPlayMix: ((PersonalMix) -> Unit)? = null,
+    onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
+    onOpenMix: (PersonalMix) -> Unit = {},
     personalMixes: List<PersonalMix> = emptyList(),
     onSaveMix: (PersonalMix) -> Unit = {},
     mixNotice: String? = null,
@@ -105,7 +105,7 @@ fun HomeScreen(
         add(Tile("local-files", "Local files", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
         recentCollections.take(5).forEach { c ->
             add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
-                artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onReplayCollection(c) })
+                artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onOpenCollection(c) })
         }
         if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onClick = onOpenLiked))
         playlists.filter { p -> recentCollections.none { it.playlistId == p.id } }.take(6 - size).forEach { p ->
@@ -159,21 +159,10 @@ fun HomeScreen(
                     items(recentCollections, key = { it.id }) { collection ->
                         SquareCard(collection.title, collection.kind, collection.artworkUri, false,
                             artworkUris = if (collection.artworkUri == null) collection.tracks.mapNotNull { it.artworkUri }.distinct().take(4) else emptyList()) {
-                            onReplayCollection(collection)
+                            onOpenCollection(collection)
                         }
                     }
                 }
-            }
-        }
-        if (chart != null) item {
-            Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                Text("UK top songs", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("Apple chart · matched to YouTube for playback", color = GroovioColors.TextMuted, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    androidx.compose.material3.Button(onClick = { onPlayChart(chart) }) { Text("Play") }
-                    if (downloadsEnabled) androidx.compose.material3.OutlinedButton(onClick = { onDownloadChart(chart) }) { Text("Download & play") }
-                }
-                chart.tracks.take(5).forEachIndexed { i, t -> Text("${i + 1}. ${t.title} · ${t.artist.orEmpty()}", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
             }
         }
         if (personalMixes.isNotEmpty()) {
@@ -184,7 +173,7 @@ fun HomeScreen(
                     items(mixes, key = { it.id }) { mix ->
                         Column {
                             SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false,
-                                artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onPlayMix?.invoke(mix) ?: onPlayRelated(mix.tracks, 0) }
+                                artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onOpenMix(mix) }
                             androidx.compose.material3.TextButton(onClick = { onSaveMix(mix) }) { Text("Save playlist") }
                         }
                     }
@@ -243,6 +232,17 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
+        if (chart != null) item {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text("UK top songs", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Apple chart · matched to YouTube for playback", color = GroovioColors.TextMuted, fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.Button(onClick = { onPlayChart(chart) }) { Text("Play") }
+                    if (downloadsEnabled) androidx.compose.material3.OutlinedButton(onClick = { onDownloadChart(chart) }) { Text("Download & play") }
+                }
+                chart.tracks.take(5).forEachIndexed { i, t -> Text("${i + 1}. ${t.title} · ${t.artist.orEmpty()}", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
