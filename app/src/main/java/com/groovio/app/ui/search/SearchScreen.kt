@@ -150,7 +150,7 @@ fun SearchScreen(
             }
             state.spotify != null -> SpotifyResult(state.spotify!!, spotifyImport, onPlaySpotify, if (downloadsEnabled) onDownloadSpotify else null)
             state.query.isEmpty() && input.isBlank() && (!online || offlineOnly) -> Centered {
-                Text("Search your saved songs here, or open Downloads above. Your rhythm can keep going offline.")
+                Text("Search downloaded songs, or open Your music from Home or Your Library.")
             }
             state.query.isEmpty() && input.isBlank() -> BrowseAll { vm.onQueryChange(it) }
             // Typing, waiting for the first results: show nothing rather than "no songs".
