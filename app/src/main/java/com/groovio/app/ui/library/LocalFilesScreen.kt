@@ -64,6 +64,7 @@ import kotlinx.coroutines.withContext
 fun LocalFilesScreen(
     currentMediaId: String?,
     onPlay: (List<TrackEntity>, Int) -> Unit,
+    onMore: (TrackEntity) -> Unit,
     onPlayLegacy: (List<Uri>) -> Unit,
     onBack: () -> Unit,
     onDownloads: () -> Unit,
@@ -232,7 +233,7 @@ fun LocalFilesScreen(
         LazyColumn(Modifier.weight(1f)) {
             itemsIndexed(files, key = { _, track -> track.mediaId }) { index, track ->
                 StoredTrackRow(track, playing = track.mediaId == currentMediaId,
-                    onClick = { onPlay(files, index) })
+                    onClick = { onPlay(files, index) }, onLongClick = { onMore(track) })
             }
         }
     }
