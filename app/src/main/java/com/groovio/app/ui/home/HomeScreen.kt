@@ -105,7 +105,7 @@ fun HomeScreen(
             add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
                 artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onReplayCollection(c) })
         }
-        if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onOpenLiked))
+        if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onClick = onOpenLiked))
         playlists.filter { p -> recentCollections.none { it.playlistId == p.id } }.take(6 - size).forEach { p ->
             add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri) { onOpenPlaylist(p.id) })
         }
