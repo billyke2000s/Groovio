@@ -18,6 +18,8 @@ import com.groovio.app.ui.theme.GroovioColors
 import com.groovio.app.ui.theme.GroovioTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withTimeout
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -35,11 +37,13 @@ class SpokenLiveScreenshotTest {
     private fun capture(kind: String, query: String, filename: String) {
         assumeTrue(System.getenv("GROOVIO_SCREENSHOTS") == "1")
         val app = ApplicationProvider.getApplicationContext<GroovioApplication>()
-        val tracks = app.youtube.searchSpoken(query).filter { it.thumbnailUrl != null }.take(3)
+        val tracks = runBlocking { withTimeout(45_000) {
+            runInterruptible(Dispatchers.IO) { app.youtube.searchSpoken(query).filter { it.thumbnailUrl != null }.take(3) }
+        } }
         check(tracks.isNotEmpty()) { "No live catalogue entries; cannot capture real content" }
         runBlocking(Dispatchers.IO) {
             tracks.forEach { track ->
-                val result = app.imageLoader.execute(ImageRequest.Builder(app).data(track.thumbnailUrl).allowHardware(false).size(400).build())
+                val result = withTimeout(15_000) { app.imageLoader.execute(ImageRequest.Builder(app).data(track.thumbnailUrl).allowHardware(false).size(400).build()) }
                 check(result is SuccessResult) { "Artwork did not load; do not use blank screenshots" }
             }
         }

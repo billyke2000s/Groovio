@@ -34,8 +34,11 @@ class SpokenStore(context: Context) {
     }
     fun contains(id: String) = items.value.any { it.track.id == id.removePrefix("yt:") }
     fun position(id: String) = items.value.firstOrNull { it.track.id == id.removePrefix("yt:") }?.positionMs ?: 0L
-    @Synchronized fun save(track: OnlineTrack, kind: String) {
-        if (items.value.none { it.track.id == track.id }) write(items.value + SpokenItem(track, kind))
+    fun save(track: OnlineTrack, kind: String) = saveAll(listOf(track), kind)
+    @Synchronized fun saveAll(tracks: List<OnlineTrack>, kind: String) {
+        val known = items.value.map { it.track.id }.toSet()
+        val additions = tracks.distinctBy { it.id }.filterNot { it.id in known }.map { SpokenItem(it, kind) }
+        if (additions.isNotEmpty()) write(items.value + additions)
     }
     @Synchronized fun remove(id: String) { write(items.value.filterNot { it.track.id == id }) }
     @Synchronized fun progress(id: String, ms: Long) {

@@ -25,4 +25,15 @@ class SpokenStoreTest {
     @Test fun `invalid imports never create arbitrary URI tracks`() {
         assertTrue(SpokenStore.decode("""[{"id":"file:///private","title":"Bad","kind":"Audiobooks"}]""").isEmpty())
     }
+    @Test fun `registering a collection in one batch preserves progress and deduplicates episodes`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences("spoken_library", Context.MODE_PRIVATE).edit().clear().commit()
+        val store = SpokenStore(context)
+        val first = OnlineTrack("one", "First", "Show", 10000, null)
+        val second = OnlineTrack("two", "Second", "Show", 20000, null)
+        store.save(first, "Podcasts"); store.progress("yt:one", 5000)
+        store.saveAll(listOf(first, second, second), "Podcasts")
+        assertEquals(listOf("one", "two"), store.saved.value.map { it.track.id })
+        assertEquals(5000L, SpokenStore(context).position("yt:one"))
+    }
 }

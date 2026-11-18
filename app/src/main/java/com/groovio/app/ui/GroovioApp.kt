@@ -153,7 +153,7 @@ fun GroovioApp(
             if (tracks.isNotEmpty()) {
                 if (collection.kind == "Show" || collection.kind == "Audiobook") {
                     val kind = if (collection.kind == "Show") "Podcasts" else "Audiobooks"
-                    tracks.forEach { track -> app.spoken.save(com.groovio.app.online.OnlineTrack(track.mediaId.removePrefix("yt:"), track.title, track.artist, null, track.artworkUri), kind) }
+                    app.spoken.saveAll(tracks.map { track -> com.groovio.app.online.OnlineTrack(track.mediaId.removePrefix("yt:"), track.title, track.artist, null, track.artworkUri) }, kind)
                 }
                 vm.rememberCollection(collection.copy(tracks = tracks, playedAt = System.currentTimeMillis()))
                 vm.playStored(tracks, 0)
@@ -281,6 +281,7 @@ fun GroovioApp(
                         )
                         Tab.LIBRARY -> LibraryScreen(
                             vm = libraryVm,
+                            onReplayCollection = ::replayCollection,
                             view = libraryView,
                             onViewChange = { libraryView = it },
                             currentMediaId = state.currentMediaId,

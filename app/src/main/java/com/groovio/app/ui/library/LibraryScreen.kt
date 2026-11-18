@@ -83,13 +83,14 @@ fun LibraryScreen(
     onOpenDownloads: () -> Unit = {},
     onOpenSpoken: (String) -> Unit = {},
     onOpenArtist: (String) -> Unit = {},
+    onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)? = null,
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
     val playlistId = LibraryView.playlistId(view)
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist, onReplayCollection)
     }
 }
 
@@ -110,6 +111,7 @@ private fun LibraryRoot(
     onOpenDownloads: () -> Unit,
     onOpenSpoken: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)?,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
     val playlists by vm.playlists.collectAsStateWithLifecycle()
@@ -215,9 +217,12 @@ private fun LibraryRoot(
         }
         if (showRecent) items(recentCollections, key = { "recent:${it.id}" }, span = { full() }) { collection ->
             CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, collection.title, collection.kind, collection.artworkUri) {
-                onPlay(collection.tracks, 0)
-                val replay = collection.copy(playedAt = System.currentTimeMillis())
-                app.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.collectionHistory.record(replay) }
+                if (onReplayCollection != null) onReplayCollection(collection)
+                else {
+                    onPlay(collection.tracks, 0)
+                    val replay = collection.copy(playedAt = System.currentTimeMillis())
+                    app.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.collectionHistory.record(replay) }
+                }
             }
         }
         // About / updates.

@@ -98,7 +98,7 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
                 }) { Text(if (isFollowed) if (kind == "Podcasts") "Following" else "Saved to library" else if (kind == "Podcasts") "Follow show" else "Save book collection") }
                 if (downloadsEnabled && !offline && detail.tracks.isNotEmpty()) Button(onClick = {
                     app.spoken.follow(detail.album, kind, detail.tracks)
-                    detail.tracks.forEach { app.spoken.save(it, kind) }
+                    app.spoken.saveAll(detail.tracks, kind)
                     val entry = com.groovio.app.data.RecentCollection(detail.album.url, detail.album.title, if (kind == "Podcasts") "Show" else "Audiobook",
                         detail.album.thumbnailUrl, detail.tracks.map(TrackMapping::fromOnline), source = detail.album.url)
                     app.appScope.launch(Dispatchers.IO) { app.collectionHistory.record(entry) }
