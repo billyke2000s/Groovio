@@ -1,5 +1,10 @@
 package com.groovio.app.ui.player
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -42,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.groovio.app.playback.PlayerUiState
+import com.groovio.app.ui.motion.groovioClickable
 import com.groovio.app.ui.theme.GroovioColors
 
 @Composable
@@ -56,6 +62,7 @@ fun MiniPlayer(
 ) {
     val artwork = rememberArtwork(state.artworkData, targetPx = 128)
     val tint = rememberArtworkTint(artwork, state.artworkUri)
+    val animatedTint by animateColorAsState(tint, animationSpec = tween(240), label = "Mini player colour")
     val duration = state.durationMs ?: 0L
 
     // Swipe left for next, right for previous.
@@ -75,7 +82,7 @@ fun MiniPlayer(
     }
 
     Surface(
-        color = tint,
+        color = animatedTint,
         contentColor = GroovioColors.Text,
         shape = RoundedCornerShape(8.dp),
         modifier = modifier
@@ -95,7 +102,7 @@ fun MiniPlayer(
                     dragX += amount
                 }
             }
-            .clickable(onClickLabel = "Open player", onClick = onOpen),
+            .groovioClickable(onClickLabel = "Open player", onClick = onOpen),
     ) {
         Column {
             Row(
@@ -121,13 +128,25 @@ fun MiniPlayer(
                     )
                 }
                 IconButton(onClick = onTogglePlay) {
-                    if (state.isBuffering) {
-                        androidx.compose.material3.CircularProgressIndicator(Modifier.size(22.dp), color = GroovioColors.Text, strokeWidth = 2.dp)
-                    } else {
-                        Icon(
-                            if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (state.isPlaying) "Pause" else "Play",
-                        )
+                    AnimatedContent(
+                        targetState = when {
+                            state.isBuffering -> "loading"
+                            state.isPlaying -> "playing"
+                            else -> "paused"
+                        },
+                        transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(110)) },
+                        label = "Mini player playback",
+                    ) { status ->
+                        if (status == "loading") {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                Modifier.size(22.dp), color = GroovioColors.Text, strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(
+                                if (status == "playing") Icons.Default.Pause else Icons.Default.PlayArrow,
+                                if (status == "playing") "Pause" else "Play",
+                            )
+                        }
                     }
                 }
                 IconButton(onClick = onNext, enabled = state.hasNext) {

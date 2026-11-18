@@ -60,6 +60,8 @@ import com.groovio.app.online.ArtistPage
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.playback.PlaybackText
+import com.groovio.app.ui.motion.groovioClickable
+import com.groovio.app.ui.motion.groovioCombinedClickable
 import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -301,7 +303,7 @@ private fun SongRow(
 ) {
     Row(
         Modifier.fillMaxWidth()
-            .combinedClickable(onClickLabel = "Play ${track.title}", onLongClick = onMore, onClick = onClick)
+            .groovioCombinedClickable(onClickLabel = "Play ${track.title}", onLongClick = onMore, onClick = onClick)
             .padding(start = 16.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -326,7 +328,7 @@ private fun SongRow(
 /** Square album card used in shelves. */
 @Composable
 fun AlbumCard(album: OnlineAlbum, onClick: () -> Unit) {
-    Column(Modifier.width(140.dp).clickable(onClickLabel = "Open ${album.title}", onClick = onClick)) {
+    Column(Modifier.width(140.dp).groovioClickable(onClickLabel = "Open ${album.title}", onClick = onClick)) {
         AsyncImage(
             model = album.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
             modifier = Modifier.size(140.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.ArtworkFallback),

@@ -52,6 +52,7 @@ import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.ui.browse.AlbumCard
+import com.groovio.app.ui.motion.groovioCombinedClickable
 import com.groovio.app.ui.theme.GroovioColors
 import java.time.LocalTime
 
@@ -304,7 +305,7 @@ private fun Welcome(onSearch: () -> Unit, onOpenFiles: () -> Unit) {
 private fun QuickTile(tile: Tile, modifier: Modifier) {
     Row(
         modifier.height(56.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.SurfaceHigh)
-            .combinedClickable(onClickLabel = "Open ${tile.title}",
+            .groovioCombinedClickable(onClickLabel = "Open ${tile.title}",
                 onLongClickLabel = "Playlist options", onLongClick = tile.onLongClick,
                 onClick = tile.onClick),
         verticalAlignment = Alignment.CenterVertically,
@@ -354,7 +355,7 @@ private fun SquareCard(
     artworkUris: List<String> = emptyList(),
     onClick: () -> Unit,
 ) {
-    Column(Modifier.width(140.dp).combinedClickable(onClickLabel = "Play $title", onLongClick = onLongClick, onClick = onClick)) {
+    Column(Modifier.width(140.dp).groovioCombinedClickable(onClickLabel = "Play $title", onLongClick = onLongClick, onClick = onClick)) {
         Box(Modifier.size(140.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.ArtworkFallback),
             contentAlignment = Alignment.Center) {
             if (artworkUris.size >= 4) {
