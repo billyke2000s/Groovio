@@ -66,6 +66,10 @@ class PublicMusicFolder(private val context: Context) {
         }
     }
 
+    /** Hide the redundant public copies of downloaded audio from Groovio's unified list. */
+    fun publishedCopyUris(downloaded: List<TrackEntity>): Set<String> =
+        downloaded.mapNotNull { exports.getString(it.mediaId, null) }.toSet()
+
     /** A downloaded track can be re-exported after user deletion; existing copies aren't overwritten. */
     @Synchronized fun publish(track: TrackEntity, privateFile: File, codec: String? = null): Uri? {
         if (!available()) return null
