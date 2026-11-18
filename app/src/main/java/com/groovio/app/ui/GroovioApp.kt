@@ -26,9 +26,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import com.groovio.app.data.RecentCollection
 import com.groovio.app.data.TrackMapping
 import androidx.compose.runtime.remember
@@ -138,25 +135,6 @@ fun GroovioApp(
     // A link or text shared to Groovio opens in Search.
     val app = LocalContext.current.applicationContext as GroovioApplication
     val recentCollections by app.collectionHistory.recent.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    fun replayCollection(collection: RecentCollection) {
-        scope.launch {
-            val tracks = when {
-                collection.id == "liked" -> liked
-                collection.playlistId != null -> app.library.playlistItems(collection.playlistId).first().map { it.track }
-                    .ifEmpty { collection.tracks }
-                else -> collection.tracks
-            }
-            if (tracks.isNotEmpty()) {
-                if (collection.kind == "Show" || collection.kind == "Audiobook") {
-                    val kind = if (collection.kind == "Show") "Podcasts" else "Audiobooks"
-                    app.spoken.saveAll(tracks.map { track -> com.groovio.app.online.OnlineTrack(track.mediaId.removePrefix("yt:"), track.title, track.artist, null, track.artworkUri) }, kind)
-                }
-                vm.rememberCollection(collection.copy(tracks = tracks, playedAt = System.currentTimeMillis()))
-                vm.playStored(tracks, 0)
-            }
-        }
-    }
     fun rememberAlbum(album: com.groovio.app.online.OnlineAlbum, tracks: List<com.groovio.app.online.OnlineTrack>) {
         if (tracks.isNotEmpty()) vm.rememberCollection(RecentCollection(album.url, album.title, album.kind, album.thumbnailUrl,
             tracks.map(TrackMapping::fromOnline), source = album.url))
