@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
@@ -30,11 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.groovio.app.GroovioApplication
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.RecentCollection
 import com.groovio.app.data.TrackEntity
@@ -42,7 +47,7 @@ import com.groovio.app.ui.theme.GroovioColors
 
 /**
  * Reuses the existing SongMenu's modal bottom sheet and MenuItem row design,
- * but actions apply to the whole collection. No new playlist-specific features.
+ * but actions apply to the whole collection. Downloading does not start playback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,11 +56,28 @@ fun CollectionMenu(
     tracks: List<TrackEntity>,
     playlists: List<PlaylistSummary>,
     onPlay: (List<TrackEntity>) -> Unit,
+    onDownload: (List<TrackEntity>) -> Unit,
+    onOpenDownloads: () -> Unit,
     onCopyTo: (Long, List<TrackEntity>) -> Unit,
     onCopyToNew: (String, List<TrackEntity>) -> Unit,
     onRemoveFromSection: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val app = LocalContext.current.applicationContext as GroovioApplication
+    val downloadsEnabled by app.settings.downloadsEnabled.collectAsStateWithLifecycle()
+    val online by app.connectivity.online.collectAsStateWithLifecycle()
+    val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
+    val saved by app.downloads.tracks.collectAsStateWithLifecycle()
+    val downloadable = tracks.filter { it.mediaId.startsWith("yt:") }.distinctBy { it.mediaId }
+    // Avoid initialising WorkManager merely to render a menu with downloads disabled.
+    val jobs = if (downloadsEnabled && downloadable.isNotEmpty())
+        app.downloads.jobs.collectAsStateWithLifecycle(initialValue = emptyList()).value
+    else emptyList()
+    val savedIds = saved.map { it.mediaId }.toSet()
+    val allSaved = downloadable.isNotEmpty() && downloadable.all { it.mediaId in savedIds }
+    val pending = jobs.any { job ->
+        !job.state.isFinished && downloadable.any { it.mediaId in job.tags }
+    }
     var pickingPlaylist by rememberSaveable(collection.id) { mutableStateOf(false) }
     if (pickingPlaylist) {
         AddToPlaylistDialog(
@@ -109,6 +131,22 @@ fun CollectionMenu(
             if (tracks.isNotEmpty()) {
                 MenuItem(Icons.Default.PlayArrow, "Play playlist") {
                     onPlay(tracks); onDismiss()
+                }
+                if (downloadsEnabled && downloadable.isNotEmpty()) {
+                    when {
+                        allSaved -> MenuItem(Icons.Default.Check, "Downloaded · View downloads") {
+                            onOpenDownloads(); onDismiss()
+                        }
+                        pending -> MenuItem(Icons.Default.Download, "Downloading · View downloads") {
+                            onOpenDownloads(); onDismiss()
+                        }
+                        online && !offlineOnly -> MenuItem(Icons.Default.Download, "Download playlist") {
+                            onDownload(downloadable); onDismiss()
+                        }
+                        else -> MenuItem(Icons.Default.Download, "View downloads · Offline") {
+                            onOpenDownloads(); onDismiss()
+                        }
+                    }
                 }
                 MenuItem(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to another playlist") {
                     pickingPlaylist = true
