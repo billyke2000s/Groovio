@@ -67,6 +67,7 @@ fun SettingsScreen(
     val experimentalUpdates by settings.experimentalUpdates.collectAsStateWithLifecycle()
     val autoplay by settings.autoplay.collectAsStateWithLifecycle()
     val downloadsEnabled by settings.downloadsEnabled.collectAsStateWithLifecycle()
+    val normalise by settings.normalise.collectAsStateWithLifecycle()
     val skipFailed by settings.skipFailed.collectAsStateWithLifecycle()
     val wifiOnly by settings.wifiOnly.collectAsStateWithLifecycle()
     val offlineOnly by settings.offlineOnly.collectAsStateWithLifecycle()
@@ -164,6 +165,8 @@ fun SettingsScreen(
                 Toggle("Autoplay", "When your music ends, keep playing similar songs", autoplay, settings::setAutoplay)
             }
 
+            item { Toggle("Volume normalisation", "Gentle loudness reduction; quiet recordings aren't boosted. Requires supported Android 9+ audio effects.", normalise, settings::setNormalise) }
+            effectStatus?.let { item { Text(it, modifier = Modifier.padding(20.dp)) } }
             item { Toggle("Skip unavailable tracks", "Skip at most three unavailable songs; network errors remain visible", skipFailed, settings::setSkipFailed) }
 
             item { Action("Sleep timer", "Stop playback after a while or at the end of a song") { showSleep = true } }

@@ -50,6 +50,12 @@ class GroovioPlaybackService : MediaSessionService() {
     private var recordedMediaId: String? = null
     private var saveJob: Job? = null
     private val equalizer = SessionEffects()
+    private val normalisation = SessionEffects(::createNormalisation)
+    private fun updateEffects(sessionId: Int) {
+        val eq = equalizer.apply(sessionId, app.settings.equalizerEnabled.value, app.settings.equalizerBands.value)
+        val normal = normalisation.apply(sessionId, app.settings.normalise.value, emptyList())?.replace("Equaliser", "Normalisation")
+        app.effectStatus.value = listOfNotNull(eq, normal).joinToString(" ").ifBlank { null }
+    }
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -102,13 +108,13 @@ class GroovioPlaybackService : MediaSessionService() {
         )
 
         scope.launch {
-            kotlinx.coroutines.flow.combine(app.settings.equalizerEnabled, app.settings.equalizerBands) { enabled, bands -> enabled to bands }
-                .collect { (enabled, bands) -> app.effectStatus.value = equalizer.apply(player.audioSessionId, enabled, bands) }
+            kotlinx.coroutines.flow.combine(app.settings.equalizerEnabled, app.settings.equalizerBands, app.settings.normalise) { _, _, _ -> Unit }
+                .collect { updateEffects(player.audioSessionId) }
         }
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 app.audioSessionId = audioSessionId
-                app.effectStatus.value = equalizer.apply(audioSessionId, app.settings.equalizerEnabled.value, app.settings.equalizerBands.value)
+                updateEffects(audioSessionId)
             }
 
             // Autoplay: when the queue runs out, continue with similar songs.
@@ -316,6 +322,7 @@ class GroovioPlaybackService : MediaSessionService() {
             release()
         }
         equalizer.close()
+        normalisation.close()
         session = null
         scope.cancel()
         super.onDestroy()
