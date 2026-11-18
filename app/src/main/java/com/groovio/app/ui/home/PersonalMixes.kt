@@ -25,7 +25,7 @@ object MixSelection {
 class PersonalMixStore(context: Context) {
     private val prefs = context.getSharedPreferences("personal_mixes", Context.MODE_PRIVATE)
     fun read(day: String): List<PersonalMix> = runCatching {
-        if (prefs.getString("day", "") != day) return emptyList()
+        if (prefs.getInt("version", 0) != 2 || prefs.getString("day", "") != day) return emptyList()
         val a = JSONArray(prefs.getString("mixes", "[]"))
         (0 until a.length()).map { i ->
             val j = a.getJSONObject(i)
@@ -43,7 +43,7 @@ class PersonalMixStore(context: Context) {
             .put("tracks", JSONArray().apply { mix.tracks.forEach { t -> put(JSONObject()
                 .put("id", t.id).put("title", t.title).put("artist", t.artist.orEmpty())
                 .put("duration", t.durationMs ?: 0).put("art", t.thumbnailUrl.orEmpty())) } })) }
-        prefs.edit().putString("day", day).putString("mixes", a.toString()).apply()
+        prefs.edit().putInt("version", 2).putString("day", day).putString("mixes", a.toString()).apply()
     }
     fun clear() { prefs.edit().clear().apply() }
 }

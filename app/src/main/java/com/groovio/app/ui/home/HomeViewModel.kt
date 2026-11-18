@@ -61,6 +61,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val _discover = MutableStateFlow<List<DiscoverShelf>>(emptyList())
     val discover: StateFlow<List<DiscoverShelf>> = _discover.asStateFlow()
 
+    private val genres = com.groovio.app.online.GenreMetadata(app)
     private val mixStore = PersonalMixStore(app)
     private val _personalMixes = MutableStateFlow(mixStore.read(java.time.LocalDate.now().toString()))
     val personalMixes = _personalMixes.asStateFlow()
@@ -107,7 +108,24 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     val known = (likes + history).map { it.mediaId }.toSet()
                     val discovery = candidates.flatMap { it.tracks }.distinctBy { it.id }.filter { "yt:${it.id}" !in known }
-                    MixSelection.diversify(candidates.map { it.copy(tracks = it.tracks.take(12)) } +
+                    val genreTracks = linkedMapOf<String, MutableList<OnlineTrack>>()
+                    MixSelection.seeds(likes, history).mapNotNull { it.artist }.distinct().take(3).forEach { artist ->
+                        try {
+                            val genre = genres.genre(artist)
+                            if (genre != null) {
+                                val songs = groovio.youtube.searchSongs(artist).filter {
+                                    com.groovio.app.online.YouTubeMusic.sameArtist(artist, it.artist)
+                                }.take(12)
+                                genreTracks.getOrPut(genre) { mutableListOf() }.addAll(songs)
+                            }
+                        } catch (e: CancellationException) { throw e }
+                        catch (_: Exception) { /* Genre metadata is optional, never invent a classification. */ }
+                    }
+                    val genreMixes = genreTracks.map { (genre, tracks) ->
+                        PersonalMix("$day-genre-$genre", "${genre.replaceFirstChar { it.uppercase() }} Mix",
+                            "From artists in your listening", tracks.distinctBy { it.id })
+                    }
+                    MixSelection.diversify(candidates.map { it.copy(tracks = it.tracks.take(12)) } + genreMixes +
                         PersonalMix("$day-discovery", "Discovery mix", "New finds from your listening", discovery))
                 }
                 if (mixes.isNotEmpty()) { mixStore.write(day, mixes); _personalMixes.value = mixes }

@@ -18,7 +18,7 @@ Before testing experimental builds, use **Settings → Back up library**. Androi
 
 ## Make yourself at home
 
-Play songs and like your favourites to shape recommendations. Experimental builds add daily related-song mixes, which stay consistent for the day and can be saved as playlists. The recommendations use real listening seeds; generic discovery searches are labelled separately.
+Play songs and like your favourites to shape recommendations. Experimental builds add daily related-song mixes, which stay consistent for the day and can be saved as playlists. Genre mixes use public MusicBrainz artist classifications when an unambiguous artist match is available. The recommendations use real listening seeds; generic discovery searches are labelled separately.
 
 Tap Search to open the full-screen search view. **Last Groove** brings recent listening back within reach before you type. Search songs, artists, albums and playlists, or paste a Spotify link.
 
@@ -52,6 +52,6 @@ Genuine finished-app screenshots with loaded artwork are still pending device ca
 
 ## Open source
 
-Groovio uses [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) for on-device source extraction, AndroidX Media3 for playback, Room for the local library, WorkManager for background downloads and Coil for artwork. It is not affiliated with YouTube or Spotify.
+Groovio uses [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) for on-device source extraction, AndroidX Media3 for playback, Room for the local library, WorkManager for background downloads and Coil for artwork. Optional genre classification uses public [MusicBrainz](https://musicbrainz.org/) metadata; artist names are sent for lookup, cached and rate limited. Audio still comes from YouTube. It is not affiliated with YouTube or Spotify.
 
 Licensed under [GPL-3.0](LICENSE), including the requirements of NewPipe Extractor. Build and contributor information lives in [CONTRIBUTING.md](CONTRIBUTING.md).

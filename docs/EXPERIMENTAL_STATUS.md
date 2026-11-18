@@ -40,7 +40,7 @@ Still outstanding:
 - Phone playback with effects off, then each effect separately and together; listening quality and clipping/pumping assessment.
 - Seeking; next/previous; long background/lock-screen playback; Bluetooth and wired disconnect/reconnect; Wi-Fi/mobile handover; explicit pause during errors; offline replay after killing/reopening the app.
 - Real device navigation/accessibility review and genuine loaded-artwork screenshots for README. Mock/test images are intentionally not presented as product screenshots.
-- Personalised **genre** mixes need reliable genre metadata; current genre shelves are ordinary discovery, not disguised personal mixes.
+- Personalised genre mixes now use exact, unambiguous MusicBrainz artist identities and positive genre votes, then real YouTube songs by those listening-seed artists. Requests are rate limited and cached for 30 days. Unsupported or ambiguous artists get no genre label. Live metadata coverage and real listening still need phone verification. Generic genre discovery remains separately labelled.
 - Automatic new-episode refresh and timestamp chapters inside one video are not implemented. Saved playlist chapters/episodes are supported.
 - Exact original shuffled order across process recreation is not persisted; the visible current queue uses Media3's shuffle order.
 
