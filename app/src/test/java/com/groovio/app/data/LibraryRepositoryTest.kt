@@ -130,6 +130,29 @@ class LibraryRepositoryTest {
         assertEquals(2, repo.playlists.first().single().trackCount)
     }
 
+    @Test fun `updating without deleting app data retains saved library on database reopen`() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val databaseName = "groovio-upgrade-persistence-test.db"
+        context.deleteDatabase(databaseName)
+        try {
+            val originalDb = Room.databaseBuilder(context, LibraryDatabase::class.java, databaseName).build()
+            val original = LibraryRepository(originalDb.dao())
+            val roadTrip = original.createPlaylist("Road trip")
+            original.addToPlaylist(roadTrip, track("one"))
+            original.setFavourite(track("two"), true)
+            originalDb.close()
+
+            // Simulates a new process opening the SAME database path after an in-place APK update.
+            val reopenedDb = Room.databaseBuilder(context, LibraryDatabase::class.java, databaseName).build()
+            try {
+                val reopened = LibraryRepository(reopenedDb.dao())
+                assertEquals("Road trip", reopened.playlists.first().single().name)
+                assertEquals(listOf("yt:one"), reopened.playlistItems(roadTrip).first().map { it.track.mediaId })
+                assertEquals(listOf("yt:two"), reopened.favourites.first().map { it.mediaId })
+            } finally { reopenedDb.close() }
+        } finally { context.deleteDatabase(databaseName) }
+    }
+
     private fun item(id: String, title: String) = MediaItem.Builder()
         .setMediaId(id)
         .setUri(TrackMapping.uriFor(id))

@@ -430,7 +430,7 @@ fun GroovioApp(
                     }
                     is com.groovio.app.ui.home.UpdateState.Failed -> Text(available.message)
                     is com.groovio.app.ui.home.UpdateState.NeedsPermission -> Text("Allow installation, then return to Groovio.")
-                    else -> Text("Install the latest build while keeping your library.")
+                    else -> Text("Groovio will first back up your library, playlists, likes, settings and listening history to Downloads/Groovio. The installer must say Update, not Uninstall. Downloaded audio is not included in the JSON backup.")
                 }
             } },
             confirmButton = { if (available !is com.groovio.app.ui.home.UpdateState.Downloading)

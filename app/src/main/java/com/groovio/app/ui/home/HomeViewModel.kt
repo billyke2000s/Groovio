@@ -249,6 +249,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             _update.value = UpdateState.Downloading(update, 0f)
             try {
                 val file = installer.download(update) { p -> _update.value = UpdateState.Downloading(update, p) }
+                // Back up before Android even sees the APK. If this fails, do not install.
+                val location = installer.prepareUpdate(file)
+                _updateMessage.value = "Library backup saved to " + location
                 install(update, file)
             } catch (e: CancellationException) {
                 throw e
