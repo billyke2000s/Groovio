@@ -106,7 +106,7 @@ fun HomeScreen(
     val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty() && recentCollections.isEmpty()
     val tiles = buildList {
         // Always-visible entry point in addition to the header folder icon.
-        add(Tile("local-files", "Local files", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
+        add(Tile("local-files", "Your music", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
         recentCollections.filter {
             HomeCardVisibility.visible(hiddenHomeCards, "quick", it.id)
         }.take(5).forEach { c ->
@@ -132,7 +132,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(greeting(), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 androidx.compose.material3.IconButton(onClick = onOpenFiles) {
-                    Icon(Icons.Default.FolderOpen, "Play audio files from this phone")
+                    Icon(Icons.Default.FolderOpen, "Your music and downloads")
                 }
                 androidx.compose.material3.IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Default.Settings, "Settings")
