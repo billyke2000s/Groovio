@@ -118,7 +118,7 @@ fun SongMenu(
 }
 
 @Composable
-private fun MenuItem(icon: ImageVector, label: String, tint: androidx.compose.ui.graphics.Color = GroovioColors.Text, onClick: () -> Unit) {
+internal fun MenuItem(icon: ImageVector, label: String, tint: androidx.compose.ui.graphics.Color = GroovioColors.Text, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
