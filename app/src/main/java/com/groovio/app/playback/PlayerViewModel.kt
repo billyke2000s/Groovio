@@ -166,7 +166,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                 "YouTube is blocking this network right now. Try again later or switch network."
             causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
             causes.any { it.message?.contains("not downloaded") == true || it.message?.contains("not saved for offline") == true } ->
-                "This song isn't saved for offline listening. Open Downloads to play your saved music."
+                "This song isn't saved for offline listening. Open Your music to play saved songs."
             else -> "Couldn't play this track."
         }
     }
