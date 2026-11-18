@@ -187,7 +187,8 @@ fun GroovioApp(
                         onClick = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(com.groovio.app.ui.library.offlineMessage(downloaded.size))
+                        Text(if (downloaded.isNotEmpty()) "Offline · ${downloaded.size} saved songs · Open Your music"
+                            else "Offline · Open Your music")
                     }
                 }
                 notice?.let { Text(it, modifier = Modifier.padding(horizontal = 20.dp)) }
@@ -438,13 +439,20 @@ fun GroovioApp(
                 onMore = openMenu,
                 onPlayLegacy = vm::playFiles,
                 onBack = { nav.popBackStack() },
-                onDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
                 onSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
             )
         }
+        // Legacy Downloads route is kept for navigation state and bookmarks,
+        // but both entry points render the same Your music screen.
         composable(Routes.DOWNLOADS) {
-            com.groovio.app.ui.library.DownloadsScreen(
-                onBack = { nav.popBackStack() }, onPlay = vm::playStored, onMore = openMenu)
+            com.groovio.app.ui.library.LocalFilesScreen(
+                currentMediaId = state.currentMediaId,
+                onPlay = vm::playStored,
+                onMore = openMenu,
+                onPlayLegacy = vm::playFiles,
+                onBack = { nav.popBackStack() },
+                onSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
+            )
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(
