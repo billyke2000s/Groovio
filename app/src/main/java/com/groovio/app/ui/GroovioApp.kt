@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -66,12 +67,14 @@ private object Routes {
     const val QUEUE = "queue"
     const val SETTINGS = "settings"
     const val DOWNLOADS = "downloads"
+    const val SEARCH = "full_search"
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
     SEARCH("Search", Icons.Default.Search),
-    LIBRARY("Library", Icons.Default.LibraryMusic),
+    LIBRARY("Your Library", Icons.Default.LibraryMusic),
+    CREATE("Create", Icons.Default.Add),
 }
 
 @Composable
@@ -93,6 +96,7 @@ fun GroovioApp(
     }
 
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
+    var creatingPlaylist by rememberSaveable { mutableStateOf(false) }
     var libraryView by rememberSaveable { mutableStateOf(LibraryView.ROOT) }
     val recent by libraryVm.recent.collectAsStateWithLifecycle()
     val liked by libraryVm.favourites.collectAsStateWithLifecycle()
@@ -118,6 +122,8 @@ fun GroovioApp(
         nav.popBackStack(Routes.TABS, inclusive = false)
     }
     fun selectTab(t: Tab) {
+        if (t == Tab.CREATE) { creatingPlaylist = true; return }
+        if (t == Tab.SEARCH) { nav.navigate(Routes.SEARCH) { launchSingleTop = true }; return }
         details.clear()
         // Tapping Library again returns to its top level.
         if (t == Tab.LIBRARY && tab == Tab.LIBRARY) libraryView = LibraryView.ROOT
@@ -139,8 +145,8 @@ fun GroovioApp(
         app.sharedText.value = null
         searchVm.onQueryChange(text)
         details.clear()
-        tab = Tab.SEARCH
         nav.popBackStack(Routes.TABS, inclusive = false)
+        nav.navigate(Routes.SEARCH) { launchSingleTop = true }
     }
 
     NavHost(
@@ -187,7 +193,7 @@ fun GroovioApp(
                             onPlayRecent = vm::playStored,
                             onOpenLiked = { libraryView = LibraryView.LIKED; tab = Tab.LIBRARY },
                             onOpenPlaylist = { libraryView = LibraryView.playlist(it); tab = Tab.LIBRARY },
-                            onSearch = { tab = Tab.SEARCH },
+                            onSearch = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
                             onOpenFiles = { picker.launch(arrayOf("audio/*")) },
                             onMore = openMenu,
                             chart = if (offline) null else chart,
@@ -203,7 +209,7 @@ fun GroovioApp(
                             onOpenSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
                             onOpenAlbum = { openDetail(Detail.Album(it)) },
                         )
-                        Tab.SEARCH -> SearchScreen(
+                        Tab.SEARCH, Tab.CREATE -> SearchScreen(
                             vm = searchVm,
                             currentMediaId = state.currentMediaId,
                             onPlay = vm::playTracks,
@@ -260,6 +266,25 @@ fun GroovioApp(
             }
         }
         composable(
+            Routes.SEARCH,
+            enterTransition = { slideInVertically { it } },
+            popExitTransition = { slideOutVertically { it } },
+        ) {
+            androidx.activity.compose.BackHandler { nav.popBackStack() }
+            SearchScreen(
+                vm = searchVm, currentMediaId = state.currentMediaId,
+                onPlay = vm::playTracks, spotifyImport = spotifyImport,
+                onPlaySpotify = vm::playSpotify,
+                onDownload = { tracks, index -> vm.downloadOnline(tracks, index) },
+                onDownloadSpotify = { vm.playSpotify(it, true) },
+                downloadsEnabled = downloadsEnabled && !offline,
+                onOpenAlbum = { openDetail(Detail.Album(it)) }, onMore = openMenu,
+                recent = recent, onPlayRecent = vm::playStored,
+                onBack = { nav.popBackStack() },
+                modifier = Modifier.statusBarsPadding(),
+            )
+        }
+        composable(
             Routes.PLAYER,
             enterTransition = { slideInVertically { it } },
             popExitTransition = { slideOutVertically { it } },
@@ -312,6 +337,12 @@ fun GroovioApp(
             )
         }
     }
+
+    if (creatingPlaylist) com.groovio.app.ui.library.PlaylistNameDialog(
+        title = "Create playlist", confirmLabel = "Create",
+        onConfirm = { libraryVm.createPlaylist(it); tab = Tab.LIBRARY; libraryView = LibraryView.ROOT },
+        onDismiss = { creatingPlaylist = false },
+    )
 
     menuTrack?.let { track ->
         SongMenu(

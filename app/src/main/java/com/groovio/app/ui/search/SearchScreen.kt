@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -70,6 +72,9 @@ fun SearchScreen(
     onDownload: ((List<OnlineTrack>, Int) -> Unit)? = null,
     onDownloadSpotify: ((SpotifyCollection) -> Unit)? = null,
     downloadsEnabled: Boolean = false,
+    recent: List<TrackEntity> = emptyList(),
+    onPlayRecent: (List<TrackEntity>, Int) -> Unit = { _, _ -> },
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val input by vm.input.collectAsStateWithLifecycle()
@@ -80,13 +85,16 @@ fun SearchScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     var selected by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
 
-    Column(modifier.fillMaxSize()) {
+    Column(modifier.fillMaxSize().then(Modifier.imePadding())) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+        onBack?.let { back -> IconButton(onClick = back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Close search") } }
         Text(
             "Search",
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 12.dp),
         )
+        }
         OutlinedTextField(
             value = input,
             onValueChange = vm::onQueryChange,
@@ -114,6 +122,16 @@ fun SearchScreen(
         Spacer(Modifier.height(8.dp))
 
         when {
+            input.isBlank() && recent.isNotEmpty() -> LazyColumn(Modifier.fillMaxSize()) {
+                item { Text("Last Groove", fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(16.dp)) }
+                itemsIndexed(recent, key = { _, track -> track.mediaId }) { index, track ->
+                    com.groovio.app.ui.library.StoredTrackRow(
+                        track = track, playing = currentMediaId == track.mediaId,
+                        onClick = { keyboard?.hide(); onPlayRecent(recent, index) },
+                        onLongClick = { onMore(track) },
+                    )
+                }
+            }
             state.loading && state.results.isEmpty() -> Centered {
                 CircularProgressIndicator(color = GroovioColors.Accent)
             }
