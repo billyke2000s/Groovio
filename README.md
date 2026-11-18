@@ -1,57 +1,80 @@
-# Groovio 🎵
+<div align="center">
 
-**Find your next favourite. Keep your groove.**
+# 🎧 Groovio
 
-Groovio is a free Android music player with an orange-accented dark design. Search for music, play audio from your phone, build playlists and save available audio for offline listening. No account, subscription or hosted music server is required.
+### Find your next favourite. Keep your groove.
 
-## Install and update
+**A native Android music player for discovering, organising and listening to music — online or offline.**
 
-Groovio supports Android 8 and newer. Download the APK from a release, open it on your phone, and allow installation from that download location when Android asks.
+Dark by design. Coral accents. Your library stays on your phone.
+
+[**Get the APK**](https://github.com/billyke2000s/Groovio/releases/latest) · [**All releases**](https://github.com/billyke2000s/Groovio/releases) · [**Build from source**](CONTRIBUTING.md)
+
+</div>
+
+---
+
+## A look inside Groovio
+
+<p align="center">
+  <a href="docs/screenshots/home.webp"><img src="docs/screenshots/home.webp" width="30%" alt="Actual Groovio Android Home screen showing playlist shortcuts, Jump back in, personalised mixes and the mini-player"></a>
+  &nbsp;
+  <a href="docs/screenshots/song-menu.webp"><img src="docs/screenshots/song-menu.webp" width="30%" alt="Actual Groovio Android song options sheet with artwork, playback and playlist actions"></a>
+  &nbsp;
+  <a href="docs/screenshots/playlist-menu.webp"><img src="docs/screenshots/playlist-menu.webp" width="30%" alt="Actual Groovio Android playlist options sheet over Home"></a>
+</p>
+
+<p align="center"><sub>Real screenshots captured from Groovio on Android and supplied by the app owner — no generated mockups. The menu captures are from an earlier experimental build; labels and actions may have changed since.</sub></p>
+
+## What you can do
+
+| | |
+| --- | --- |
+| **Discover music** | Search songs and artists, explore albums and mixes, and return to recent playlists with **Jump back in**. |
+| **Build your library** | Like songs, make and edit playlists, add songs to the queue, and organise collections in list or grid view. |
+| **Listen offline** | **Your music** brings Groovio downloads and imported phone audio together. Play, shuffle and browse saved tracks without an internet connection. |
+| **Take control** | Full-screen player, swipe-to-skip artwork, mini-player, queue ordering, shuffle, repeat, seeking and sleep timer. |
+| **Tune your sound** | Built-in five-band equaliser and presets, plus optional volume normalisation. Effect support depends on the device. |
+| **Explore more** | Browse available public podcasts and audiobooks, save supported content and resume listening. |
+
+### Made for listening
+
+Groovio uses a dark interface with coral-orange accents, album artwork and quick access to your favourite collections. Tap a collection to inspect its tracks; long-press songs or playlists for their available actions. The mini-player keeps playback in reach while you browse.
+
+**Your music** is the home for audio already saved on your device: verified Groovio downloads appear alongside files you import from Android storage. The optional public copy in \`Music/Groovio\` is not required for offline playback inside Groovio.
+
+## Install on Android
+
+**Requires Android 8.0 or newer.** Download an APK from the [releases page](https://github.com/billyke2000s/Groovio/releases), open it on your phone and allow installs from that source if Android prompts you.
 
 - **Stable:** [Latest stable release](https://github.com/billyke2000s/Groovio/releases/latest).
-- **Experimental:** [Browse releases](https://github.com/billyke2000s/Groovio/releases) and choose a release labelled `experimental-v…`. These builds contain new work that still needs phone testing.
-- **Confirmed playback baseline:** [v0.1.71 recovery release](https://github.com/billyke2000s/Groovio/releases/tag/experimental-baseline-v0.1.71), personally confirmed to play songs by the owner.
+- **Experimental:** [Find experimental prereleases](https://github.com/billyke2000s/Groovio/releases) for newer features that may still need testing.
+- **Recovery build:** [v0.1.71](https://github.com/billyke2000s/Groovio/releases/tag/experimental-baseline-v0.1.71), an older build whose music playback was confirmed on the owner's phone.
 
-Updates use the same app identity and signing key, so a newer APK can install over your existing Groovio. Check for updates in Settings. Experimental updates require an explicit opt-in under **Settings → Updates**; stable users are not automatically moved to test builds.
+The \`main\` source may be newer than the latest published stable APK. Stable publication has a phone-playback approval check. Check [GitHub Actions](https://github.com/billyke2000s/Groovio/actions) for build results rather than assuming every source change is already available in an APK.
 
-Before testing experimental builds, use **Settings → Back up library**. Android normally blocks installing an older version over a newer one. Returning to an older APK may require uninstalling first, which removes app data and downloaded audio. A library backup contains playlists, likes and settings, not the downloaded audio files.
+**Keep your library when updating:** install a newer signed APK over the existing app — **do not uninstall** just to update. Use **Settings → Back up library** before experimental updates. Library backups include playlists, likes and settings, **not downloaded audio files**. Android may prevent downgrading to an older version without uninstalling.
 
-## Make yourself at home
+## How music works
 
-Play songs and like your favourites to shape recommendations. Experimental builds add daily related-song mixes, which stay consistent for the day and can be saved as playlists. Genre mixes use public MusicBrainz artist classifications when an unambiguous artist match is available. The recommendations use real listening seeds; generic discovery searches are labelled separately.
+Groovio plays available YouTube / YouTube Music audio using on-device extraction. A song can be streamed or saved for offline playback when available. Downloading a playlist queues its eligible tracks; unavailable matches remain unavailable rather than being replaced with invented audio.
 
-Tap Search to open the full-screen search view. **Last Groove** brings recent listening back within reach before you type. Search songs, artists, albums and playlists, or paste a Spotify link.
+Spotify links are used for **track and collection metadata only**. Groovio attempts to match those entries to available YouTube audio; it does **not** play Spotify's protected streams or guarantee every track in a playlist can be matched.
 
-Open **Your Library** for liked songs, playlists, recent listening and Downloads. Use **Create** to name a playlist, then add songs from their menu. Rename playlists, remove songs and switch between list and grid views in the library.
+There are **no required accounts, subscriptions or hosted Groovio servers**. Your playlists, favourites, listening history and settings are stored locally. Music availability still depends on the source, region and network, and some videos may be unavailable or blocked.
 
-## Play online or take it with you
+## Under the hood
 
-**Play** starts streaming without requiring a download. **Download & play** also queues the audio for offline use. Spotify collections offer **Save & play offline**, which creates a reusable library playlist while supported tracks are matched and downloaded in the background.
+Built with **Kotlin**, **Jetpack Compose**, **AndroidX Media3**, **Room** and **WorkManager**. Artwork uses **Coil**; online extraction uses [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor). Optional genre metadata comes from [MusicBrainz](https://musicbrainz.org/).
 
-Downloads survive navigation and app restarts. Open Downloads from Your Library or Settings to see progress, matching failures and saved songs. Wi-Fi-only transfers wait for an unmetered connection. Saved audio is preferred automatically, and offline search searches downloaded songs.
+Groovio is in active development. Some features (including podcast/audiobook discovery, audio effects and newer offline workflows) still need real-device verification. For implementation details and the checks actually completed, see [experimental status](docs/EXPERIMENTAL_STATUS.md).
 
-Spotify links supply metadata. Groovio matches that metadata to available YouTube audio; it does not directly stream Spotify's protected catalogue. Some collections expose only part of their track list, and some tracks cannot be matched. Matching progress describes the tracks actually available to Groovio, not a guarantee that every Spotify track was imported.
+**Groovio is independent and is not affiliated with YouTube, YouTube Music or Spotify.**
 
-## Listening controls
+---
 
-The player includes a queue, shuffle, repeat, seeking and a sleep timer, plus notification and lock-screen controls. Actual available audio-format details appear beside the title when known.
+<div align="center">
 
-Experimental audio controls include a built-in five-band equaliser, presets and optional gentle volume levelling. Both effects default to off. Equaliser boosts use relative attenuation to leave headroom; levelling reduces loud passages rather than boosting quiet recordings. Device effect support varies, and listening tests remain necessary. Optional next-song preparation can reduce the wait between tracks; gapless playback depends on the source and device.
+[**Releases**](https://github.com/billyke2000s/Groovio/releases) · [**Contributing**](CONTRIBUTING.md) · [**GPL-3.0 licence**](LICENSE)
 
-## Podcasts and audiobooks
-
-Experimental Home filters browse public YouTube uploads for podcasts and audiobooks. Search by show, episode, author or book title, save individual episodes/books, adjust playback speed and download available audio. Saved spoken content keeps its progress separately from music history.
-
-This is an early implementation: shows/books can be saved as YouTube playlist collections, with their uploads listed as episodes/chapters. Automatic new-episode refresh and chapter timestamps inside a single upload are not implemented. It does not provide paid books or Spotify-exclusive programmes.
-
-## What to expect
-
-Groovio is still in development. Online availability depends on YouTube and the network; bot challenges, missing uploads and regional restrictions can prevent playback. Experimental builds require device verification, including Bluetooth, offline playback and background listening. See [experimental status](docs/EXPERIMENTAL_STATUS.md) for the checks actually performed and outstanding work.
-
-Genuine finished-app screenshots with loaded artwork are still pending device capture. Screenshots from other music apps and generated mock-ups are not used here.
-
-## Open source
-
-Groovio uses [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor) for on-device source extraction, AndroidX Media3 for playback, Room for the local library, WorkManager for background downloads and Coil for artwork. Optional genre classification uses public [MusicBrainz](https://musicbrainz.org/) metadata; artist names are sent for lookup, cached and rate limited. Audio still comes from YouTube. It is not affiliated with YouTube or Spotify.
-
-Licensed under [GPL-3.0](LICENSE), including the requirements of NewPipe Extractor. Build and contributor information lives in [CONTRIBUTING.md](CONTRIBUTING.md).
+</div>
