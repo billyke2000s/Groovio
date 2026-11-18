@@ -60,7 +60,7 @@ fun CollectionMenu(
     onOpenDownloads: () -> Unit,
     onCopyTo: (Long, List<TrackEntity>) -> Unit,
     onCopyToNew: (String, List<TrackEntity>) -> Unit,
-    onRemoveFromSection: () -> Unit,
+    onRemoveFromSection: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     val app = LocalContext.current.applicationContext as GroovioApplication
@@ -152,8 +152,10 @@ fun CollectionMenu(
                     pickingPlaylist = true
                 }
             }
-            MenuItem(Icons.Default.FolderOff, "Remove from this section") {
-                onRemoveFromSection(); onDismiss()
+            onRemoveFromSection?.let { remove ->
+                MenuItem(Icons.Default.FolderOff, "Remove from this section") {
+                    remove(); onDismiss()
+                }
             }
         }
     }
