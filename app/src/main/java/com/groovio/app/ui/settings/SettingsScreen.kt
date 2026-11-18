@@ -187,7 +187,7 @@ fun SettingsScreen(
                 settings.setOfflineOnly(it); if (it) app.downloads.cancelAll()
             } }
             item { Action("Downloads", "${downloads.size} songs · ${app.downloads.bytes() / (1024 * 1024)} MB saved", onOpenDownloads) }
-            item { Action("Remove all downloads", "Frees downloaded audio; keeps your likes and playlists") { confirmDeleteDownloads = true } }
+            item { Action("Remove all downloads", "Clears offline cache; copies in Music/Groovio remain yours") { confirmDeleteDownloads = true } }
 
             item { Section("Your library") }
             item { Action("Back up library", if (busy) "Working…" else "Save playlists, likes and settings to a file") {

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -87,6 +88,7 @@ fun LibraryScreen(
     updateMessage: String? = null,
     onCheckUpdates: () -> Unit = {},
     onOpenDownloads: () -> Unit = {},
+    onOpenFiles: () -> Unit = {},
     onOpenSpoken: (String) -> Unit = {},
     onOpenArtist: (String) -> Unit = {},
     onSearch: () -> Unit = {},
@@ -97,7 +99,7 @@ fun LibraryScreen(
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist, onSearch, onReplayCollection)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenFiles, onOpenSpoken, onOpenArtist, onSearch, onReplayCollection)
     }
 }
 
@@ -128,6 +130,7 @@ private fun LibraryRoot(
     updateMessage: String?,
     onCheckUpdates: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenFiles: () -> Unit,
     onOpenSpoken: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
     onSearch: () -> Unit,
@@ -140,7 +143,6 @@ private fun LibraryRoot(
     val recentCollections by app.collectionHistory.recent.collectAsStateWithLifecycle()
     val followed by app.spoken.followed.collectAsStateWithLifecycle()
     val savedSpoken by app.spoken.saved.collectAsStateWithLifecycle()
-    var creating by rememberSaveable { mutableStateOf(false) }
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
     var grid by rememberSaveable { mutableStateOf(false) }
     var alphabetical by rememberSaveable { mutableStateOf(false) }
@@ -149,6 +151,8 @@ private fun LibraryRoot(
     // Keep the pinned Liked Songs first in Recents and avoid repeating playlists already in history.
     val likedEntry = LibraryEntry("liked", "Liked songs", "Playlist · ${liked.size} songs",
         icon = Icons.Default.Favorite, onOpen = { onViewChange(LibraryView.LIKED) })
+    val filesEntry = LibraryEntry("local-files", "Local Files", "Music/Groovio · songs on your phone",
+        icon = Icons.Default.FolderOpen, onOpen = onOpenFiles)
     val collectionEntries = recentCollections.map { collection ->
         LibraryEntry("recent:${collection.id}", collection.title, collection.kind,
             collection.artworkUri ?: collection.tracks.firstOrNull()?.artworkUri,
@@ -186,6 +190,7 @@ private fun LibraryRoot(
         }
     val allEntries = buildList {
         add(likedEntry)
+        add(filesEntry)
         addAll(collectionEntries)
         addAll(playlistEntries.filterNot { p -> recentCollections.any { c -> c.playlistId != null && p.key == "playlist:${c.playlistId}" } })
         addAll(podcastEntries.filter { it.key.startsWith("podcast:") })
@@ -218,7 +223,6 @@ private fun LibraryRoot(
             ) {
                 Text("Your Library", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search Groovio") }
-                IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, "New playlist") }
             }
         }
         item(span = full) {
@@ -278,10 +282,6 @@ private fun LibraryRoot(
                 updateMessage?.let { Text(it, color = GroovioColors.TextMuted, fontSize = 13.sp) }
             }
         }
-    }
-    if (creating) {
-        PlaylistNameDialog(title = "New playlist", confirmLabel = "Create",
-            onConfirm = vm::createPlaylist, onDismiss = { creating = false })
     }
 }
 

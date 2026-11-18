@@ -101,7 +101,9 @@ fun HomeScreen(
 ) {
     val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty() && recentCollections.isEmpty()
     val tiles = buildList {
-        recentCollections.take(6).forEach { c ->
+        // Always-visible entry point in addition to the header folder icon.
+        add(Tile("local-files", "Local files", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
+        recentCollections.take(5).forEach { c ->
             add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
                 artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onReplayCollection(c) })
         }

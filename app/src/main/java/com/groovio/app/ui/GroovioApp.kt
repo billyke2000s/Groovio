@@ -72,6 +72,7 @@ private object Routes {
     const val QUEUE = "queue"
     const val SETTINGS = "settings"
     const val DOWNLOADS = "downloads"
+    const val LOCAL_FILES = "local_files"
     const val SEARCH = "full_search"
 }
 
@@ -96,10 +97,6 @@ fun GroovioApp(
     val spotifyImport by vm.spotifyImport.collectAsStateWithLifecycle()
     val sleepTimer by vm.sleepTimer.collectAsStateWithLifecycle()
     val nav = rememberNavController()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        vm.playFiles(uris)
-    }
-
     var homeFilter by rememberSaveable { mutableStateOf("All") }
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var creatingPlaylist by rememberSaveable { mutableStateOf(false) }
@@ -251,7 +248,7 @@ fun GroovioApp(
                             onOpenLiked = { libraryView = LibraryView.LIKED; tab = Tab.LIBRARY },
                             onOpenPlaylist = { libraryView = LibraryView.playlist(it); tab = Tab.LIBRARY },
                             onSearch = { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
-                            onOpenFiles = { picker.launch(arrayOf("audio/*")) },
+                            onOpenFiles = { nav.navigate(Routes.LOCAL_FILES) { launchSingleTop = true } },
                             onMore = openMenu,
                             chart = if (offline) null else chart,
                             onPlayChart = vm::playSpotify,
@@ -297,6 +294,7 @@ fun GroovioApp(
                             },
                             onMore = openMenu,
                             onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) },
+                            onOpenFiles = { nav.navigate(Routes.LOCAL_FILES) { launchSingleTop = true } },
                             onOpenSpoken = { homeFilter = it; tab = Tab.HOME },
                             onOpenArtist = { openDetail(Detail.Artist(it)) },
                             onSearch = { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
@@ -385,6 +383,16 @@ fun GroovioApp(
                 sleepTimer = sleepTimer,
                 onSetSleepTimer = vm::setSleepTimer,
                 onSetSpeed = vm::setSpeed,
+            )
+        }
+        composable(Routes.LOCAL_FILES) {
+            com.groovio.app.ui.library.LocalFilesScreen(
+                currentMediaId = state.currentMediaId,
+                onPlay = vm::playStored,
+                onPlayLegacy = vm::playFiles,
+                onBack = { nav.popBackStack() },
+                onDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
+                onSettings = { nav.navigate(Routes.SETTINGS) { launchSingleTop = true } },
             )
         }
         composable(Routes.DOWNLOADS) {

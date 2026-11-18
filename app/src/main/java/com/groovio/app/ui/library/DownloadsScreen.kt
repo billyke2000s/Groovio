@@ -67,7 +67,7 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
     }
     deleting?.let { track ->
         AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Remove download?") },
-            text = { Text("Remove ${track.title} from this phone? Your likes and playlists stay.") },
+            text = { Text("Remove the offline cache for ${track.title}? Your playlists and the copy in Music/Groovio stay.") },
             confirmButton = { TextButton(onClick = {
                 deleting = null
                 scope.launch { runCatching { app.downloads.remove(track) }.onFailure { note = "Couldn't remove this download." } }
