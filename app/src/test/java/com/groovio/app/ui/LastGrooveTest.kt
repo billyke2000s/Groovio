@@ -22,23 +22,23 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class LastGrooveTest {
     @get:Rule val compose = createComposeRule()
-    @Test fun `empty full screen search offers replay and a close action`() {
+    @Test fun `empty full screen search offers playlist details and a close action`() {
         val app = ApplicationProvider.getApplicationContext<GroovioApplication>()
         val tracks = listOf(TrackEntity("yt:one", "A song inside", "Artist", null))
         val recent = listOf(com.groovio.app.data.RecentCollection("playlist:1", "A recent playlist", "Playlist", null, tracks, playlistId = 1))
-        var replayed = false
+        var opened = false
         var closed = false
         val vm = SearchViewModel(app)
         compose.setContent { GroovioTheme {
             SearchScreen(vm = vm, currentMediaId = null, onPlay = { _, _ -> },
                 spotifyImport = null, onPlaySpotify = {}, onOpenAlbum = {}, onMore = {},
-                recentCollections = recent, onReplayCollection = { collection -> replayed = collection.id == "playlist:1" && collection.tracks == tracks },
+                recentCollections = recent, onOpenCollection = { collection -> opened = collection.id == "playlist:1" && collection.tracks == tracks },
                 onBack = { closed = true })
         } }
         compose.onNodeWithText("Last Groove").assertIsDisplayed()
         compose.onNodeWithText("A recent playlist").performClick()
         compose.onNodeWithText("A song inside").assertDoesNotExist()
-        assertTrue(replayed)
+        assertTrue(opened)
         compose.onNodeWithContentDescription("Close search").performClick()
         assertTrue(closed)
     }
