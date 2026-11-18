@@ -129,6 +129,13 @@ fun LocalFilesScreen(
             !downloadJobAlreadySaved(job.tags, downloads.map { it.mediaId }.toSet(), downloads.map { it.title })
     }
     val mb = app.downloads.bytes() / (1024 * 1024)
+    val unmatchedCollections = jobs.filter {
+        "collection-import" in it.tags && it.state == WorkInfo.State.SUCCEEDED &&
+            it.outputData.getInt("missed", 0) > 0
+    }
+    val unmatched = unmatchedCollections.sumOf { it.outputData.getInt("missed", 0) }
+    val exampleMissing = unmatchedCollections.firstOrNull()
+        ?.outputData?.getString("missingNames")?.takeIf { it.isNotBlank() }
 
     Column(Modifier.fillMaxSize().background(GroovioColors.Background).systemBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -268,7 +275,16 @@ fun LocalFilesScreen(
     }
     if (activity) AlertDialog(onDismissRequest = { activity = false },
         title = { Text("Download activity") },
-        text = { Text("${downloads.size} playable songs · $mb MB\n${active.size} pending downloads\n${failed.size} unresolved downloads\n\nA problem making an extra copy in Music/Groovio does not mean the original download failed.") },
+        text = { Text(buildString {
+            append("${downloads.size} playable songs · $mb MB\n")
+            append("${active.size} pending downloads\n")
+            append("${failed.size} unresolved downloads")
+            if (unmatched > 0) {
+                append("\n$unmatched unavailable from playlist matching")
+                exampleMissing?.let { append("\nCouldn't match: $it") }
+            }
+            append("\n\nA problem making an extra copy in Music/Groovio does not mean the original download failed.")
+        }) },
         confirmButton = { TextButton(onClick = { activity = false }) { Text("Done") } })
 }
 
