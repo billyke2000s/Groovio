@@ -61,6 +61,7 @@ private data class Tile(
     val title: String,
     val icon: ImageVector?,
     val artworkUri: String?,
+    val artworkUris: List<String> = emptyList(),
     val onClick: () -> Unit,
 )
 
@@ -98,9 +99,12 @@ fun HomeScreen(
     onFilter: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty()
+    val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty() && recentCollections.isEmpty()
     val tiles = buildList {
-        recentCollections.take(6).forEach { c -> add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri) { onReplayCollection(c) }) }
+        recentCollections.take(6).forEach { c ->
+            add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
+                artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onReplayCollection(c) })
+        }
         if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onOpenLiked))
         playlists.filter { p -> recentCollections.none { it.playlistId == p.id } }.take(6 - size).forEach { p ->
             add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri) { onOpenPlaylist(p.id) })
@@ -281,6 +285,20 @@ private fun QuickTile(tile: Tile, modifier: Modifier) {
         Box(Modifier.size(56.dp).background(GroovioColors.ArtworkFallback), contentAlignment = Alignment.Center) {
             if (tile.artworkUri != null) {
                 AsyncImage(model = tile.artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize())
+            } else if (tile.artworkUris.size >= 4) {
+                Column(Modifier.fillMaxSize()) {
+                    tile.artworkUris.take(4).chunked(2).forEach { pair ->
+                        Row(Modifier.weight(1f)) {
+                            pair.forEach { art ->
+                                AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxSize())
+                            }
+                        }
+                    }
+                }
+            } else if (tile.artworkUris.isNotEmpty()) {
+                AsyncImage(model = tile.artworkUris.first(), contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize())
             } else {
                 Icon(tile.icon ?: Icons.Default.MusicNote, contentDescription = null, tint = GroovioColors.Accent)
