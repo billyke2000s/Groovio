@@ -291,7 +291,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             for (track in collection.tracks) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val app = getApplication<GroovioApplication>()
-                if (app.settings.offlineOnly.value || !app.connectivity.online.value) {
+                if (app.settings.offlineOnly.value) {
                     missed += total - found - missed
                     break
                 }

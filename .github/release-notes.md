@@ -1,9 +1,10 @@
-## Offline listening and everyday playback
+## Playback compatibility hotfix
 
-- Choose Play or Download & play for songs, Spotify links, searched playlists, albums and your saved playlists.
-- Downloads stay on the phone, automatically play from local storage and are available in the Downloads screen. Offline search finds saved songs; the offline message helps keep your rhythm going.
-- Simple settings for downloads, Wi-Fi-only transfers, offline mode, storage cleanup, library backup/restore, autoplay, sleep timer, optional conservative volume normalisation and skipping unavailable songs.
-- Faster next-track URL preparation, background playback position checkpoints, actual shuffled queue order and full playlist paging.
-- A mix from your favourites and a UK chart using Apple's published metadata.
+- Restores the player construction and stream-retry behaviour from the last working version.
+- Removes the network-status gate that could reject a playable online song before trying it.
+- Temporarily rolls back volume processing, next-track pre-resolution and automatic failed-track skipping while phone playback is verified. The corresponding settings are hidden during this rollback.
+- Keeps saved downloads, offline listening, library backups and your existing library.
+- Removes the permanent Downloads counter and extra top spacing from the normal app screen. Downloads remains in Settings; the encouraging message appears only when offline.
+- Shows buffering and playback errors in the mini-player so failures aren't presented as an ordinary paused song.
 
-Normalisation is off by default. Wi-Fi-only downloads are on by default. Backups contain library metadata and settings, not audio files. Android may delay background downloads; force-stopped apps resume scheduled work after reopening. YouTube can still block anonymous playback on some networks. Compatible source/device support is required for gapless playback.
+Android build checks do not substitute for phone playback verification.

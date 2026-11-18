@@ -1,5 +1,10 @@
 # Offline library and playback
 
+## Playback compatibility hotfix
+The owner reported that v0.1.69 stopped playing songs while v0.1.61 worked. The player construction and retry logic have been restored to the v0.1.61 implementation. Online playback no longer depends on Android reporting a validated network before trying a request. Volume normalisation, next-URL pre-resolution and automatic failed-track skipping are temporarily rolled back pending phone verification; their settings are hidden. Downloads, explicit offline mode, periodic position saves and library data remain. The mini-player now displays buffering and failures. The permanent online Downloads counter and duplicate top padding are removed.
+
+These are regression-isolation changes; the exact device failure is not established without its playback error. The behaviour described below for the rolled-back features is historical until they are reintroduced and verified.
+
 ## Behaviour
 - Settings keeps the existing quality selector, equalizer, autoplay, history/cache clearing and updates. Adds optional live volume normalisation (off initially), skip-unavailable songs (off initially), sleep timer, downloads toggle, unmetered-only downloads (on initially), offline mode, download management, library export and merge restore.
 - Search song taps offer Play or Download & play when downloads are enabled and online. The song menu exposes the same actions. Spotify collections, albums, liked songs and local playlists have batch Download & play actions.

@@ -102,15 +102,19 @@ fun MiniPlayer(
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        state.artist ?: "Unknown artist", fontSize = 12.sp,
+                        state.error ?: if (state.isBuffering) "Loading audio…" else state.artist ?: "Unknown artist", fontSize = 12.sp,
                         color = GroovioColors.TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
                 IconButton(onClick = onTogglePlay) {
-                    Icon(
-                        if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        if (state.isPlaying) "Pause" else "Play",
-                    )
+                    if (state.isBuffering) {
+                        androidx.compose.material3.CircularProgressIndicator(Modifier.size(22.dp), color = GroovioColors.Text, strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            if (state.isPlaying) "Pause" else "Play",
+                        )
+                    }
                 }
                 IconButton(onClick = onNext, enabled = state.hasNext) {
                     Icon(Icons.Default.SkipNext, "Next")

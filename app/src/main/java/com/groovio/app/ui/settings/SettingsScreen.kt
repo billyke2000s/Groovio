@@ -60,8 +60,6 @@ fun SettingsScreen(
     val settings = app.settings
     val dataSaver by settings.dataSaver.collectAsStateWithLifecycle()
     val autoplay by settings.autoplay.collectAsStateWithLifecycle()
-    val normalise by settings.normalise.collectAsStateWithLifecycle()
-    val skipFailed by settings.skipFailed.collectAsStateWithLifecycle()
     val downloadsEnabled by settings.downloadsEnabled.collectAsStateWithLifecycle()
     val wifiOnly by settings.wifiOnly.collectAsStateWithLifecycle()
     val offlineOnly by settings.offlineOnly.collectAsStateWithLifecycle()
@@ -160,8 +158,6 @@ fun SettingsScreen(
                 Toggle("Autoplay", "When your music ends, keep playing similar songs", autoplay, settings::setAutoplay)
             }
 
-            item { Toggle("Volume normalisation", "Gently reduces louder audio; quiet songs are never boosted", normalise, settings::setNormalise) }
-            item { Toggle("Skip unavailable songs", "After recovery fails, continue with the next song", skipFailed, settings::setSkipFailed) }
             item { Action("Sleep timer", "Stop playback after a while or at the end of a song") { showSleep = true } }
 
             item { Section("Downloads & offline") }
