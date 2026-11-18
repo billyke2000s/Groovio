@@ -335,6 +335,7 @@ fun GroovioApp(
                 onOpenArtist = { openDetail(Detail.Artist(it)) },
                 sleepTimer = sleepTimer,
                 onSetSleepTimer = vm::setSleepTimer,
+                onSetSpeed = vm::setSpeed,
             )
         }
         composable(Routes.DOWNLOADS) {

@@ -42,6 +42,9 @@ class GroovioSettings(context: Context) {
     fun setNormalise(on: Boolean) { prefs.edit().putBoolean("normalise", on).apply(); _normalise.value = on }
     fun setSkipFailed(on: Boolean) { prefs.edit().putBoolean("skip_failed", on).apply(); _skipFailed.value = on }
     fun setOfflineOnly(on: Boolean) { prefs.edit().putBoolean("offline_only", on).apply(); _offlineOnly.value = on }
+    private val _spokenSpeed = MutableStateFlow(prefs.getFloat("spoken_speed", 1f).coerceIn(0.5f, 2f))
+    val spokenSpeed = _spokenSpeed.asStateFlow()
+    fun setSpokenSpeed(speed: Float) { val s = speed.coerceIn(0.5f, 2f); prefs.edit().putFloat("spoken_speed", s).apply(); _spokenSpeed.value = s }
     private val _equalizerEnabled = MutableStateFlow(prefs.getBoolean("equalizer_enabled", false))
     val equalizerEnabled = _equalizerEnabled.asStateFlow()
     private val _equalizerBands = MutableStateFlow((0..4).map { prefs.getInt("eq_$it", 0).coerceIn(-6, 6) })

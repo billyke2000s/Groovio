@@ -191,6 +191,11 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun setSpeed(speed: Float) {
+        getApplication<GroovioApplication>().settings.setSpokenSpeed(speed)
+        controller?.setPlaybackSpeed(speed.coerceIn(0.5f, 2f))
+    }
+
     fun seekTo(ms: Long) { controller?.seekTo(ms) }
     fun next() { controller?.seekToNextMediaItem() }
     fun previous() { controller?.seekToPrevious() }
@@ -343,7 +348,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         stopImport()
         if (tracks.isEmpty()) return
-        c.setMediaItems(tracks.map(TrackMapping::toMediaItem), startIndex.coerceIn(tracks.indices), 0L)
+        c.setMediaItems(tracks.map(TrackMapping::toMediaItem), startIndex.coerceIn(tracks.indices), getApplication<GroovioApplication>().spoken.position(tracks[startIndex.coerceIn(tracks.indices)].mediaId))
         c.prepare()
         c.play()
     }
@@ -360,7 +365,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         stopImport()
         if (tracks.isEmpty()) return
-        c.setMediaItems(tracks.map(OnlineMedia::mediaItem), startIndex.coerceIn(tracks.indices), 0L)
+        c.setMediaItems(tracks.map(OnlineMedia::mediaItem), startIndex.coerceIn(tracks.indices), getApplication<GroovioApplication>().spoken.position("yt:${tracks[startIndex.coerceIn(tracks.indices)].id}"))
         c.prepare()
         c.play()
     }

@@ -67,6 +67,7 @@ fun SettingsScreen(
     val experimentalUpdates by settings.experimentalUpdates.collectAsStateWithLifecycle()
     val autoplay by settings.autoplay.collectAsStateWithLifecycle()
     val downloadsEnabled by settings.downloadsEnabled.collectAsStateWithLifecycle()
+    val skipFailed by settings.skipFailed.collectAsStateWithLifecycle()
     val wifiOnly by settings.wifiOnly.collectAsStateWithLifecycle()
     val offlineOnly by settings.offlineOnly.collectAsStateWithLifecycle()
     val downloads by app.downloads.tracks.collectAsStateWithLifecycle()
@@ -162,6 +163,8 @@ fun SettingsScreen(
             item {
                 Toggle("Autoplay", "When your music ends, keep playing similar songs", autoplay, settings::setAutoplay)
             }
+
+            item { Toggle("Skip unavailable tracks", "Skip at most three unavailable songs; network errors remain visible", skipFailed, settings::setSkipFailed) }
 
             item { Action("Sleep timer", "Stop playback after a while or at the end of a song") { showSleep = true } }
 

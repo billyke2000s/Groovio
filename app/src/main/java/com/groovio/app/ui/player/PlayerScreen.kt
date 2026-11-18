@@ -97,7 +97,9 @@ fun PlayerScreen(
     onOpenArtist: (String) -> Unit,
     sleepTimer: SleepTimer? = null,
     onSetSleepTimer: (Int?) -> Unit = {},
+    onSetSpeed: (Float) -> Unit = {},
 ) {
+    var choosingSpeed by rememberSaveable { mutableStateOf(false) }
     var choosingSleep by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
@@ -148,7 +150,8 @@ fun PlayerScreen(
                     Text(label, color = GroovioColors.Accent, fontSize = 11.sp)
                 }
             }
-            IconButton(onClick = { choosingSleep = true }) {
+            androidx.compose.material3.TextButton(onClick = { choosingSpeed = true }) { Text("Speed") }
+                IconButton(onClick = { choosingSleep = true }) {
                 Icon(
                     Icons.Default.Timer,
                     if (sleepTimer != null) "Sleep timer on" else "Sleep timer",
@@ -273,6 +276,12 @@ fun PlayerScreen(
         }
     }
 
+    if (choosingSpeed) androidx.compose.material3.AlertDialog(
+        onDismissRequest = { choosingSpeed = false }, title = { Text("Playback speed") },
+        text = { Column { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
+            androidx.compose.material3.TextButton(onClick = { onSetSpeed(speed); choosingSpeed = false }) { Text("${speed}×") }
+        } } }, confirmButton = {},
+    )
     if (choosingSleep) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { choosingSleep = false },

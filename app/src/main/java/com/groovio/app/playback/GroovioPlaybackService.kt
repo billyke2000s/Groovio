@@ -44,7 +44,7 @@ class GroovioPlaybackService : MediaSessionService() {
     private val library: LibraryRepository get() = app.library
 
     /** Videos already retried once after an HTTP error, to avoid retry loops. */
-    private val retried = mutableSetOf<String>()
+    private val recovery = RecoveryPolicy()
 
     /** The item whose play has been recorded in history, reset on every transition. */
     private var recordedMediaId: String? = null
@@ -117,11 +117,19 @@ class GroovioPlaybackService : MediaSessionService() {
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                retried.clear()
+                recovery.transition()
+                player.setPlaybackSpeed(if (mediaItem?.mediaId?.let(app.spoken::contains) == true) app.settings.spokenSpeed.value else 1f)
                 recordedMediaId = null
             }
 
+            override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+                oldPosition.mediaItem?.mediaId?.takeIf(app.spoken::contains)?.let { id ->
+                    app.spoken.progress(id, oldPosition.positionMs)
+                }
+            }
+
             override fun onEvents(player: Player, events: Player.Events) {
+                if (player.isPlaying) recovery.started()
                 recordPlayIfStarted(player)
                 if (events.containsAny(
                         Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
@@ -137,12 +145,24 @@ class GroovioPlaybackService : MediaSessionService() {
             override fun onPlayerError(error: PlaybackException) {
                 val uri = player.currentMediaItem?.localConfiguration?.uri?.toString()
                 val id = OnlineMedia.youtubeId(uri) ?: return
-                val httpError = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
-                    error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
-                if (httpError && retried.add(id)) {
+                val transient = error.errorCode in setOf(
+                    PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+                )
+                val wantsPlay = player.playWhenReady
+                if (!app.settings.offlineOnly.value && recovery.retry(id, transient, wantsPlay)) {
                     youtube.invalidate(id)
                     player.prepare()
-                    player.play()
+                    player.playWhenReady = wantsPlay
+                } else {
+                    val unavailable = generateSequence<Throwable>(error) { it.cause }.take(10).any {
+                        it is com.groovio.app.online.NoPlayableAudioException ||
+                            it is org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
+                    }
+                    if (recovery.skip(unavailable, app.settings.skipFailed.value, wantsPlay, player.hasNextMediaItem())) {
+                        app.playbackNotice.value = "Skipped unavailable track: ${player.mediaMetadata.title}"
+                        player.seekToNextMediaItem(); player.prepare(); player.playWhenReady = wantsPlay
+                    }
                 }
             }
         })
@@ -186,7 +206,7 @@ class GroovioPlaybackService : MediaSessionService() {
 
     /** Appends YouTube's related songs for the last online song and keeps playing. */
     private fun autoplay(player: Player) {
-        if (autoplayJob?.isActive == true || player.hasNextMediaItem()) return
+        if (autoplayJob?.isActive == true || player.hasNextMediaItem() || player.currentMediaItem?.mediaId?.let(app.spoken::contains) == true) return
         val lastId = OnlineMedia.youtubeId(player.currentMediaItem?.localConfiguration?.uri?.toString()) ?: return
         val queued = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }.toSet()
         autoplayJob = scope.launch {
@@ -195,7 +215,8 @@ class GroovioPlaybackService : MediaSessionService() {
             }.getOrDefault(emptyList())
                 .filter { "yt:${it.id}" !in queued }
                 .take(10)
-            if (related.isEmpty() || player.playbackState != Player.STATE_ENDED) return@launch
+            if (related.isEmpty() || player.playbackState != Player.STATE_ENDED || !player.playWhenReady ||
+                player.currentMediaItem?.mediaId != "yt:$lastId" || app.settings.offlineOnly.value) return@launch
             player.addMediaItems(related.map(OnlineMedia::mediaItem))
             player.seekToNextMediaItem()
             player.prepare()
@@ -222,6 +243,7 @@ class GroovioPlaybackService : MediaSessionService() {
         if (item.mediaId == recordedMediaId) return
         val track = TrackMapping.fromMediaItem(item) ?: return
         recordedMediaId = item.mediaId
+        if (app.spoken.contains(item.mediaId)) return
         app.appScope.launch { runCatching { library.recordPlay(track) } }
     }
 
@@ -235,6 +257,10 @@ class GroovioPlaybackService : MediaSessionService() {
     }
 
     private fun saveNow(player: Player) {
+        player.currentMediaItem?.mediaId?.takeIf(app.spoken::contains)?.let { id ->
+            val complete = player.duration > 0 && player.duration - player.currentPosition < 5000
+            app.spoken.progress(id, if (complete) 0 else player.currentPosition)
+        }
         val items = (0 until player.mediaItemCount).map(player::getMediaItemAt)
         val index = player.currentMediaItemIndex
         val position = player.currentPosition
