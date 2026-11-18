@@ -41,7 +41,7 @@ Dark by design. Coral accents. Your library stays on your phone.
 
 Groovio uses a dark interface with coral-orange accents, album artwork and quick access to your favourite collections. Tap a collection to inspect its tracks; long-press songs or playlists for their available actions. The mini-player keeps playback in reach while you browse.
 
-**Your music** is the home for audio already saved on your device: verified Groovio downloads appear alongside files you import from Android storage. The optional public copy in \`Music/Groovio\` is not required for offline playback inside Groovio.
+**Your music** is the home for audio already saved on your device: verified Groovio downloads appear alongside files you import from Android storage. The optional public copy in `Music/Groovio` is not required for offline playback inside Groovio.
 
 ## Install on Android
 
@@ -51,7 +51,7 @@ Groovio uses a dark interface with coral-orange accents, album artwork and quick
 - **Experimental:** [Find experimental prereleases](https://github.com/billyke2000s/Groovio/releases) for newer features that may still need testing.
 - **Recovery build:** [v0.1.71](https://github.com/billyke2000s/Groovio/releases/tag/experimental-baseline-v0.1.71), an older build whose music playback was confirmed on the owner's phone.
 
-The \`main\` source may be newer than the latest published stable APK. Stable publication has a phone-playback approval check. Check [GitHub Actions](https://github.com/billyke2000s/Groovio/actions) for build results rather than assuming every source change is already available in an APK.
+The `main` source may be newer than the latest published stable APK. Stable publication has a phone-playback approval check. Check [GitHub Actions](https://github.com/billyke2000s/Groovio/actions) for build results rather than assuming every source change is already available in an APK.
 
 **Keep your library when updating:** install a newer signed APK over the existing app — **do not uninstall** just to update. Use **Settings → Back up library** before experimental updates. Library backups include playlists, likes and settings, **not downloaded audio files**. Android may prevent downgrading to an older version without uninstalling.
 
