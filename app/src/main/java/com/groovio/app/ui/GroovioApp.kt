@@ -299,6 +299,7 @@ fun GroovioApp(
                             onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) },
                             onOpenSpoken = { homeFilter = it; tab = Tab.HOME },
                             onOpenArtist = { openDetail(Detail.Artist(it)) },
+                            onSearch = { searchVm.onQueryChange(""); nav.navigate(Routes.SEARCH) { launchSingleTop = true } },
                             versionName = BuildConfig.VERSION_NAME,
                             updateMessage = updateMessage,
                             onCheckUpdates = { homeVm.checkForUpdates(manual = true) },

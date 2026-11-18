@@ -5,6 +5,21 @@ import android.media.audiofx.AudioEffect
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -143,22 +158,9 @@ fun SettingsScreen(
                 }
             }
             item { Section("Built-in equaliser") }
-            item { Toggle("Equaliser", "Relative boosts use headroom to prevent clipping", equalizerEnabled, settings::setEqualizerEnabled) }
+            item { Toggle("Equaliser", "Customisable five-band sound and presets", equalizerEnabled, settings::setEqualizerEnabled) }
             if (equalizerEnabled) {
-                item { Row(Modifier.padding(horizontal = 16.dp)) {
-                    TextButton(onClick = { settings.setEqualizerBands(listOf(0, 0, 0, 0, 0)) }) { Text("Reset") }
-                    TextButton(onClick = { settings.setEqualizerBands(listOf(5, 3, 0, -1, 0)) }) { Text("Bass") }
-                    TextButton(onClick = { settings.setEqualizerBands(listOf(-2, 0, 3, 2, -1)) }) { Text("Voice") }
-                } }
-                com.groovio.app.playback.EqualizerPolicy.frequencies.forEachIndexed { index, frequency -> item {
-                    Column(Modifier.padding(horizontal = 20.dp)) {
-                        Text("$frequency Hz · ${equalizerBands[index]} dB")
-                        androidx.compose.material3.Slider(value = equalizerBands[index].toFloat(), valueRange = -6f..6f, steps = 11,
-                            onValueChange = { value -> settings.setEqualizerBands(equalizerBands.toMutableList().apply { set(index, value.toInt()) }) },
-                            modifier = Modifier.semantics { contentDescription = "Equaliser $frequency Hertz" })
-                    }
-                } }
-                effectStatus?.let { item { Text(it, modifier = Modifier.padding(20.dp)) } }
+                item { EqualizerPanel(equalizerBands, settings::setEqualizerBands) }
             }
 
             item { Section("Playback") }
@@ -323,5 +325,88 @@ private fun Action(title: String, subtitle: String, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp)) {
         Text(title)
         Text(subtitle, color = GroovioColors.TextMuted, fontSize = 13.sp)
+    }
+}
+
+/**
+ * Compact EQ with a real response curve and a searchable-by-scrolling preset menu.
+ * Sliders update the same persisted five-band settings used by the audio session.
+ */
+@Composable
+private fun EqualizerPanel(bands: List<Int>, onBandsChange: (List<Int>) -> Unit) {
+    var presetsOpen by remember { mutableStateOf(false) }
+    val frequencies = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(GroovioColors.Surface, RoundedCornerShape(16.dp)).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Sound profile", fontWeight = FontWeight.SemiBold)
+                Text("Choose a preset or adjust your own", color = GroovioColors.TextMuted, fontSize = 12.sp)
+            }
+            Box {
+                OutlinedButton(onClick = { presetsOpen = true }) {
+                    Text(com.groovio.app.playback.EqualizerPresets.selected(bands) + "  ▾")
+                }
+                DropdownMenu(expanded = presetsOpen, onDismissRequest = { presetsOpen = false }) {
+                    com.groovio.app.playback.EqualizerPresets.all.forEach { preset ->
+                        DropdownMenuItem(text = { Text(preset.name) }, onClick = {
+                            onBandsChange(preset.bands)
+                            presetsOpen = false
+                        })
+                    }
+                }
+            }
+        }
+        Text("+6 dB", color = GroovioColors.TextMuted, fontSize = 11.sp)
+        Canvas(Modifier.fillMaxWidth().height(116.dp)) {
+            val chartWidth = size.width
+            val chartHeight = size.height
+            val left = 12.dp.toPx()
+            val right = chartWidth - left
+            val baseline = chartHeight * 0.5f
+            drawLine(GroovioColors.TextMuted.copy(alpha = 0.4f),
+                Offset(left, baseline), Offset(right, baseline), 1.dp.toPx())
+            val values = (0..4).map { i -> bands.getOrElse(i) { 0 }.coerceIn(-6, 6) }
+            val points = values.mapIndexed { i, db ->
+                Offset(left + (right - left) * i / 4f, chartHeight * (6 - db) / 12f)
+            }
+            val path = Path().apply {
+                moveTo(points.first().x, points.first().y)
+                points.drop(1).forEach { lineTo(it.x, it.y) }
+            }
+            drawPath(path, GroovioColors.Accent,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            points.forEach { drawCircle(GroovioColors.Accent, 4.dp.toPx(), it) }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            listOf("60", "230", "910", "3.6k", "14k").forEach { frequency ->
+                Text(frequency, color = GroovioColors.TextMuted, fontSize = 11.sp)
+            }
+        }
+        Text("Fine tune", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
+        frequencies.forEachIndexed { index, frequency ->
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(frequency, color = GroovioColors.TextMuted, fontSize = 13.sp)
+                    val db = bands.getOrElse(index) { 0 }
+                    Text("${if (db > 0) "+" else ""}$db dB", color = GroovioColors.Accent, fontSize = 13.sp)
+                }
+                androidx.compose.material3.Slider(
+                    value = bands.getOrElse(index) { 0 }.toFloat(),
+                    valueRange = -6f..6f, steps = 11,
+                    onValueChange = { value ->
+                        onBandsChange((0..4).map { i ->
+                            if (i == index) kotlin.math.round(value).toInt() else bands.getOrElse(i) { 0 }
+                        })
+                    },
+                    modifier = Modifier.semantics { contentDescription = "Equaliser $frequency" },
+                )
+            }
+        }
+        Text("Boosts use automatic headroom to avoid clipping. Effects may vary by audio output.",
+            color = GroovioColors.TextMuted, fontSize = 12.sp)
     }
 }

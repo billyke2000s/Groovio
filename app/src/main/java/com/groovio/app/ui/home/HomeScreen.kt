@@ -134,12 +134,6 @@ fun HomeScreen(
                 }
             }
         }
-        if (filter == "All") item {
-            Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                androidx.compose.material3.TextButton(onClick = { onFilter("Podcasts") }) { Text("Discover podcasts") }
-                androidx.compose.material3.TextButton(onClick = { onFilter("Audiobooks") }) { Text("Discover audiobooks") }
-            }
-        }
         if (update != null) item { UpdateBanner(update, onUpdate) }
 
         // New users get the welcome card, then the discovery shelves below.

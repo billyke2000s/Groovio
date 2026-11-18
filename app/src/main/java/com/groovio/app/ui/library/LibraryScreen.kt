@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -35,6 +36,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -83,6 +89,7 @@ fun LibraryScreen(
     onOpenDownloads: () -> Unit = {},
     onOpenSpoken: (String) -> Unit = {},
     onOpenArtist: (String) -> Unit = {},
+    onSearch: () -> Unit = {},
     onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)? = null,
 ) {
     if (view != LibraryView.ROOT) BackHandler { onViewChange(LibraryView.ROOT) }
@@ -90,12 +97,24 @@ fun LibraryScreen(
     when {
         view == LibraryView.LIKED -> LikedSongs(vm, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
         playlistId != null -> PlaylistDetail(vm, playlistId, currentMediaId, onPlay, onMore) { onViewChange(LibraryView.ROOT) }
-        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist, onReplayCollection)
+        else -> LibraryRoot(vm, currentMediaId, onPlay, onViewChange, onMore, versionName, updateMessage, onCheckUpdates, onOpenDownloads, onOpenSpoken, onOpenArtist, onSearch, onReplayCollection)
     }
 }
 
 private const val FILTER_PLAYLISTS = "playlists"
-private const val FILTER_RECENT = "recent"
+private const val FILTER_PODCASTS = "podcasts"
+private const val FILTER_ALBUMS = "albums"
+private const val FILTER_ARTISTS = "artists"
+private const val FILTER_AUDIOBOOKS = "audiobooks"
+
+private data class LibraryEntry(
+    val key: String,
+    val title: String,
+    val subtitle: String,
+    val artwork: String? = null,
+    val icon: ImageVector = Icons.AutoMirrored.Filled.QueueMusic,
+    val onOpen: () -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +130,7 @@ private fun LibraryRoot(
     onOpenDownloads: () -> Unit,
     onOpenSpoken: (String) -> Unit,
     onOpenArtist: (String) -> Unit,
+    onSearch: () -> Unit,
     onReplayCollection: ((com.groovio.app.data.RecentCollection) -> Unit)?,
 ) {
     val liked by vm.favourites.collectAsStateWithLifecycle()
@@ -118,133 +138,150 @@ private fun LibraryRoot(
     val recent by vm.recent.collectAsStateWithLifecycle()
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.groovio.app.GroovioApplication
     val recentCollections by app.collectionHistory.recent.collectAsStateWithLifecycle()
+    val followed by app.spoken.followed.collectAsStateWithLifecycle()
+    val savedSpoken by app.spoken.saved.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
-    // Spotify-style filter chips: null shows everything.
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
-    val showPlaylists = filter == null || filter == FILTER_PLAYLISTS
-    val showRecent = filter == null || filter == FILTER_RECENT
-
-    // Spotify-style list/grid toggle and sort order for playlists.
     var grid by rememberSaveable { mutableStateOf(false) }
     var alphabetical by rememberSaveable { mutableStateOf(false) }
-    val sortedPlaylists = if (alphabetical) playlists.sortedBy { it.name.lowercase() } else playlists
-    val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(if (grid) 3 else 1),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = if (grid) 12.dp else 0.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (grid) 12.dp else 0.dp),
-    ) {
-        item(span = full) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = if (grid) 8.dp else 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Your Library", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, "New playlist") }
-            }
-        }
-        item(span = full) {
-            Row(Modifier.padding(horizontal = if (grid) 4.dp else 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(FILTER_PLAYLISTS to "Playlists", FILTER_RECENT to "Recently played").forEach { (key, label) ->
-                    FilterChip(
-                        selected = filter == key,
-                        onClick = { filter = if (filter == key) null else key },
-                        label = { Text(label) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = GroovioColors.Accent,
-                            selectedLabelColor = GroovioColors.OnAccent,
-                        ),
-                    )
-                }
-            }
-        }
-        if (showPlaylists) item(span = full) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = if (grid) 0.dp else 8.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = { alphabetical = !alphabetical }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = GroovioColors.Text)
-                    Text(if (alphabetical) "  Alphabetical" else "  Recents", color = GroovioColors.Text)
-                }
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { grid = !grid }) {
-                    Icon(
-                        if (grid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                        if (grid) "Show as list" else "Show as grid",
-                    )
-                }
-            }
-        }
-        if (filter == null) item(span = full) {
-            Column {
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Downloads", "Saved audio and transfer progress", onClick = onOpenDownloads)
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Podcasts", "Saved episodes and YouTube browsing") { onOpenSpoken("Podcasts") }
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, "Audiobooks", "Saved books and YouTube browsing") { onOpenSpoken("Audiobooks") }
-                (liked + recent).mapNotNull { it.artist }.distinct().take(12).forEach { artist ->
-                    CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, artist, "Artist") { onOpenArtist(artist) }
-                }
-            }
-        }
-        if (showPlaylists) item(key = "liked") {
-            if (grid) {
-                CollectionTile(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") { onViewChange(LibraryView.LIKED) }
-            } else {
-                CollectionRow(Icons.Default.Favorite, "Liked songs", "${liked.size} songs") { onViewChange(LibraryView.LIKED) }
-            }
-        }
-        if (showPlaylists) items(sortedPlaylists, key = { "p${it.id}" }) { p ->
-            if (grid) {
-                CollectionTile(Icons.AutoMirrored.Filled.QueueMusic, p.name, "${p.trackCount} songs", p.artworkUri) { onViewChange(LibraryView.playlist(p.id)) }
-            } else {
-                CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, p.name, "Playlist · ${p.trackCount} songs", p.artworkUri) {
-                    onViewChange(LibraryView.playlist(p.id))
-                }
-            }
-        }
-        if (showRecent) item(span = full) {
-            Text(
-                "Recently played",
-                fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = if (grid) 8.dp else 20.dp, top = 20.dp, bottom = 4.dp),
-            )
-        }
-        if (showRecent && recentCollections.isEmpty()) item(span = full) {
-            Text("Play a playlist, album or mix and it'll appear here.", color = GroovioColors.TextMuted,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        }
-        if (showRecent) items(recentCollections, key = { "recent:${it.id}" }, span = { full() }) { collection ->
-            CollectionRow(Icons.AutoMirrored.Filled.QueueMusic, collection.title, collection.kind, collection.artworkUri) {
+    // These are real saved collections and listening contexts, not the individual song history.
+    // Keep the pinned Liked Songs first in Recents and avoid repeating playlists already in history.
+    val likedEntry = LibraryEntry("liked", "Liked songs", "Playlist · ${liked.size} songs",
+        icon = Icons.Default.Favorite, onOpen = { onViewChange(LibraryView.LIKED) })
+    val collectionEntries = recentCollections.map { collection ->
+        LibraryEntry("recent:${collection.id}", collection.title, collection.kind,
+            collection.artworkUri ?: collection.tracks.firstOrNull()?.artworkUri,
+            onOpen = {
                 if (onReplayCollection != null) onReplayCollection(collection)
                 else {
                     onPlay(collection.tracks, 0)
                     val replay = collection.copy(playedAt = System.currentTimeMillis())
                     app.appScope.launch(kotlinx.coroutines.Dispatchers.IO) { app.collectionHistory.record(replay) }
                 }
+            })
+    }
+    val playlistEntries = playlists.map { playlist ->
+        LibraryEntry("playlist:${playlist.id}", playlist.name, "Playlist · ${playlist.trackCount} songs",
+            playlist.artworkUri, onOpen = { onViewChange(LibraryView.playlist(playlist.id)) })
+    }
+    val podcastEntries = followed.filter { it.kind == "Podcasts" }.map { c ->
+        LibraryEntry("podcast:${c.album.url}", c.album.title, "Podcast · Following",
+            c.album.thumbnailUrl, Icons.Default.Headphones, { onOpenSpoken("Podcasts") })
+    } + savedSpoken.filter { it.kind == "Podcasts" }.map { item ->
+        LibraryEntry("episode:${item.track.id}", item.track.title, "Saved episode",
+            item.track.thumbnailUrl, Icons.Default.Headphones, { onOpenSpoken("Podcasts") })
+    }
+    val audiobookEntries = followed.filter { it.kind == "Audiobooks" }.map { c ->
+        LibraryEntry("book:${c.album.url}", c.album.title, "Saved audiobook",
+            c.album.thumbnailUrl, Icons.Default.MenuBook, { onOpenSpoken("Audiobooks") })
+    } + savedSpoken.filter { it.kind == "Audiobooks" }.map { item ->
+        LibraryEntry("recording:${item.track.id}", item.track.title, "Saved recording",
+            item.track.thumbnailUrl, Icons.Default.MenuBook, { onOpenSpoken("Audiobooks") })
+    }
+    val artistEntries = (liked + recent).mapNotNull { it.artist?.takeIf(String::isNotBlank) }
+        .distinct().map { name ->
+            LibraryEntry("artist:$name", name, "Artist", icon = Icons.Default.Person,
+                onOpen = { onOpenArtist(name) })
+        }
+    val allEntries = buildList {
+        add(likedEntry)
+        addAll(collectionEntries)
+        addAll(playlistEntries.filterNot { p -> recentCollections.any { c -> c.playlistId != null && p.key == "playlist:${c.playlistId}" } })
+        addAll(podcastEntries.filter { it.key.startsWith("podcast:") })
+        addAll(audiobookEntries.filter { it.key.startsWith("book:") })
+    }.distinctBy { it.key }
+    val displayed = when (filter) {
+        FILTER_PLAYLISTS -> listOf(likedEntry) + playlistEntries
+        FILTER_PODCASTS -> podcastEntries
+        FILTER_ALBUMS -> collectionEntries.filter { entry ->
+            recentCollections.any { c -> entry.key == "recent:${c.id}" && c.kind == "Album" }
+        }
+        FILTER_ARTISTS -> artistEntries
+        FILTER_AUDIOBOOKS -> audiobookEntries
+        else -> allEntries
+    }.distinctBy { it.key }.let { entries ->
+        if (alphabetical) entries.sortedBy { it.title.lowercase() } else entries
+    }
+    val full: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(if (grid) 3 else 1),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = if (grid) 12.dp else 0.dp, bottom = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (grid) 12.dp else 0.dp),
+    ) {
+        item(span = full) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = if (grid) 8.dp else 20.dp, end = 8.dp, top = 16.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Your Library", fontSize = 26.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search Groovio") }
+                IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, "New playlist") }
             }
         }
-        // About / updates.
         item(span = full) {
-            Column(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            LazyRow(contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(listOf(
+                    FILTER_PLAYLISTS to "Playlists", FILTER_PODCASTS to "Podcasts",
+                    FILTER_ALBUMS to "Albums", FILTER_ARTISTS to "Artists",
+                    FILTER_AUDIOBOOKS to "Audiobooks",
+                )) { (key, title) ->
+                    FilterChip(selected = filter == key, onClick = { filter = if (filter == key) null else key },
+                        label = { Text(title) }, shape = RoundedCornerShape(40.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = GroovioColors.SurfaceHigh,
+                            selectedContainerColor = GroovioColors.Accent,
+                            selectedLabelColor = GroovioColors.OnAccent))
+                }
+            }
+        }
+        item(span = full) {
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { alphabetical = !alphabetical }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = GroovioColors.Text)
+                    Text(if (alphabetical) " Alphabetical" else " Recents", color = GroovioColors.Text)
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onOpenDownloads) {
+                    Icon(Icons.Default.Download, "Open downloads")
+                }
+                IconButton(onClick = { grid = !grid }) {
+                    Icon(if (grid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                        if (grid) "Show as list" else "Show as grid")
+                }
+            }
+        }
+        if (displayed.isEmpty()) item(span = full) {
+            Text(when (filter) {
+                FILTER_PODCASTS -> "Follow a podcast or save an episode to see it here."
+                FILTER_ALBUMS -> "Albums you listen to will appear here."
+                FILTER_ARTISTS -> "Artists from your listening and liked songs will appear here."
+                FILTER_AUDIOBOOKS -> "Save an audiobook to see it here."
+                else -> "Your saved music will appear here."
+            }, color = GroovioColors.TextMuted, modifier = Modifier.padding(20.dp))
+        }
+        items(displayed, key = { it.key }, span = { if (grid) GridItemSpan(1) else full() }) { entry ->
+            if (grid) {
+                CollectionTile(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen)
+            } else {
+                CollectionRow(entry.icon, entry.title, entry.subtitle, entry.artwork, entry.onOpen)
+            }
+        }
+        item(span = full) {
+            Column(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Groovio $versionName", color = GroovioColors.TextMuted, fontSize = 13.sp)
                 TextButton(onClick = onCheckUpdates) { Text("Check for updates", color = GroovioColors.Accent) }
                 updateMessage?.let { Text(it, color = GroovioColors.TextMuted, fontSize = 13.sp) }
             }
         }
     }
-
     if (creating) {
-        PlaylistNameDialog(
-            title = "New playlist",
-            confirmLabel = "Create",
-            onConfirm = vm::createPlaylist,
-            onDismiss = { creating = false },
-        )
+        PlaylistNameDialog(title = "New playlist", confirmLabel = "Create",
+            onConfirm = vm::createPlaylist, onDismiss = { creating = false })
     }
 }
 
