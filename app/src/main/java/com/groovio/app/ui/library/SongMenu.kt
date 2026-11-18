@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
@@ -56,6 +58,7 @@ fun SongMenu(
     vm: PlayerViewModel,
     playlists: List<PlaylistSummary>,
     onOpenArtist: (String) -> Unit,
+    onOpenDownloads: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as com.groovio.app.GroovioApplication
@@ -64,6 +67,11 @@ fun SongMenu(
     val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
     val downloaded by app.downloads.tracks.collectAsStateWithLifecycle()
     val saved = downloaded.any { it.mediaId == track.mediaId }
+    val downloadable = track.mediaId.startsWith("yt:")
+    val jobs = if (downloadable && downloadsEnabled && !saved)
+        app.downloads.jobs.collectAsStateWithLifecycle(initialValue = emptyList()).value
+    else emptyList()
+    val downloading = jobs.any { !it.state.isFinished && track.mediaId in it.tags }
     val liked by remember(track.mediaId) { vm.isFavourite(track.mediaId) }.collectAsStateWithLifecycle(false)
     var pickingPlaylist by rememberSaveable { mutableStateOf(false) }
 
@@ -99,8 +107,21 @@ fun SongMenu(
             }
             HorizontalDivider(color = GroovioColors.SurfaceHigh, modifier = Modifier.padding(vertical = 8.dp))
             MenuItem(Icons.Default.MusicNote, if (saved) "Play · saved offline" else "Play") { vm.playStored(listOf(track), 0); onDismiss() }
-            if (downloadsEnabled && online && !offlineOnly && track.mediaId.startsWith("yt:") && !saved) {
-                MenuItem(Icons.Default.MusicNote, "Download & play") { vm.downloadTracks(listOf(track)); onDismiss() }
+            if (downloadsEnabled && downloadable) {
+                when {
+                    saved -> MenuItem(Icons.Default.Check, "Downloaded · View downloads") {
+                        onOpenDownloads(); onDismiss()
+                    }
+                    downloading -> MenuItem(Icons.Default.Download, "Downloading · View downloads") {
+                        onOpenDownloads(); onDismiss()
+                    }
+                    online && !offlineOnly -> MenuItem(Icons.Default.Download, "Download song") {
+                        vm.downloadTracks(listOf(track), play = false); onDismiss()
+                    }
+                    else -> MenuItem(Icons.Default.Download, "View downloads · Offline") {
+                        onOpenDownloads(); onDismiss()
+                    }
+                }
             }
             MenuItem(
                 if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
