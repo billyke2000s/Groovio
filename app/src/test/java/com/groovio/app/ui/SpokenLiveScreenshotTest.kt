@@ -4,13 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import coil.imageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.groovio.app.GroovioApplication
 import com.groovio.app.spoken.SpokenDiscovery
@@ -32,6 +29,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w411dp-h891dp-xxhdpi")
+@OptIn(coil.annotation.ExperimentalCoilApi::class)
 class SpokenLiveScreenshotTest {
     @get:Rule val compose = createComposeRule()
     private fun capture(kind: String, query: String, filename: String) {
@@ -41,15 +39,15 @@ class SpokenLiveScreenshotTest {
             runInterruptible(Dispatchers.IO) { app.youtube.searchSpoken(query).filter { it.thumbnailUrl != null }.take(3) }
         } }
         check(tracks.isNotEmpty()) { "No live catalogue entries; cannot capture real content" }
-        runBlocking(Dispatchers.IO) {
-            tracks.forEach { track ->
-                val result = withTimeout(15_000) { app.imageLoader.execute(ImageRequest.Builder(app).data(track.thumbnailUrl).allowHardware(false).size(400).build()) }
-                check(result is SuccessResult) { "Artwork did not load; do not use blank screenshots" }
-            }
-        }
         compose.setContent { GroovioTheme { Box(Modifier.fillMaxSize().background(GroovioColors.Background)) {
             SpokenDiscovery(kind, tracks, emptyList(), emptyList(), emptyList(), emptySet(), false, false, true, null, "", {}, {}, {}, {}, {}, {}, {})
         } } }
+        // Let Compose/Robolectric pump the main looper while Coil loads. Blocking a
+        // prefetch here prevents Coil's main-thread callbacks from ever completing.
+        compose.waitUntil(timeoutMillis = 30_000) {
+            val keys = app.imageLoader.memoryCache?.keys.orEmpty()
+            tracks.all { track -> keys.any { it.key.contains(track.thumbnailUrl!!) } }
+        }
         repeat(5) { compose.waitForIdle(); Thread.sleep(200) }
         compose.onRoot().captureRoboImage("build/screenshots/$filename.png")
     }
