@@ -18,7 +18,7 @@ class OfflineStore(private val context: Context) {
     private val work get() = WorkManager.getInstance(context)
     private val mutable = MutableStateFlow(readTracks())
     val tracks = mutable.asStateFlow()
-    val jobs get() = work.getWorkInfosByTagFlow("audio-download")
+    val jobs by lazy { work.getWorkInfosByTagFlow("audio-download") }
     private fun key(id: String) = MessageDigest.getInstance("SHA-256").digest(id.toByteArray()).joinToString("") { "%02x".format(it) }
     fun file(id: String) = File(directory, key(id) + ".audio")
     private fun metadata(id: String) = File(directory, key(id) + ".json")
