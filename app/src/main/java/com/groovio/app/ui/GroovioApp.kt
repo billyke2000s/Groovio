@@ -500,6 +500,8 @@ fun GroovioApp(
                     vm.playStored(tracks, 0)
                 }
             },
+            onDownload = { vm.downloadTracks(it, play = false) },
+            onOpenDownloads = { nav.navigate(Routes.DOWNLOADS) { launchSingleTop = true } },
             onCopyTo = vm::addCollectionToPlaylist,
             onCopyToNew = vm::addCollectionToNewPlaylist,
             onRemoveFromSection = { homeVm.hideHomeCard(section, collection.id) },
