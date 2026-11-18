@@ -99,3 +99,12 @@ Android 10+ uses MediaStore's shared `Music/Groovio/` folder. Local Files can im
 Each completed online download is **copied** with its real audio container extension to public Music/Groovio; the original private cached audio is retained deliberately for playback reliability. Local Files retries exporting older private downloads. Clearing or removing offline caches does **not** delete user-accessible shared files. This temporarily uses extra storage and must be evaluated before later switching the player's canonical download location; don't remove private cached files without a verified migration and phone playback test. On Android 8–9, file picking/playback remains available but public folder publishing is unsupported.
 
 The folder may not physically exist until an MP3 is imported or a download is exported. Files app paths and folder intents vary by device, so the path is always shown and the Add music picker always works. Android 13+ uses READ_MEDIA_AUDIO for finding tracks placed by other apps. No all-files storage permission is requested. The confirmed working 0.1.71 playback baseline is untouched.
+
+
+## Playlist detail navigation and Home chart order (18 November 2026)
+
+Home quick tiles, Jump back in, personal mixes, Library recents and Search's Last Groove now **open a collection page**, rather than starting playback as a side effect of selecting a collection. The full page displays real artwork (2x2 when four distinct track covers exist), name, kind, number of songs, playable track rows, an explicit Play button, Shuffle, and the existing optional Download & play action. The original local Library playlist editor remains available for rename/removal. Home's saved playlist cards fetch current Room playlist tracks when opened. Playback history is recorded only when the user presses Play/Shuffle or taps a track, not when the page opens.
+
+UK top songs is displayed after personal mixes, recommendations, saved playlists and discovery shelves, not above the customised Home content.
+
+The Android app and media data schema are unchanged. Validate the new flow on-device before promoting from experimental.
