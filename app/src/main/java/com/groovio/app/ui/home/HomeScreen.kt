@@ -62,6 +62,7 @@ private data class Tile(
     val icon: ImageVector?,
     val artworkUri: String?,
     val artworkUris: List<String> = emptyList(),
+    val onLongClick: (() -> Unit)? = null,
     val onClick: () -> Unit,
 )
 
@@ -84,6 +85,8 @@ fun HomeScreen(
     recentCollections: List<com.groovio.app.data.RecentCollection> = emptyList(),
     onOpenCollection: (com.groovio.app.data.RecentCollection) -> Unit = {},
     onOpenMix: (PersonalMix) -> Unit = {},
+    onPlaylistLongPress: (com.groovio.app.data.RecentCollection, String) -> Unit = { _, _ -> },
+    hiddenHomeCards: Set<String> = emptySet(),
     personalMixes: List<PersonalMix> = emptyList(),
     onSaveMix: (PersonalMix) -> Unit = {},
     mixNotice: String? = null,
@@ -103,13 +106,22 @@ fun HomeScreen(
     val tiles = buildList {
         // Always-visible entry point in addition to the header folder icon.
         add(Tile("local-files", "Local files", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
-        recentCollections.take(5).forEach { c ->
+        recentCollections.filter {
+            HomeCardVisibility.visible(hiddenHomeCards, "quick", it.id)
+        }.take(5).forEach { c ->
             add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
-                artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4)) { onOpenCollection(c) })
+                artworkUris = c.tracks.mapNotNull { it.artworkUri }.distinct().take(4),
+                onLongClick = { onPlaylistLongPress(c, "quick") }) { onOpenCollection(c) })
         }
         if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onClick = onOpenLiked))
-        playlists.filter { p -> recentCollections.none { it.playlistId == p.id } }.take(6 - size).forEach { p ->
-            add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri) { onOpenPlaylist(p.id) })
+        playlists.filter { p ->
+            recentCollections.none { it.playlistId == p.id } &&
+                HomeCardVisibility.visible(hiddenHomeCards, "quick", "playlist:${p.id}")
+        }.take(6 - size).forEach { p ->
+            val collection = com.groovio.app.data.RecentCollection(
+                "playlist:${p.id}", p.name, "Playlist", p.artworkUri, emptyList(), playlistId = p.id)
+            add(Tile("p${p.id}", p.name, Icons.AutoMirrored.Filled.QueueMusic, p.artworkUri,
+                onLongClick = { onPlaylistLongPress(collection, "quick") }) { onOpenPlaylist(p.id) })
         }
     }.take(6)
 
@@ -152,12 +164,16 @@ fun HomeScreen(
             }
         }
 
-        if (recentCollections.isNotEmpty()) {
+        val visibleJump = recentCollections.filter {
+            HomeCardVisibility.visible(hiddenHomeCards, "jump", it.id)
+        }
+        if (visibleJump.isNotEmpty()) {
             item { Shelf("Jump back in") }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(recentCollections, key = { it.id }) { collection ->
+                    items(visibleJump, key = { it.id }) { collection ->
                         SquareCard(collection.title, collection.kind, collection.artworkUri, false,
+                            onLongClick = { onPlaylistLongPress(collection, "jump") },
                             artworkUris = if (collection.artworkUri == null) collection.tracks.mapNotNull { it.artworkUri }.distinct().take(4) else emptyList()) {
                             onOpenCollection(collection)
                         }
@@ -166,13 +182,19 @@ fun HomeScreen(
             }
         }
         if (personalMixes.isNotEmpty()) {
-            personalMixes.groupBy { when { it.title.startsWith("Daily Mix") -> "Made for you"; it.title == "Discovery mix" -> "Discover more"; else -> "Your top mixes" } }.forEach { (title, mixes) ->
+            personalMixes.filter {
+                HomeCardVisibility.visible(hiddenHomeCards, "mixes", "mix:${it.id}")
+            }.groupBy { when { it.title.startsWith("Daily Mix") -> "Made for you"; it.title == "Discovery mix" -> "Discover more"; else -> "Your top mixes" } }.forEach { (title, mixes) ->
             item { Shelf(title) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(mixes, key = { it.id }) { mix ->
                         Column {
+                            val collection = com.groovio.app.data.RecentCollection(
+                                "mix:${mix.id}", mix.title, "Mix", mix.tracks.firstOrNull()?.thumbnailUrl,
+                                mix.tracks.map(TrackMapping::fromOnline))
                             SquareCard(mix.title, mix.reason, mix.tracks.firstOrNull()?.thumbnailUrl, false,
+                                onLongClick = { onPlaylistLongPress(collection, "mixes") },
                                 artworkUris = mix.tracks.mapNotNull { it.thumbnailUrl }.distinct().take(4)) { onOpenMix(mix) }
                             androidx.compose.material3.TextButton(onClick = { onSaveMix(mix) }) { Text("Save playlist") }
                         }
@@ -205,13 +227,19 @@ fun HomeScreen(
                 }
             }
         }
-        if (playlists.isNotEmpty()) {
+        val visiblePlaylists = playlists.filter {
+            HomeCardVisibility.visible(hiddenHomeCards, "playlists", "playlist:${it.id}")
+        }
+        if (visiblePlaylists.isNotEmpty()) {
             item { Shelf("Your playlists") }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(playlists, key = { it.id }) { p ->
-                        SquareCard(p.name, "${p.trackCount} songs", p.artworkUri, false, Icons.AutoMirrored.Filled.QueueMusic) {
+                    items(visiblePlaylists, key = { it.id }) { p ->
+                        val collection = com.groovio.app.data.RecentCollection(
+                            "playlist:${p.id}", p.name, "Playlist", p.artworkUri, emptyList(), playlistId = p.id)
+                        SquareCard(p.name, "${p.trackCount} songs", p.artworkUri, false, Icons.AutoMirrored.Filled.QueueMusic,
+                            onLongClick = { onPlaylistLongPress(collection, "playlists") }) {
                             onOpenPlaylist(p.id)
                         }
                     }
@@ -275,7 +303,9 @@ private fun Welcome(onSearch: () -> Unit, onOpenFiles: () -> Unit) {
 private fun QuickTile(tile: Tile, modifier: Modifier) {
     Row(
         modifier.height(56.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.SurfaceHigh)
-            .clickable(onClickLabel = "Open ${tile.title}", onClick = tile.onClick),
+            .combinedClickable(onClickLabel = "Open ${tile.title}",
+                onLongClickLabel = "Playlist options", onLongClick = tile.onLongClick,
+                onClick = tile.onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(56.dp).background(GroovioColors.ArtworkFallback), contentAlignment = Alignment.Center) {
