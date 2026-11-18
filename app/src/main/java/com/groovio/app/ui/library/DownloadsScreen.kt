@@ -27,6 +27,7 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
     val scope = rememberCoroutineScope()
     var deleting by remember { mutableStateOf<TrackEntity?>(null) }
     var note by remember { mutableStateOf<String?>(null) }
+    val collections = jobs.filter { "collection-import" in it.tags }
     val active = jobs.filter { !it.state.isFinished }
     val failed = jobs.filter { it.state == WorkInfo.State.FAILED }
     Column(Modifier.fillMaxSize().systemBarsPadding()) {
@@ -41,19 +42,25 @@ fun DownloadsScreen(onBack: () -> Unit, onPlay: (List<TrackEntity>, Int) -> Unit
             Text("${active.size} downloads pending or running. Wi-Fi-only downloads wait for an unmetered connection.", modifier = Modifier.padding(horizontal = 20.dp))
             TextButton(onClick = app.downloads::cancelAll) { Text("Cancel pending downloads") }
         }
+        collections.filter { it.state == WorkInfo.State.SUCCEEDED }.forEach { job ->
+            val data = job.outputData
+            Text("${job.tags.firstOrNull { it.startsWith("title:") }?.removePrefix("title:") ?: "Collection"}: ${data.getInt("matched", 0)} matched; ${data.getInt("missed", 0)} unavailable. Audio transfers may still be running.", modifier = Modifier.padding(16.dp))
+        }
         if (failed.isNotEmpty()) Text("${failed.size} downloads couldn't finish. Use Download & play again to retry.", modifier = Modifier.padding(20.dp))
         note?.let { Text(it, modifier = Modifier.padding(horizontal = 20.dp)) }
         if (tracks.isEmpty()) Text("Save a song or playlist using Download & play. It'll be here whenever you need it.", modifier = Modifier.padding(20.dp))
         LazyColumn(Modifier.weight(1f)) {
             items(active, key = { it.id }) { job ->
                 val title = job.tags.firstOrNull { it.startsWith("title:") }?.removePrefix("title:")
-                Text("${title ?: "Song"} · ${if (job.state == WorkInfo.State.RUNNING) "${job.progress.getInt("percent", 0)}%" else "Waiting"}", modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                val detail = if ("collection-import" in job.tags && job.state == WorkInfo.State.RUNNING) {
+                    "${job.progress.getInt("matched", 0)} matched · ${job.progress.getInt("missed", 0)} unavailable · ${job.progress.getInt("total", 0)} total"
+                } else if (job.state == WorkInfo.State.RUNNING) "${job.progress.getInt("percent", 0)}%" else "Waiting"
+                Text("${title ?: "Song"} · $detail", modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
             items(tracks, key = { it.mediaId }) { track ->
-                Row(Modifier.fillMaxWidth().clickable { onPlay(tracks, tracks.indexOf(track)) }.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                    Column(Modifier.weight(1f)) { Text(track.title); track.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall) } }
+                StoredTrackRow(track, false, onClick = { onPlay(tracks, tracks.indexOf(track)) }, trailing = {
                     TextButton(onClick = { deleting = track }) { Text("Remove") }
-                }
+                })
             }
         }
     }

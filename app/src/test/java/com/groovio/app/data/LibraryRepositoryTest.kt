@@ -121,6 +121,15 @@ class LibraryRepositoryTest {
         assertEquals("groovio://youtube/xyz", TrackMapping.uriFor("yt:xyz"))
     }
 
+    @Test fun `retrying a collection position replaces it and preserves original order`() = runBlocking {
+        val id = repo.createPlaylist("Imported")
+        repo.importTrack(id, 4, track("last"))
+        repo.importTrack(id, 0, track("first"))
+        repo.importTrack(id, 4, track("last"))
+        assertEquals(listOf("yt:first", "yt:last"), repo.playlistItems(id).first().map { it.track.mediaId })
+        assertEquals(2, repo.playlists.first().single().trackCount)
+    }
+
     private fun item(id: String, title: String) = MediaItem.Builder()
         .setMediaId(id)
         .setUri(TrackMapping.uriFor(id))

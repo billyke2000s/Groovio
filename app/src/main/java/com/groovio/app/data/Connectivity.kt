@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class Connectivity(context: Context) {
     private val manager = context.getSystemService(ConnectivityManager::class.java)
     private fun available(): Boolean = manager.getNetworkCapabilities(manager.activeNetwork)?.let {
-        it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     } == true
     private val mutable = MutableStateFlow(available())
     val online = mutable.asStateFlow()
