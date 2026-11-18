@@ -188,7 +188,7 @@ fun SettingsScreen(
             item { Action("Sleep timer", "Stop playback after a while or at the end of a song") { showSleep = true } }
 
             item { Section("Downloads & offline") }
-            item { Toggle("Enable downloads", "Show Download & play for songs and playlists", downloadsEnabled) {
+            item { Toggle("Enable downloads", "Save songs and playlists for offline listening", downloadsEnabled) {
                 settings.setDownloadsEnabled(it)
                 if (!it) app.downloads.cancelAll()
             } }
