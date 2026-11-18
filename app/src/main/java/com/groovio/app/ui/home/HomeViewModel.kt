@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -49,6 +50,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Result of a manual "Check for updates" (e.g. "You're up to date"). */
     val updateMessage: StateFlow<String?> = _updateMessage.asStateFlow()
     private var lastCheck = 0L
+    private var checkGeneration = 0
     private var downloadJob: kotlinx.coroutines.Job? = null
 
     private val _chart = MutableStateFlow<com.groovio.app.online.SpotifyCollection?>(null)
@@ -76,6 +78,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
+        viewModelScope.launch {
+            groovio.settings.experimentalUpdates.drop(1).collectLatest {
+                downloadJob?.cancel(); _update.value = null; checkGeneration++; lastCheck = 0L
+                checkForUpdates(manual = true)
+            }
+        }
         viewModelScope.launch {
             kotlinx.coroutines.flow.combine(groovio.library.favourites, groovio.library.recent(50), groovio.settings.offlineOnly) {
                 likes, history, offline -> Triple(likes, history, offline)
@@ -178,16 +186,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (_update.value is UpdateState.Downloading) return
         lastCheck = now
         if (manual) _updateMessage.value = "Checking…"
+        val channel = groovio.settings.experimentalUpdates.value
+        val generation = ++checkGeneration
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { UpdateChecker(BuildConfig.VERSION_CODE, experimental = groovio.settings.experimentalUpdates.value).check() }
+                runCatching { UpdateChecker(BuildConfig.VERSION_CODE, experimental = channel).check() }
             }
+            if (generation != checkGeneration || channel != groovio.settings.experimentalUpdates.value) return@launch
             result.onSuccess { found ->
                 if (found != null) {
                     if (_update.value?.update?.version != found.version) _update.value = UpdateState.Available(found)
                     if (manual) _updateMessage.value = "Groovio ${found.version} is available"
-                } else if (manual) {
-                    _updateMessage.value = "You're up to date"
+                } else {
+                    _update.value = null
+                    if (manual) _updateMessage.value = "You're up to date"
                 }
             }.onFailure { if (manual) _updateMessage.value = "Couldn't check for updates. Check your connection." }
         }
