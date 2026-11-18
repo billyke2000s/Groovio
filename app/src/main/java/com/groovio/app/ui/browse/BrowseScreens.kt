@@ -70,6 +70,7 @@ import java.io.IOException
 sealed interface Detail {
     data class Artist(val name: String) : Detail
     data class Album(val album: OnlineAlbum) : Detail
+    data class Collection(val collection: com.groovio.app.data.RecentCollection) : Detail
 }
 
 private sealed interface Load<out T> {
