@@ -286,6 +286,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun playSpotify(collection: SpotifyCollection) = playSpotify(collection, false)
     fun playSpotify(collection: SpotifyCollection, download: Boolean) {
         importJob?.cancel()
+        val historyTime = System.currentTimeMillis()
+        val historyTracks = mutableListOf<TrackEntity>()
+        fun rememberImport() {
+            val snapshot = historyTracks.toList()
+            if (snapshot.isNotEmpty() && collection.type != "track") rememberCollection(com.groovio.app.data.RecentCollection(
+                "spotify:" + (collection.sourceUrl ?: collection.name), collection.name,
+                if (collection.type == "album") "Album" else "Playlist",
+                collection.artworkUrl ?: snapshot.firstOrNull()?.artworkUri, snapshot,
+                source = collection.sourceUrl, playedAt = historyTime,
+            ))
+        }
         if (download) getApplication<GroovioApplication>().appScope.launch {
             runCatching { getApplication<GroovioApplication>().collectionImports.enqueue(collection) }
                 .onFailure { getApplication<GroovioApplication>().playbackNotice.value = "Couldn't save collection. Try again." }
@@ -309,6 +320,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     missed++
                 } else {
                     found++
+                    historyTracks.add(TrackMapping.fromOnline(match.copy(title = track.title, artist = track.artist ?: match.artist)))
                     // Spotify's title/artist read better than YouTube's upload titles.
                     val item = OnlineMedia.mediaItem(match.copy(title = track.title, artist = track.artist ?: match.artist))
                     if (!started) {
@@ -316,14 +328,22 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                         c.prepare()
                         c.play()
                         started = true
+                        rememberImport()
                     } else {
                         c.addMediaItem(item)
                     }
                 }
                 _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = false)
             }
+            rememberImport()
             _import.value = SpotifyImportProgress(collection.name, found, missed, total, done = true)
         }
+    }
+
+    /** Metadata-only history write; the existing playback path is unchanged. */
+    fun rememberCollection(item: com.groovio.app.data.RecentCollection) {
+        val app = getApplication<GroovioApplication>()
+        app.appScope.launch(Dispatchers.IO) { app.collectionHistory.record(item) }
     }
 
     fun downloadTracks(tracks: List<TrackEntity>, play: Boolean = true) {

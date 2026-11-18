@@ -20,6 +20,7 @@ import java.util.Locale
 class GroovioApplication : Application() {
 
     val connectivity by lazy { com.groovio.app.data.Connectivity(this) }
+    val collectionHistory by lazy { com.groovio.app.data.CollectionHistory(this) }
     val collectionImports by lazy { com.groovio.app.offline.CollectionImports(this) }
     val downloads by lazy { com.groovio.app.offline.OfflineStore(this) }
     val effectStatus = MutableStateFlow<String?>(null)
