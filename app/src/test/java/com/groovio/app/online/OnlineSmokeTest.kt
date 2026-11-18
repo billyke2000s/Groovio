@@ -29,6 +29,22 @@ class OnlineSmokeTest {
         }
     }
 
+    @Test fun `UK chart metadata feed loads`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val chart = ChartDiscovery().ukChart()
+        println("UK chart: ${chart.tracks.size} songs; first: ${chart.tracks.firstOrNull()?.title}")
+        assertTrue(chart.tracks.isNotEmpty())
+        assertTrue(chart.tracks.all { it.title.isNotBlank() && !it.artist.isNullOrBlank() })
+    }
+
+    @Test fun `playlist search returns playable collection links`() {
+        assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
+        val playlists = YouTubeMusic().searchPlaylists("rock classics")
+        println("Playlist search: ${playlists.size} playlists")
+        assertTrue(playlists.isNotEmpty())
+        assertTrue(playlists.all { it.kind == "Playlist" && it.url.startsWith("https://") })
+    }
+
     @Test fun `search, resolve and stream the first song`() {
         assumeTrue("set GROOVIO_ONLINE_TESTS=1 to run", enabled)
         val yt = YouTubeMusic()

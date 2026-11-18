@@ -17,11 +17,23 @@ import java.util.concurrent.TimeUnit
 class AudioDownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val app = applicationContext as GroovioApplication
-        val id = inputData.getString("id") ?: return@withContext Result.failure()
+        val requestedId = inputData.getString("id")
         if (!app.settings.downloadsEnabled.value || app.settings.offlineOnly.value) return@withContext Result.failure()
+        val track = if (requestedId != null) {
+            TrackEntity(requestedId, inputData.getString("title") ?: "Song", inputData.getString("artist"), inputData.getString("art"))
+        } else {
+            val title = inputData.getString("queryTitle") ?: return@withContext Result.failure()
+            try {
+                val match = app.spotify.match(com.groovio.app.online.SpotifyTrack(title,
+                    inputData.getString("queryArtist"), inputData.getLong("duration", 0L).takeIf { it > 0 }, null))
+                    ?: return@withContext Result.failure(workDataOf("error" to "Couldn't find $title"))
+                TrackEntity("yt:${match.id}", title, inputData.getString("queryArtist") ?: match.artist, match.thumbnailUrl)
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { return@withContext if (runAttemptCount < 2) Result.retry() else Result.failure() }
+        }
+        val id = track.mediaId
         if (app.downloads.localFile(id) != null) return@withContext Result.success()
-        val track = TrackEntity(id, inputData.getString("title") ?: "Song", inputData.getString("artist"), inputData.getString("art"))
-        val temporary = File(app.downloads.file(id).path + ".part")
+        val temporary = File(app.downloads.file(id).path + ".${this@AudioDownloadWorker.id}.part")
         try {
             val audio = app.youtube.resolve(id.removePrefix("yt:"))
             val request = Request.Builder().url(audio.url).apply { audio.headers.forEach { (k, v) -> header(k, v) } }.build()

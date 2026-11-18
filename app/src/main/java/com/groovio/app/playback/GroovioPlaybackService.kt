@@ -67,7 +67,7 @@ class GroovioPlaybackService : MediaSessionService() {
             app.downloads.localFile("yt:$id")?.let { local ->
                 return@Factory spec.withUri(Uri.fromFile(local))
             }
-            if (app.settings.offlineOnly.value) throw IOException("Song is not downloaded")
+            if (app.settings.offlineOnly.value || !app.connectivity.online.value) throw IOException("Song is not downloaded")
             val audio = try {
                 youtube.resolve(id)
             } catch (e: Exception) {
@@ -110,6 +110,9 @@ class GroovioPlaybackService : MediaSessionService() {
         )
 
         player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                app.audioSessionId = audioSessionId
+            }
             // Autoplay: when the queue runs out, continue with similar songs.
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_ENDED && app.settings.autoplay.value && !app.settings.offlineOnly.value && app.connectivity.online.value) autoplay(player)
@@ -170,6 +173,14 @@ class GroovioPlaybackService : MediaSessionService() {
             .setCallback(SessionCallback())
             .build()
 
+        scope.launch {
+            app.connectivity.online.collect { connected ->
+                if (connected && !app.settings.offlineOnly.value && player.playWhenReady && player.playerError != null) {
+                    val id = OnlineMedia.youtubeId(player.currentMediaItem?.localConfiguration?.uri?.toString())
+                    if (id != null && retried.add(id)) { youtube.invalidate(id); player.prepare() }
+                }
+            }
+        }
         restoreQueue(player)
         scope.launch { library.trimHistory() }
         scope.launch {

@@ -158,6 +158,8 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException || it is InnertubeAudio.BlockedException } ->
                 "YouTube is blocking this network right now. Try again later or switch network."
             causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
+            causes.any { it.message?.contains("not downloaded") == true || it.message?.contains("not saved for offline") == true } ->
+                "This song isn't saved for offline listening. Open Downloads to play your saved music."
             else -> "Couldn't play this track."
         }
     }
@@ -279,6 +281,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun playSpotify(collection: SpotifyCollection) = playSpotify(collection, false)
     fun playSpotify(collection: SpotifyCollection, download: Boolean) {
         importJob?.cancel()
+        if (download) (getApplication<Application>() as GroovioApplication).downloads.enqueueSpotify(collection.tracks)
         importJob = viewModelScope.launch {
             var started = false
             var found = 0
@@ -298,8 +301,6 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
                     missed++
                 } else {
                     found++
-                    if (download) (getApplication<Application>() as GroovioApplication).downloads.enqueue(listOf(
-                        TrackMapping.fromOnline(match.copy(title = track.title, artist = track.artist ?: match.artist))))
                     // Spotify's title/artist read better than YouTube's upload titles.
                     val item = OnlineMedia.mediaItem(match.copy(title = track.title, artist = track.artist ?: match.artist))
                     if (!started) {

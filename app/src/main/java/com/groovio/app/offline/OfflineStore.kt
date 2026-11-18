@@ -44,6 +44,21 @@ class OfflineStore(private val context: Context) {
             work.enqueueUniqueWork("download:" + track.mediaId, ExistingWorkPolicy.KEEP, request)
         }
     }
+    /** Matching is durable too: closing the app won't abandon the rest of a Spotify playlist. */
+    fun enqueueSpotify(tracks: List<com.groovio.app.online.SpotifyTrack>) {
+        val app = context.applicationContext as GroovioApplication
+        if (!app.settings.downloadsEnabled.value || app.settings.offlineOnly.value) return
+        tracks.distinctBy { it.title to it.artist }.forEach { track ->
+            val identity = key(track.title + "|" + track.artist.orEmpty() + "|" + track.durationMs)
+            val request = OneTimeWorkRequestBuilder<AudioDownloadWorker>()
+                .setInputData(workDataOf("queryTitle" to track.title, "queryArtist" to track.artist, "duration" to (track.durationMs ?: 0L)))
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(
+                    if (app.settings.wifiOnly.value) NetworkType.UNMETERED else NetworkType.CONNECTED
+                ).setRequiresStorageNotLow(true).build())
+                .addTag("audio-download").addTag("title:" + track.title.take(200)).build()
+            work.enqueueUniqueWork("match-download:$identity", ExistingWorkPolicy.KEEP, request)
+        }
+    }
     fun cancelAll() { work.cancelAllWorkByTag("audio-download") }
     suspend fun remove(track: TrackEntity) = withContext(Dispatchers.IO) {
         work.cancelUniqueWork("download:" + track.mediaId).result.get()
