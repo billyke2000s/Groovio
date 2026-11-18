@@ -208,7 +208,7 @@ private fun LibraryRoot(
     LazyVerticalGrid(
         columns = GridCells.Fixed(if (grid) 3 else 1),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = if (grid) 12.dp else 0.dp, bottom = 18.dp),
+        contentPadding = PaddingValues(start = if (grid) 12.dp else 0.dp, end = if (grid) 12.dp else 0.dp, bottom = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(if (grid) 12.dp else 0.dp),
     ) {
         item(span = full) {
