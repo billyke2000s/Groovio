@@ -198,7 +198,7 @@ fun SettingsScreen(
             item { Toggle("Offline mode", "Play saved audio without contacting the online music source", offlineOnly) {
                 settings.setOfflineOnly(it); if (it) app.downloads.cancelAll()
             } }
-            item { Action("Downloads", "${downloads.size} songs · ${app.downloads.bytes() / (1024 * 1024)} MB saved", onOpenDownloads) }
+            item { Action("Your music", "${downloads.size} downloaded songs · ${app.downloads.bytes() / (1024 * 1024)} MB", onOpenDownloads) }
             item { Action("Remove all downloads", "Clears offline cache; copies in Music/Groovio remain yours") { confirmDeleteDownloads = true } }
 
             item { Section("Your library") }
