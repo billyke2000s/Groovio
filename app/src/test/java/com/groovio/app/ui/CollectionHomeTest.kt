@@ -31,4 +31,16 @@ class CollectionHomeTest {
         compose.onNodeWithText("A song inside").assertDoesNotExist()
         assertTrue(replayed)
     }
+
+    @Test fun `existing collection history is not treated as first run`() {
+        val song = TrackEntity("yt:one", "A song inside", "Artist", null)
+        val collection = RecentCollection("playlist:1", "Road trip", "Playlist", null, listOf(song))
+        compose.setContent { GroovioTheme {
+            HomeScreen(recent = emptyList(), likedCount = 0, playlists = emptyList(), currentMediaId = null,
+                onPlayRecent = { _, _ -> }, onOpenLiked = {}, onOpenPlaylist = {},
+                onSearch = {}, onOpenFiles = {}, onMore = {}, recentCollections = listOf(collection))
+        } }
+        compose.onNodeWithText("Jump back in").assertIsDisplayed()
+        compose.onNodeWithText("Find any song").assertDoesNotExist()
+    }
 }
