@@ -52,3 +52,7 @@ Source code establishes implementation; **only an explicit owner real-phone chec
 ## Update descriptions in app (experimental, 19 November 2026)
 
 The app now reads per-release `What's new` items from the GitHub release body and shows a bounded list in the update dialog and the first item in the Home update banner, with a link to full release notes. The publishing action derives release-specific descriptions from Android source commit titles since the latest reachable tag of that channel; older generic releases retain a fallback. Commit summaries are not proof of real-device functionality. This feature changes update UI and release metadata, **not playback**, and still needs Android CI/phone verification.
+
+## Player lyrics button (experimental, 19 November 2026)
+
+A **Lyrics** button has been added to the player utility row. It opens a full-screen Groovio-coloured lyrics view, looks up exactly matched recordings on [LRCLIB](https://lrclib.net), follows line-timed LRC lyrics against the existing Media3 position, and lets users tap a line to seek. Plain lyrics are shown un-timed; instrumental, mismatched, missing and failed lookups have explicit states. Successful results are cached privately on the device. No server or required account is added. LRCLIB offers line-timing records; **word-level karaoke highlighting is not implemented**, and availability/rights depend on the lyrics source. The media service, decoder and playback flow were not altered. On-device playback, readability and provider behaviour still require verification.

@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SpeakerGroup
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.CircularProgressIndicator
@@ -111,6 +112,7 @@ fun PlayerScreen(
     onSetSleepTimer: (Int?) -> Unit = {},
     onSetSpeed: (Float) -> Unit = {},
 ) {
+    var showingLyrics by rememberSaveable { mutableStateOf(false) }
     var choosingSpeed by rememberSaveable { mutableStateOf(false) }
     var choosingSleep by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -317,6 +319,9 @@ fun PlayerScreen(
             IconButton(onClick = { openOutputSwitcher(context) }) {
                 Icon(Icons.Default.SpeakerGroup, "Choose audio output")
             }
+            IconButton(onClick = { showingLyrics = true }, enabled = state.hasItem) {
+                Icon(Icons.Default.Subtitles, "Lyrics")
+            }
             IconButton(onClick = { addingToPlaylist = true }, enabled = state.hasItem) {
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Add to playlist")
             }
@@ -324,6 +329,16 @@ fun PlayerScreen(
                 Icon(Icons.AutoMirrored.Filled.QueueMusic, "Queue")
             }
         }
+    }
+
+    if (showingLyrics && state.hasItem) {
+        LyricsOverlay(
+            state = state,
+            positionMs = positionMs,
+            tint = tint,
+            onSeek = onSeek,
+            onDismiss = { showingLyrics = false },
+        )
     }
 
     if (choosingSpeed) androidx.compose.material3.AlertDialog(
