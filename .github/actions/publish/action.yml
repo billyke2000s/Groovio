@@ -12,7 +12,7 @@ runs:
       env:
         GROOVIO_RELEASE_CHANGES: ${{ inputs.changes }}
       run: |
-        python3 -m unittest discover -s scripts -p 'test_release_notes.py'
+        python3 -m unittest discover -s scripts -p 'test_release_*.py'
         git fetch origin --tags
         channel=stable
         if [ "${GROOVIO_EXPERIMENTAL:-0}" = "1" ]; then channel=experimental; fi
