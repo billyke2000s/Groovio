@@ -1,16 +1,17 @@
-name: Experimental release
+name: Publish experimental release
+# A pushed commit only runs Android CI. A user-facing APK needs a manual release.
 on:
-  push:
-    branches: [experimental]
-    paths:
-      - 'app/**'
-      - '.github/actions/publish/**'
-      - '.github/workflows/experimental.yml'
-      - '.github/release-notes.md'
   workflow_dispatch:
+    inputs:
+      changes:
+        description: 'What changed for listeners? One plain-English line per feature/fix.'
+        required: true
+        type: string
+
 concurrency:
   group: release
   cancel-in-progress: false
+
 jobs:
   publish:
     if: github.ref == 'refs/heads/experimental'
@@ -26,3 +27,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/publish
+        with:
+          changes: ${{ inputs.changes }}

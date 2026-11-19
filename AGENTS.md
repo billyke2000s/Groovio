@@ -43,6 +43,11 @@ These rules apply to every contributor and coding agent. Read this file before e
 - Run lint, unit tests, and an Android build before marking a release ready; report anything unverified.
 - Preserve existing behaviour unless the task explicitly changes it.
 
+## Releases and update notices
+- Publishing stable or experimental APKs requires a **manual GitHub Actions workflow_dispatch** with a short human-readable feature/fix list, not a commit subject. Never make a release automatic merely because CI passed.
+- Reject releases without Android app/source/dependency changes since the previous reachable release of the same channel. The scheduled NewPipe compatibility job is read-only and must not push or publish.
+- The confirmed v0.1.71 owner-phone playback baseline and stable audio guard remain intact. Documentation-only workflow safety changes do not authorise playback changes.
+
 ## Agent workflow
 1. Read this file and inspect relevant code and docs.
 2. Describe the smallest viable change and its acceptance criteria.

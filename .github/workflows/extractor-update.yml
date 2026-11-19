@@ -1,22 +1,21 @@
-name: Follow NewPipe Extractor
-# Once a day: if NewPipe Extractor has a newer release (and it is not blocklisted),
-# move Groovio to it, test, commit to main and publish a release. Users get it as an
-# in-app update, so YouTube fixes arrive without anyone editing code.
+name: Check NewPipe Extractor compatibility
+# Daily discovery/testing only. Never modifies main or publishes an APK.
 on:
   schedule:
     - cron: '17 5 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: release
+  group: extractor-compatibility-check
   cancel-in-progress: false
 
 jobs:
-  follow:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    permissions:
-      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -24,28 +23,29 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Check for a newer extractor
+      - name: Look for a newer extractor
         id: check
+        shell: bash
         run: |
           latest=$(gh api repos/TeamNewPipe/NewPipeExtractor/releases/latest -q .tag_name)
           current=$(grep -oE 'NewPipeExtractor:v[0-9.]+' app/build.gradle.kts | cut -d: -f2)
-          echo "current=$current latest=$latest"
+          echo "Current: $current | Latest: $latest"
           newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
           if [ "$latest" = "$current" ] || [ "$newest" != "$latest" ]; then
-            echo "Already on the newest extractor."; exit 0
+            echo "Already up to date." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           if grep -qx "$latest" .github/extractor-blocklist; then
-            echo "$latest is blocklisted; staying on $current."; exit 0
+            echo "Candidate $latest is blocklisted; no changes made." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           echo "update=$latest" >> "$GITHUB_OUTPUT"
           echo "current=$current" >> "$GITHUB_OUTPUT"
-      - name: Move to the new extractor
+      - name: Try candidate in this runner only
         if: steps.check.outputs.update != ''
+        shell: bash
         run: |
           sed -i "s/NewPipeExtractor:${{ steps.check.outputs.current }}/NewPipeExtractor:${{ steps.check.outputs.update }}/" app/build.gradle.kts
-          git config user.name "groovio-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "chore: follow NewPipe Extractor ${{ steps.check.outputs.update }}"
       - uses: actions/setup-java@v4
         if: steps.check.outputs.update != ''
         with:
@@ -57,13 +57,15 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         if: steps.check.outputs.update != ''
-      # Only a build that passes tests and lint reaches main.
-      - name: Test the new extractor
+      - name: Test the candidate without publishing
+        id: test
         if: steps.check.outputs.update != ''
         run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
-      - name: Push the update to main
-        if: steps.check.outputs.update != ''
-        run: git push origin HEAD:main
-      - name: Publish release
-        if: steps.check.outputs.update != ''
-        uses: ./.github/actions/publish
+      - name: Summarise candidate
+        if: always() && steps.check.outputs.update != ''
+        shell: bash
+        run: |
+          echo "## NewPipe Extractor compatibility test" >> "$GITHUB_STEP_SUMMARY"
+          echo "Candidate: ${{ steps.check.outputs.update }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build result: ${{ steps.test.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "No code was pushed and no release was published. Apply and phone-test manually before a release." >> "$GITHUB_STEP_SUMMARY"

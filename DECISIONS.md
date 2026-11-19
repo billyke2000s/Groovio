@@ -34,3 +34,7 @@ On a phone (mobile data) every song failed with "Sign in to confirm you're not a
 - `Release` workflow publishes `v0.1.<commit count>` for every app change on `main`.
 - Groovio checks GitHub releases on launch and offers the newer APK.
 - All builds are signed with one key committed at `signing/groovio.jks` so updates install over each other. The owner accepted that a public key lets others build look-alike updates; Groovio holds no accounts or passwords.
+
+## 2026-11-19 — Manual releases only (supersedes the 8 November automatic-publishing procedure)
+
+The owner requested an end to update notices for non-product changes and release notes that users can understand. Pushing to `main` or `experimental` now runs normal build/test CI but does **not** publish a new APK release. Stable and experimental publishing requires a manual GitHub Actions dispatch with a plain-English change list. The publishing action rejects no-op source changes since the previous release in that channel; stable playback approval requirements still apply. The daily NewPipe Extractor workflow now checks a candidate in a CI runner only and does not push or publish. The app's update popup and version-checking behaviour are unchanged.

@@ -1,15 +1,12 @@
-name: Release
-# Every app change merged to main becomes a new release; Groovio offers it as an update.
+name: Publish stable release
+# Pushing changes builds and tests Groovio, but never publishes an APK.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'build.gradle.kts'
-      - 'settings.gradle.kts'
-      - 'gradle/**'
-      - 'signing/**'
   workflow_dispatch:
+    inputs:
+      changes:
+        description: 'What changed for listeners? One plain-English line per feature/fix.'
+        required: true
+        type: string
 
 concurrency:
   group: release
@@ -17,6 +14,7 @@ concurrency:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -28,3 +26,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/publish
+        with:
+          changes: ${{ inputs.changes }}
