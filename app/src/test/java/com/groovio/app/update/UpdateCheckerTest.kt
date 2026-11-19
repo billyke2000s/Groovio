@@ -46,4 +46,26 @@ class UpdateCheckerTest {
         assertEquals("experimental-v0.1.80", UpdateChecker.newest(list, 71, experimental = true)?.version)
         assertNull(UpdateChecker.newest(list, 80, experimental = true))
     }
+    @Test fun parsesWhatsNewForTheChosenRelease() {
+        val entry = """{"tag_name":"experimental-v0.1.105","draft":false,"prerelease":true,
+            "html_url":"https://github.com/x/r/releases/tag/experimental-v0.1.105",
+            "body":"## What's new\n\n- Add an update changelog\n- Fix downloads\n\n## Notes\nOther text",
+            "assets":[{"name":"groovio.apk","browser_download_url":"https://dl/groovio.apk"}]}"""
+        val update = UpdateChecker.newest(parse(entry), 100, experimental = true)
+        assertEquals("• Add an update changelog\n• Fix downloads", update?.changes)
+    }
+
+    @Test fun ignoresLegacyGenericNotes() {
+        assertNull(UpdateChecker.changesFrom("# Groovio Android release\nGeneric notes"))
+        assertNull(UpdateChecker.changesFrom(null))
+        assertNull(UpdateChecker.newest(parse(release("v0.1.90")), 71)?.changes)
+    }
+
+    @Test fun limitsWhatsNewToEightItems() {
+        val body = "## What's new\n" + (1..12).joinToString("\n") { "- Change $it" } +
+            "\n\n## Notes\n- Unrelated"
+        val changes = UpdateChecker.changesFrom(body)
+        assertEquals(8, changes?.lines()?.size)
+        assertEquals(false, changes?.contains("Unrelated"))
+    }
 }

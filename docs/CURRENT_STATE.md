@@ -48,3 +48,7 @@ This page covers source inspected on **experimental**. **Implemented code is not
 | [AGENTS](../AGENTS.md), [CONTRIBUTING](../CONTRIBUTING.md), [DECISIONS](../DECISIONS.md) | Rules, build/release workflows and dated owner choices |
 
 Source code establishes implementation; **only an explicit owner real-phone check establishes owner-confirmed playback**.
+
+## Update descriptions in app (experimental, 19 November 2026)
+
+The app now reads per-release `What's new` items from the GitHub release body and shows a bounded list in the update dialog and the first item in the Home update banner, with a link to full release notes. The publishing action derives release-specific descriptions from Android source commit titles since the latest reachable tag of that channel; older generic releases retain a fallback. Commit summaries are not proof of real-device functionality. This feature changes update UI and release metadata, **not playback**, and still needs Android CI/phone verification.

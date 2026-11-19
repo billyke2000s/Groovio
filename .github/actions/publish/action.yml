@@ -45,5 +45,24 @@ runs:
         fi
         apk="groovio-${tag}.apk"
         cp app/build/outputs/apk/debug/*.apk "$apk"
+        # Release notes reflect Android source commits since the last reachable tag
+        # from the same channel, not a generic file shared across releases.
+        tag_pattern='v0.1.*'
+        if [ "$GROOVIO_EXPERIMENTAL" = "1" ]; then tag_pattern='experimental-v0.1.*'; fi
+        previous=$(git tag --merged HEAD --list "$tag_pattern" | sort -V | tail -1)
+        range=HEAD
+        if [ -n "$previous" ]; then range="$previous..HEAD"; fi
+        notes_file="$RUNNER_TEMP/groovio-release-notes.md"
+        printf "## What's new\n\n" > "$notes_file"
+        git log --no-merges --format='- %s' "$range" -- app/src/main app/build.gradle.kts build.gradle.kts settings.gradle.kts gradle \
+          | sed -E '/^- (docs:|test:|Merge )/Id' \
+          | awk '!seen[$0]++ { if (count++ < 12) print substr($0, 1, 180) }' >> "$notes_file"
+        if ! grep -q '^- ' "$notes_file"; then
+          printf '%s\n' '- No Android source changes recorded in this release comparison.' >> "$notes_file"
+        fi
+        printf '\n## Release information\n\n' >> "$notes_file"
+        printf '%s\n' 'Items above are based on Android source commit titles, not device-tested feature claims.' >> "$notes_file"
+        printf '%s\n' 'Experimental audio needs owner phone testing. Update over the installed app, not by uninstalling.' >> "$notes_file"
+        printf '%s\n' 'Library JSON backups exclude downloaded audio and individual song-play history.' >> "$notes_file"
         gh release create "$tag" "$apk" --target "$(git rev-parse HEAD)" \
-          --title "Groovio ${tag#v}" --notes-file .github/release-notes.md "${flags[@]}"
+          --title "Groovio ${tag#v}" --notes-file "$notes_file" "${flags[@]}"

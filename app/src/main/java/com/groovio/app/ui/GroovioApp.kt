@@ -1,5 +1,7 @@
 package com.groovio.app.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -13,6 +15,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -486,18 +493,28 @@ fun GroovioApp(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { dismissedUpdate = available.update.version },
             title = { Text("Groovio update") },
-            text = { Column {
-                Text(available.update.version)
-                when (available) {
-                    is com.groovio.app.ui.home.UpdateState.Downloading -> {
-                        Text("Downloading…")
-                        androidx.compose.material3.LinearProgressIndicator(progress = { available.progress.coerceIn(0f, 1f) })
+            text = {
+                Column(Modifier.heightIn(max = 350.dp).verticalScroll(rememberScrollState())) {
+                    Text(available.update.version)
+                    Spacer(Modifier.height(12.dp))
+                    Text("What's new", style = androidx.compose.material3.MaterialTheme.typography.titleSmall)
+                    Text(available.update.changes ?: "No itemised changelog for this version. The GitHub release has more details.")
+                    androidx.compose.material3.TextButton(onClick = {
+                        app.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(available.update.pageUrl))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }) { Text("Full release notes on GitHub") }
+                    Spacer(Modifier.height(8.dp))
+                    when (available) {
+                        is com.groovio.app.ui.home.UpdateState.Downloading -> {
+                            Text("Downloading…")
+                            androidx.compose.material3.LinearProgressIndicator(progress = { available.progress.coerceIn(0f, 1f) })
+                        }
+                        is com.groovio.app.ui.home.UpdateState.Failed -> Text(available.message)
+                        is com.groovio.app.ui.home.UpdateState.NeedsPermission -> Text("Allow installation, then return to Groovio.")
+                        else -> Text("On Android 10+, Groovio saves a library JSON backup before installation. The installer must say Update, not Uninstall. JSON backups exclude audio and individual song-play history.")
                     }
-                    is com.groovio.app.ui.home.UpdateState.Failed -> Text(available.message)
-                    is com.groovio.app.ui.home.UpdateState.NeedsPermission -> Text("Allow installation, then return to Groovio.")
-                    else -> Text("Groovio will first back up your library, playlists, likes, settings and listening history to Downloads/Groovio. The installer must say Update, not Uninstall. Downloaded audio is not included in the JSON backup.")
                 }
-            } },
+            },
             confirmButton = { if (available !is com.groovio.app.ui.home.UpdateState.Downloading)
                 androidx.compose.material3.TextButton(onClick = homeVm::startUpdate) { Text(
                     if (available is com.groovio.app.ui.home.UpdateState.Failed) "Retry" else "Install update") }

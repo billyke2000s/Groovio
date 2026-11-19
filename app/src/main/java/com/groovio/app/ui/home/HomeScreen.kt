@@ -409,6 +409,12 @@ private fun UpdateBanner(state: UpdateState, onUpdate: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(title, color = GroovioColors.OnAccent, fontWeight = FontWeight.Bold)
                 Text(detail, color = GroovioColors.OnAccent, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (state is UpdateState.Available || state is UpdateState.Ready) {
+                    state.update.changes?.lineSequence()?.firstOrNull()?.let { summary ->
+                        Text(summary, color = GroovioColors.OnAccent, fontSize = 12.sp,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
             if (action != null) {
                 androidx.compose.material3.TextButton(onClick = onUpdate) {

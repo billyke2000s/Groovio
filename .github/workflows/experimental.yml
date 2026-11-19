@@ -6,7 +6,6 @@ on:
       - 'app/**'
       - '.github/actions/publish/**'
       - '.github/workflows/experimental.yml'
-      - '.github/release-notes.md'
   workflow_dispatch:
 concurrency:
   group: release

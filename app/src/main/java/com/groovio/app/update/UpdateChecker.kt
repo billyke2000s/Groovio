@@ -7,7 +7,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 /** A newer Groovio release with a downloadable APK. */
-data class AvailableUpdate(val version: String, val apkUrl: String, val pageUrl: String)
+data class AvailableUpdate(val version: String, val apkUrl: String, val pageUrl: String, val changes: String? = null)
 
 /**
  * Checks Groovio's GitHub releases for a newer build. Releases are tagged "v0.1.<build>",
@@ -41,6 +41,17 @@ class UpdateChecker(
         fun buildNumber(tag: String): Int? =
             Regex("""^v?\d+\.\d+\.(\d+)$""").find(tag.trim())?.groupValues?.get(1)?.toIntOrNull()
 
+        /** Display only release-specific items; older generic release notes are not a feature list. */
+        fun changesFrom(body: String?): String? {
+            val lines = body?.lineSequence()?.map { it.trim() }?.toList().orEmpty()
+            val start = lines.indexOfFirst { it.equals("## What's new", ignoreCase = true) }
+            if (start < 0) return null
+            val items = lines.drop(start + 1).takeWhile { !it.startsWith("## ") }
+                .filter { it.startsWith("- ") }.map { it.removePrefix("- ").trim().take(180) }
+                .filter { it.isNotEmpty() }.take(8)
+            return items.takeIf { it.isNotEmpty() }?.joinToString("\n") { "• $it" }
+        }
+
         /** The newest non-draft release above [currentBuild] that has an APK attached. */
         fun newest(releases: JsonArray, currentBuild: Int, experimental: Boolean = false): AvailableUpdate? =
             (0 until releases.size).asSequence()
@@ -56,7 +67,7 @@ class UpdateChecker(
                     val apk = (0 until assets.size).map { assets.getObject(it) }
                         .firstOrNull { it.getString("name")?.endsWith(".apk") == true }
                         ?.getString("browser_download_url") ?: return@mapNotNull null
-                    Triple(build, tag, AvailableUpdate(tag, apk, r.getString("html_url") ?: apk))
+                    Triple(build, tag, AvailableUpdate(tag, apk, r.getString("html_url") ?: apk, changesFrom(r.getString("body"))))
                 }
                 .filter { it.first > currentBuild }
                 .maxByOrNull { it.first }
