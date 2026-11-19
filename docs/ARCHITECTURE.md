@@ -15,4 +15,6 @@
 
 **Known incomplete areas:** offline Home and global search coverage, exact spoken Library deep links, SongMenu parity in Player/Queue, repeated-song collection copying, complete cross-store backup, real-device output and exported-file tests. See [offline guide](OFFLINE_AND_PLAYBACK.md) and [action audit](UI_ACTION_PARITY_AUDIT.md).
 
-**Not-current features:** lyrics, smart rules-based playlists, robust account-free sharing, Android Auto browsing, home widget and automatic podcast episode refresh remain proposals.
+**Lyrics (experimental):** `ui/player/LyricsOverlay.kt` opens from the full player and follows line-synchronised LRC timestamps via `lyrics/LyricsRepository.kt` and the current Media3 position; timed rows can seek, and fetched lyrics are cached privately. The provider is LRCLIB. This does not include word-by-word karaoke highlighting or guaranteed lyrics coverage.
+
+**Not-current features:** word-by-word karaoke lyrics, smart rules-based playlists, robust account-free sharing, Android Auto browsing, home widget and automatic podcast episode refresh remain proposals.

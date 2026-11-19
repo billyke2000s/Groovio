@@ -31,7 +31,7 @@ This page covers source inspected on **experimental**. **Implemented code is not
 4. Saved podcast/book Library entries navigate to the broad category instead of the exact item; Player and Queue lack full shared `SongMenu` actions.
 5. Sleep timer lifecycle is tied to `PlayerViewModel` rather than the service.
 6. JSON backup excludes downloaded audio, individual song-play events and durable Spotify matching manifests. Room playlists are restored transactionally; settings/spoken/collection history are separate; repeated restores create copies.
-7. Optional external export and newer audio effects remain phone-unverified. Android Auto library browsing, widget, synchronized lyrics, sharing, smart playlists and automatic new-episode refresh are suggestions, **not shipped features**.
+7. Optional external export and newer audio effects remain phone-unverified. Android Auto library browsing, widget, **word-by-word karaoke lyrics**, sharing, smart playlists and automatic new-episode refresh are suggestions or future work, **not currently implemented features**. Line-synchronised LRCLIB lyrics are implemented experimentally as described below.
 8. The repository includes publicly accessible signing keystore/credentials. This is a security risk needing a carefully planned signing migration. Never copy credential values.
 9. Existing automatic NewPipe follower can target `main` after CI without phone approval; compiling successfully is not sufficient for safe playback promotion.
 

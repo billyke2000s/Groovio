@@ -42,6 +42,10 @@ Keep your downloads and imported audio together in **Your music**. Browse saved 
 
 Enjoy large album artwork, a mini-player and full playback controls. Swipe to skip tracks, manage the queue, shuffle, repeat and set a sleep timer.
 
+### Live lyrics (experimental)
+
+Tap **Lyrics** on the full-screen player to open a Groovio-coloured lyrics view. When a matching track is available from [LRCLIB](https://lrclib.net), timed lines follow playback and you can tap a line to seek to that moment. Unsynchronised lyrics are shown as readable text, and successfully retrieved lyrics are cached privately for offline reuse. Lyrics aren't guaranteed for every song; **word-by-word karaoke highlighting isn't implemented yet**.
+
 ### Make it sound right
 
 Use the five-band equaliser, choose a preset or enable optional volume normalisation. Audio-effect availability depends on your Android device.
