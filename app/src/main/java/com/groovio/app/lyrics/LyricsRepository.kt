@@ -118,7 +118,7 @@ class LyricsRepository(
     }
 
     internal fun decode(json: String, track: LyricsTrack): LyricsDocument? {
-        val record = JsonParser.object().from(json)
+        val record = JsonParser.`object`().from(json)
         val title = record.getString("trackName") ?: record.getString("name") ?: return null
         val artist = record.getString("artistName") ?: return null
         if (normalise(title) != normalise(track.title) ||
