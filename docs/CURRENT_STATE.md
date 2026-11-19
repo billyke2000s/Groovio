@@ -33,7 +33,7 @@ This page covers source inspected on **experimental**. **Implemented code is not
 6. JSON backup excludes downloaded audio, individual song-play events and durable Spotify matching manifests. Room playlists are restored transactionally; settings/spoken/collection history are separate; repeated restores create copies.
 7. Optional external export and newer audio effects remain phone-unverified. Android Auto library browsing, widget, **word-by-word karaoke lyrics**, sharing, smart playlists and automatic new-episode refresh are suggestions or future work, **not currently implemented features**. Line-synchronised LRCLIB lyrics are implemented experimentally as described below.
 8. The repository includes publicly accessible signing keystore/credentials. This is a security risk needing a carefully planned signing migration. Never copy credential values.
-9. Existing automatic NewPipe follower can target `main` after CI without phone approval; compiling successfully is not sufficient for safe playback promotion.
+9. **Resolved in the 19 November release-workflow change:** the daily NewPipe follower is read-only and no longer pushes to `main` or publishes releases; compilation alone still does not prove phone playback.
 
 ## Documentation map
 
@@ -51,8 +51,12 @@ Source code establishes implementation; **only an explicit owner real-phone chec
 
 ## Update descriptions in app (experimental, 19 November 2026)
 
-The app now reads per-release `What's new` items from the GitHub release body and shows a bounded list in the update dialog and the first item in the Home update banner, with a link to full release notes. The publishing action derives release-specific descriptions from Android source commit titles since the latest reachable tag of that channel; older generic releases retain a fallback. Commit summaries are not proof of real-device functionality. This feature changes update UI and release metadata, **not playback**, and still needs Android CI/phone verification.
+The app now reads per-release `What's new` items from the GitHub release body and shows a bounded list in the update dialog and the first item in the Home update banner, with a link to full release notes. Previously it derived descriptions from commit titles; **now** releases are manually approved with 1–6 plain-English feature/fix descriptions. Old generic releases still use the fallback. Commit summaries are not proof of real-device functionality. This feature changes update UI and release metadata, **not playback**, and still needs Android CI/phone verification.
 
 ## Player lyrics button (experimental, 19 November 2026)
 
 A **Lyrics** button has been added to the player utility row. It opens a full-screen Groovio-coloured lyrics view, looks up exactly matched recordings on [LRCLIB](https://lrclib.net), follows line-timed LRC lyrics against the existing Media3 position, and lets users tap a line to seek. Plain lyrics are shown un-timed; instrumental, mismatched, missing and failed lookups have explicit states. Successful results are cached privately on the device. No server or required account is added. LRCLIB offers line-timing records; **word-level karaoke highlighting is not implemented**, and availability/rights depend on the lyrics source. The media service, decoder and playback flow were not altered. On-device playback, readability and provider behaviour still require verification.
+
+## Release publication policy (19 November 2026)
+
+Pushing commits to `experimental` or `main` automatically runs Android build/test checks **without publishing an update**. Both release workflows now run only through a manual GitHub Actions `workflow_dispatch`, require an itemised user-facing change list, and refuse a release when there are no Android app/source/dependency differences from the previous reachable release tag on that channel. The existing app updater's version/signature checks and visible popup layout are unchanged. The daily NewPipe Extractor job only checks and tests a candidate inside CI; it no longer pushes or publishes. Historical releases, including v0.1.71 and the experimental v0.1.172, are unchanged.

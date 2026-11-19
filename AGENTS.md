@@ -46,7 +46,7 @@ These rules apply to every contributor and coding agent. Read this file before e
 ## Documentation and verification authority
 - [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) is the as-of-date inventory of implementation and evidence. [STATUS.md](STATUS.md) contains historical phases; [docs/EXPERIMENTAL_STATUS.md](docs/EXPERIMENTAL_STATUS.md) is a dated development record. Never describe a historical checkpoint as the present feature status.
 - The owner confirmed song playback only for v0.1.71 at `6d2c55a372b2f7d6598032c78e3dee574b5e2085`. Newer experimental audio requires explicit phone confirmation. Do not alter `docs/PHONE_PLAYBACK_APPROVAL.json` without it.
-- Main branch presence and green CI do not establish phone playback. The daily extractor-update workflow currently targets main after automated tests; document this accurately rather than implying it has a phone gate.
+- Main branch presence and green CI do not establish phone playback. The extractor-update workflow is now a read-only scheduled compatibility check; it must not push to main or publish. Releases require a manual workflow dispatch, meaningful app-source differences and a human-readable change list. The stable phone-playback guard still applies.
 - When asked for docs-only edits, do not alter Kotlin, XML, Gradle, workflows, APKs, screenshots, signing files or approval records.
 
 ## Agent workflow

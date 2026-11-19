@@ -1,3 +1,13 @@
-# Previous release-notes template
+# Manual release notes
 
-This shared generic text is no longer used to publish new releases. The publishing action now derives a release-specific **What's new** list from Android source commit titles since the previous reachable tag in the same channel. Older generic releases show an honest fallback in the app rather than invented additions.
+The in-app update dialog already reads the `## What's new` section of GitHub Releases. New releases now use **human-written lines**, required by the manual release workflow and validated by `scripts/prepare_release_notes.py`. They are **not generated from Git commit titles**.
+
+Example input when deliberately publishing an APK:
+
+```
+Live lyrics: Follow along with the song in real time.
+Tap a lyric to jump to that part of the song.
+Previously viewed lyrics stay available offline.
+```
+
+Automatic Android CI builds still run on pushes but never publish APK releases. The scheduled NewPipe compatibility check only tests a temporary candidate in the runner and cannot push or publish.

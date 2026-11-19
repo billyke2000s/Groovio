@@ -1,9 +1,5 @@
 name: Publish confirmed experimental baseline
 on:
-  push:
-    branches: [experimental]
-    paths:
-      - '.github/workflows/experimental-baseline.yml'
   workflow_dispatch:
 
 permissions:
