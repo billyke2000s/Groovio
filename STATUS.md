@@ -1,4 +1,20 @@
-# Status
+# Groovio status
+
+**Current reference (19 November 2026):** [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) separates implemented, phone-confirmed and unverified functionality. [Experimental status](docs/EXPERIMENTAL_STATUS.md) is a dated log; [recovery baseline](docs/EXPERIMENTAL_BASELINE.md) records the narrow owner-approved v0.1.71 source.
+
+| Area | Current status |
+| --- | --- |
+| Owner-confirmed phone playback | **v0.1.71** played songs on 18 November; later experimental source remains device-unverified. |
+| Latest inspected build | [18 November experimental Android CI](https://github.com/billyke2000s/Groovio/actions/runs/44422540191) passed; it does not certify phone audio. |
+| Branch and stable distinction | `main` and `experimental` had identical Git trees before this docs-only update, but stable v0.1.71 remains the published owner-confirmed playback release. A later stable publish was blocked by its audio guard. |
+| Extractor follower | [19 November v0.27.1 attempt](https://github.com/billyke2000s/Groovio/actions/runs/44544010480) failed compilation; it was not pushed/released. |
+| Local files | Current **Your music** view combines private completed downloads and imported audio. Shared public exports remain optional extra copies. |
+
+## Historical phase reports
+
+**Everything below is retained as a historical record.** Assertions like “artist pages planned”, “first run pending”, “effects rolled back” and “separate Downloads screen” can be superseded by newer source. Use [CURRENT_STATE](docs/CURRENT_STATE.md) rather than interpreting historical checklist rows as present-day verification.
+
+---
 
 Current experimental work: [18 November status and verification](docs/EXPERIMENTAL_STATUS.md). Older phase notes below are historical.
 

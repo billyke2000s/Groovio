@@ -2,8 +2,8 @@
 
 Owner decisions are recorded here so agents don't silently undo them.
 
-## 2026-11-08 — Workflow: one branch and PR per phase
-Each phase is built on its own branch, must pass CI (unit tests, lint, debug APK), and is opened as a PR. The owner merges; agents do not merge to `main`.
+## 2026-11-08 — Original phase/PR workflow (historical)
+Initial plan: separate phase branches, CI and owner-merged PRs. This is no longer a literal description of current repository state: recent work is on `experimental` and source has also reached `main`. See [CONTRIBUTING](CONTRIBUTING.md) for the workflows actually configured.
 
 ## 2026-11-08 — Original accent colour
 Replaced Spotify's brand green `#1ED760` with Groovio coral `#FF7A45` so the app is inspired by, not a copy of, Spotify.
@@ -31,6 +31,14 @@ On a phone (mobile data) every song failed with "Sign in to confirm you're not a
 
 ## 2026-11-08 — Automatic updates (owner decision)
 - `Follow NewPipe Extractor` workflow checks daily for a newer extractor release, skips versions in `.github/extractor-blocklist`, runs tests, commits to `main` and publishes a release.
-- `Release` workflow publishes `v0.1.<commit count>` for every app change on `main`.
+- `Release` workflow attempts `v0.1.N` releases for selected main-branch paths and now has a stable audio-source approval guard; version codes are allocated above published tags, not simply taken from commit count.
 - Groovio checks GitHub releases on launch and offers the newer APK.
-- All builds are signed with one key committed at `signing/groovio.jks` so updates install over each other. The owner accepted that a public key lets others build look-alike updates; Groovio holds no accounts or passwords.
+- The existing signing keystore **and credentials** are publicly committed, historically accepted for continuity. This is an app update-security risk: others could potentially sign an APK with Groovio's identity. No accounts does not eliminate that risk. Do not reproduce credentials in docs or rotate the signer without an update-compatibility plan.
+
+## 2026-11-18 — Owner-confirmed playback recovery
+
+The owner confirmed that v0.1.71 at source `6d2c55a372b2f7d6598032c78e3dee574b5e2085` plays songs on the phone. Newer experimental audio is not thereby approved. Preserve the baseline and `docs/PHONE_PLAYBACK_APPROVAL.json` without new owner evidence.
+
+## 2026-11-19 — Documentation reconciliation (observation, not new product approval)
+
+Current experimental source has unified **Your music** for completed private downloads and imported audio, with old Downloads/Local Files routes as aliases. Public `Music/Groovio/` copies remain optional separate files. Current verification and documentation roles are tracked in [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md); this docs-only change authorises no new stable audio.

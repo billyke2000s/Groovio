@@ -1,23 +1,18 @@
-# Architecture
+# Groovio architecture
 
-## Current implementation
-- `MainActivity`: edge-to-edge host for `GroovioApp`.
-- `ui/GroovioApp`: navigation (home, full player, queue) and the mini-player.
-- `playback/PlayerViewModel`: wraps a Media3 `MediaController`; exposes `PlayerUiState` as a `StateFlow` and position as a lifecycle-collected `Flow`.
-- `playback/GroovioPlaybackService`: Media3 `MediaSessionService` + ExoPlayer, audio focus, pause on becoming noisy.
-- `playback/AudioFormatLabel`: inline codec/bitrate/sample-rate label from the selected track.
-- Android document picker supplies read URIs for user-selected files (multiple selection forms the queue).
+**Current experimental source, 19 November 2026.** There is no required Groovio account, backend, VPS or Lavalink. See [CURRENT_STATE](CURRENT_STATE.md) for verification limits.
 
-- `online/YouTubeMusic`: YouTube Music search and stream resolution via NewPipe Extractor (`NewPipeDownloader` over OkHttp). `StreamSelector` picks the best original audio; `TrackMatcher` is the Discord bot's matcher, ported.
-- Online songs are queued as `groovio://youtube/<id>`; `GroovioPlaybackService` resolves them to real URLs in a `ResolvingDataSource` on the loader thread, caches them (4h) and re-resolves once on HTTP errors.
-- `data/LibraryDatabase` (Room): tracks, favourites, history, playlists, saved queue and playback state. `LibraryRepository` is the only entry point. A track's identity is its media id (`yt:<id>` or a local `content://` URI); `TrackMapping` derives the playable URI from it.
-- The service records history once a song actually plays, saves the queue (debounced), restores it on start, and rebuilds URIs for items from external controllers.
-- `ui/home`, `ui/search`, `ui/library`, `ui/player`: Compose screens; `GroovioApp` hosts tabs (Home, Search, Library), the mini-player, full player and queue.
+- `MainActivity` hosts `ui/GroovioApp.kt`, which handles Home, Library, Search, player, queue, Settings and detail navigation. Shared Android text can open Spotify-link import.
+- `ui/home` includes real collection recents, Daily Mixes, online discovery, chart metadata and update UI; `ui/search` provides online/offline search; `ui/browse` implements **artist, album and collection pages** (not merely planned features).
+- `ui/library` handles likes, playlists, menus and unified **Your music**. Legacy Downloads and Local Files routes both display `LocalFilesScreen`. `spoken` handles podcasts/books, follow/save and progress.
+- `playback/PlayerViewModel` exposes MediaController state and actions, including queue and view-model-scoped sleep timer. `playback/GroovioPlaybackService` uses Media3 `MediaSessionService`/ExoPlayer with audio focus, noisy handling, session effects, saved queue and playback history.
+- Online media uses `yt:<videoId>` identities and resolves through `ResolvingDataSource` on a loader thread: verified app-private download first, then a currently available online URL via `online/YouTubeMusic`/NewPipe Extractor. Local documents use `content://`. `TrackMapping` reconstructs playable MediaItems.
+- `StreamSelector` selects genuine available original audio. `AudioFormatLabel` displays selected Media3 codec/bitrate/sample rate where known. Spotify public links supply metadata matched to YouTube; **Spotify protected audio is not streamed**.
+- `data/LibraryDatabase` Room schema v1 stores tracks, favourites, individual play history, playlists (ordered entries can include duplicates), queue and playback state. `LibraryRepository` is its facade.
+- `data/CollectionHistory` persists collection recents separately; `spoken/SpokenStore` tracks saved spoken content and progress; `data/GroovioSettings` persists preferences.
+- `offline/OfflineStore` retains private originals; `AudioDownloadWorker` and `CollectionImports` manage WorkManager downloads and Spotify matching. `PublicMusicFolder` optionally copies files to `Music/Groovio/` on Android 10+ without replacing canonical private audio.
+- `update/UpdateChecker` selects eligible releases; `UpdateInstaller` checks same package, signer and newer version; `UpdateSafety` writes pre-install JSON on Android 10+. JSON excludes audio and individual listening events.
 
-- `online/SpotifyLinks` parses Spotify links and the public embed page (no account or key); `online/SpotifyImporter` fetches it and matches each song to YouTube with `TrackMatcher` (YouTube Music songs, then videos). `PlayerViewModel.playSpotify` plays the first match immediately and appends the rest.
-- `MainActivity` accepts `ACTION_SEND` text (Share → Groovio) and opens it in Search.
+**Known incomplete areas:** offline Home and global search coverage, exact spoken Library deep links, SongMenu parity in Player/Queue, repeated-song collection copying, complete cross-store backup, real-device output and exported-file tests. See [offline guide](OFFLINE_AND_PLAYBACK.md) and [action audit](UI_ACTION_PARITY_AUDIT.md).
 
-## Planned
-- Artist and album pages.
-
-No backend, Lavalink server, or account is required. Online features need an internet connection.
+**Not-current features:** lyrics, smart rules-based playlists, robust account-free sharing, Android Auto browsing, home widget and automatic podcast episode refresh remain proposals.

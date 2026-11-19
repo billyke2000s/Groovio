@@ -6,6 +6,8 @@
 
 A free, open-source Android music player with a dark interface, coral accents and a library that's yours.
 
+**Release clarity:** [v0.1.71](https://github.com/billyke2000s/Groovio/releases/tag/v0.1.71) is the last owner-confirmed song-playback build. **Features described below reflect newer experimental source and may not be in the stable APK or phone-verified.** See the [current source and verification index](docs/CURRENT_STATE.md).
+
 [**Download APK**](https://github.com/billyke2000s/Groovio/releases) · [**Latest stable**](https://github.com/billyke2000s/Groovio/releases/latest) · [**Source code**](https://github.com/billyke2000s/Groovio)
 
 </div>
@@ -34,7 +36,7 @@ Create playlists, save favourites and organise your collections in **Your Librar
 
 ### Your music, even offline
 
-Keep your downloads and imported audio together in **Your music**. Browse saved songs, play everything, shuffle or add music from your phone. Groovio uses your verified downloaded audio directly for offline playback.
+Keep your downloads and imported audio together in **Your music**. Browse saved songs, play everything, shuffle or add music from your phone. Private completed downloads are the offline playback source; optional public copies in **Music/Groovio** are separate files on Android 10+. Some Home collections may still contain undownloaded tracks while offline.
 
 ### A player that stays out of your way
 
@@ -46,7 +48,7 @@ Use the five-band equaliser, choose a preset or enable optional volume normalisa
 
 ### Podcasts and audiobooks
 
-Discover available public episodes and recordings, save them to your library and resume where you left off.
+Discover available episodes and recordings, save them to your library and resume where you left off. Direct links to individual saved items from every Library entry, automatic episode refresh and timestamp chapters are not finished.
 
 ---
 
@@ -58,9 +60,9 @@ Discover available public episodes and recordings, save them to your library and
 2. Open the downloaded file and allow installation from that source if Android asks.
 3. Launch Groovio and start listening.
 
-**Updating?** Install a newer signed APK over your existing app rather than uninstalling first. Use **Settings → Back up library** before testing new builds. Backups save playlists and library information, but not downloaded audio files.
+**Updating?** Install a newer signed APK over your existing app rather than uninstalling first. Use **Settings → Back up library** before testing new builds. In newer experimental code, Android 10+ also gets a pre-install JSON snapshot; Android 8/9 needs manual backup. Backups **exclude downloaded audio and individual song-play history**; repeating restore creates extra playlists.
 
-[**Releases**](https://github.com/billyke2000s/Groovio/releases) · [**Experimental builds**](https://github.com/billyke2000s/Groovio/releases) · [**Build from source**](CONTRIBUTING.md)
+[**Releases**](https://github.com/billyke2000s/Groovio/releases) · [**Experimental builds**](https://github.com/billyke2000s/Groovio/releases?q=experimental-v) · [**Build from source**](CONTRIBUTING.md)
 
 ## How it works
 
@@ -73,7 +75,7 @@ Your playlists, favourites and settings are stored locally. Groovio doesn't requ
 
 Groovio is written in **Kotlin** with **Jetpack Compose**. Playback uses **AndroidX Media3**, the local library uses **Room**, background downloads use **WorkManager**, and artwork uses **Coil**. Audio extraction uses [NewPipe Extractor](https://github.com/TeamNewPipe/NewPipeExtractor), with optional artist metadata from [MusicBrainz](https://musicbrainz.org/).
 
-The project is actively developed. Some features still need testing across different Android devices, audio outputs and network conditions. See [development status](docs/EXPERIMENTAL_STATUS.md) and [contributing](CONTRIBUTING.md).
+The project is actively developed. Some features still need testing across different Android devices, audio outputs and network conditions. See [current verified/unverified state](docs/CURRENT_STATE.md), [development history](docs/EXPERIMENTAL_STATUS.md) and [contributing](CONTRIBUTING.md).
 
 Groovio isn't affiliated with YouTube, YouTube Music or Spotify.
 

@@ -1,12 +1,12 @@
-Experimental spoken discovery and collection history update.
+# Groovio Android release
 
-- Podcasts and audiobooks now use prominent cover cards, compact actual metadata, artwork-tinted backgrounds, orange play/save controls and horizontal collection shelves.
-- Podcast Following row/filter; search is available from the search icon rather than a large permanent form.
-- Shows/books open a dedicated episode/chapter page. Follow/save, downloads and progress are retained. Source/availability information is available through the information button.
-- Jump back in, Home shortcuts, Last Groove and Library recents now display played playlists, albums, mixes and spoken collections instead of individual music tracks.
-- Collection artwork, track order and replay snapshots persist across restarts. Replaying a collection updates its existing history entry. Clearing history clears collection recents too; backups include optional collection history.
-- Existing per-song history remains available to recommendation logic. Older song events cannot identify which playlist was played, so collection history begins when collections are played on this build.
+This is the **shared stable/experimental release template**, not a version-specific changelog. For exact changes, inspect the release's tag and commit history rather than assuming every release contains every experimental feature.
 
-No playback-service, renderer, audio effect or streaming-resolution changes. The only playback-view-model addition records collection metadata during Spotify matching. Main and the confirmed v0.1.71 recovery release are unchanged.
+- **Stable:** `v0.1.N`; the specific owner-confirmed song-playback recovery point is **v0.1.71** (18 November 2026).
+- **Experimental:** `experimental-v0.1.N` prereleases may contain audio and UI changes not yet tested on a phone. The in-app updater defaults to stable unless experimental is enabled.
+- Install a newer signed APK **over** the existing app. Back up the library before testing updates. JSON does not contain downloaded audio or individual play history. Android 8/9 require manual backup before an update.
+- Source/network/device compatibility can vary. Automated tests and APK assembly do not prove physical playback.
 
-Tests, lint and signed APK assembly must pass before this prerelease is published. Optional live-catalogue screenshot checks are separate and may be affected by runner networking; physical device review remains necessary.
+[README and genuine app screenshots](https://github.com/billyke2000s/Groovio#readme) · [Current feature and verification matrix](https://github.com/billyke2000s/Groovio/blob/experimental/docs/CURRENT_STATE.md) · [Experimental history](https://github.com/billyke2000s/Groovio/blob/experimental/docs/EXPERIMENTAL_STATUS.md) · [Recovery baseline](https://github.com/billyke2000s/Groovio/blob/experimental/docs/EXPERIMENTAL_BASELINE.md)
+
+Groovio isn't affiliated with Spotify, YouTube or YouTube Music. No Groovio account is required.

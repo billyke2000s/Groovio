@@ -17,7 +17,7 @@ These rules apply to every contributor and coding agent. Read this file before e
 - Reuse ideas from the existing Discord bot's track matching only after adapting and testing them for Android; no runtime dependence on the bot.
 - Avoid WebView as the application shell; no unnecessary dependencies.
 - Keep network operations off the main thread, support cancellation, timeouts, and bounded retries.
-- No credentials or secrets committed to Git. Do not log tokens or private user information.
+- Do not add secrets/credentials to Git or logs. **Historical exception:** this repository already contains publicly committed APK signing material and its credentials. This is a security exposure, not a precedent; do not print them, promise authenticity from this signer or silently rotate it without an Android update-compatibility plan.
 
 ## Audio quality contract
 - Select the highest-quality *available original* stream compatible with the device and permitted source.
@@ -43,6 +43,12 @@ These rules apply to every contributor and coding agent. Read this file before e
 - Run lint, unit tests, and an Android build before marking a release ready; report anything unverified.
 - Preserve existing behaviour unless the task explicitly changes it.
 
+## Documentation and verification authority
+- [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) is the as-of-date inventory of implementation and evidence. [STATUS.md](STATUS.md) contains historical phases; [docs/EXPERIMENTAL_STATUS.md](docs/EXPERIMENTAL_STATUS.md) is a dated development record. Never describe a historical checkpoint as the present feature status.
+- The owner confirmed song playback only for v0.1.71 at `6d2c55a372b2f7d6598032c78e3dee574b5e2085`. Newer experimental audio requires explicit phone confirmation. Do not alter `docs/PHONE_PLAYBACK_APPROVAL.json` without it.
+- Main branch presence and green CI do not establish phone playback. The daily extractor-update workflow currently targets main after automated tests; document this accurately rather than implying it has a phone gate.
+- When asked for docs-only edits, do not alter Kotlin, XML, Gradle, workflows, APKs, screenshots, signing files or approval records.
+
 ## Agent workflow
 1. Read this file and inspect relevant code and docs.
 2. Describe the smallest viable change and its acceptance criteria.
@@ -51,8 +57,10 @@ These rules apply to every contributor and coding agent. Read this file before e
 5. Report changed files, checks actually run, failures, and remaining limitations.
 6. Never silently remove features, add paid dependencies, or bypass licensing/security requirements.
 
-## Initial milestones
-1. Buildable Android Studio project with CI.
-2. Exact agreed player UI with real local-file playback and inline actual codec metadata.
-3. Online search and playback (YouTube Music via NewPipe Extractor), Spotify-link import using the ported matcher.
-4. Persistent favourites, playlists, history and playback state for online and local tracks.
+## Foundation milestones (implemented in source; device verification varies)
+1. Android Studio project and CI tests/lint/APK build.
+2. Groovio full player, local-file path and inline actual codec metadata.
+3. YouTube Music discovery/source resolution and Spotify link metadata matching.
+4. Room favourites, playlists, history and playback state.
+
+These are **not blanket on-device playback claims**. See [CURRENT_STATE](docs/CURRENT_STATE.md) for remaining gaps.
