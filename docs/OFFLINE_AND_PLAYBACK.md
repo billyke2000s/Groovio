@@ -1,33 +1,45 @@
 # Offline library and playback
 
-## Playback compatibility hotfix
-The owner reported that v0.1.69 stopped playing songs while v0.1.61 worked. The player construction and retry logic have been restored to the v0.1.61 implementation. Online playback no longer depends on Android reporting a validated network before trying a request. Volume normalisation, next-URL pre-resolution and automatic failed-track skipping are temporarily rolled back pending phone verification; their settings are hidden. Downloads, explicit offline mode, periodic position saves and library data remain. The mini-player now displays buffering and failures. The permanent online Downloads counter and duplicate top padding are removed.
+**Source status: 19 November 2026 (`experimental`).** The v0.1.71 confirmed recovery build is older; the later experimental audio paths still require on-phone testing. See [CURRENT_STATE](CURRENT_STATE.md) and [EXPERIMENTAL_BASELINE](EXPERIMENTAL_BASELINE.md).
 
-These are regression-isolation changes; the exact device failure is not established without its playback error. The behaviour described below for the rolled-back features is historical until they are reintroduced and verified.
+## Unified Your music
 
-## Behaviour
-- Settings keeps the existing quality selector, equalizer, autoplay, history/cache clearing and updates. Adds optional live volume normalisation (off initially), skip-unavailable songs (off initially), sleep timer, downloads toggle, unmetered-only downloads (on initially), offline mode, download management, library export and merge restore.
-- Search song taps offer Play or Download & play when downloads are enabled and online. The song menu exposes the same actions. Spotify collections, albums, liked songs and local playlists have batch Download & play actions.
-- Download & play starts streaming immediately and schedules saving in the background; leaving the screen doesn't cancel jobs. WorkManager persists pending work and Spotify metadata matching across process restarts; interrupted transfers restart from the beginning. Force-stop pauses Android work until the app is reopened.
-- Only fully saved audio with committed metadata appears in Downloads or is selected for offline playback. Files are in app-private persistent storage; clearing artwork cache doesn't delete audio. Uninstalling clears these files.
-- Unmetered-only means Android's unmetered network classification (usually Wi-Fi); metered Wi-Fi waits too. Changing the option cancels pending work; request downloads again to apply the new policy. Downloads toggle/offline mode also cancel pending jobs. Existing saved tracks remain playable.
-- Downloads use validated HTTP byte ranges so a partial server response cannot be mistaken for a whole song.
-- Per-song progress, waiting state, failures, cancellation and removal are in Downloads. Retry failed songs with Download & play. A per-song 512 MB / 8 minute transfer bound prevents unbounded jobs. Individual interrupted transfers retry at most twice automatically.
-- Stored song IDs remain unchanged, so favourites/playlists automatically prefer local audio, even after restart. Search uses download metadata when offline. The offline banner is honest about whether any saved songs exist and links to Downloads.
-- Backups include playlist ordering and duplicates, likes, track metadata and settings. They omit audio and history. Restore validates before a transaction and merges; repeated restores create playlist copies. Local file permissions do not transfer between devices.
-- Next URLs are resolved in advance; Media3 handles gapless transitions for compatible sources. This is not a guarantee of sample-perfect gapless YouTube streams. Live normalisation attenuates loud PCM16 audio only; it is conservative RMS levelling, not ReplayGain/LUFS analysis or quiet-song boosting.
-- Queue Next up follows Media3's actual shuffle traversal. Drag reordering is available with shuffle off. Background position is saved every five seconds and on state changes.
-- Actual UK song chart metadata comes from Apple's published feed and is matched to YouTube only when played. Search shelves are labelled as searches; favourites seed a separate mix. No account/backend is added.
+- Home, Library, Settings and offline shortcut link to **Your music**. The former Downloads and Local Files routes are retained as navigation aliases to that **same UI**. Filters include All / Downloads / On this phone, with playback, shuffle, Add music, song actions, removal confirmation and download activity.
+- `OfflineStore` keeps complete private downloaded originals in persistent app files, not an evictable artwork cache. `localFile` checks for nonzero bytes, matching completion metadata and expected size; this is **not a cryptographic integrity checksum**.
+- Android **10+** can optionally create a **separate** user-accessible `Music/Groovio/` copy with `PublicMusicFolder`. Public export is not required for Groovio to play a private download. An export failure no longer makes an existing verified private original into a failed download job.
+- Existing associated public copies are hidden from the merged list when the original is downloaded, but can still consume physical storage. Removing private originals does not automatically delete exported files. Uninstalling the app removes private downloads.
+- Imported phone audio uses Android's file picker or shared-folder scanning where permissions and OS support allow it. On Android 8–9, selected-file playback remains, but MediaStore public publishing is unavailable.
 
-## Phone acceptance checks (pending)
-1. Search song: Play streams; Download & play saves; Downloads shows completion. Repeat for a Spotify playlist, album and saved playlist.
-2. Enable airplane mode, force-stop and reopen: Downloads lists saved songs; play all, seek, next and lock-screen controls work without network. Unsaved songs fail clearly. Offline message with zero songs does not claim music was saved.
-3. Unmetered-only: mobile-data job waits; Wi-Fi starts it. Cancel an in-flight job; incomplete files don't appear. Kill process during transfer; reopening eventually retries. Simulate full storage and HTTP failure; failure is visible and retry works.
-4. Remove one/all downloads; likes and playlists stay. Clear image cache; audio stays. Switching download settings cancels pending jobs.
-5. Export and restore likes/playlists/settings, including duplicate playlist tracks. Malformed backup leaves the library untouched. Restore on another phone; repick local files if needed.
-6. Shuffle queue order matches actual next songs. Disable shuffle; drag reorder works.
-7. With normalisation on, compare loud/quiet songs and enable/disable during playback. Check headset, Bluetooth, calls/audio focus, and 30+ minute locked-screen playback with Wi-Fi/mobile handover.
-8. Check actual chart card loads or is omitted when unavailable; no fabricated chart results. Verify favourites mix and clearing history.
+## Downloads and online playback
 
-## Verification
-Focused unit tests cover validated backup merging, setting persistence, normaliser passthrough/attenuation and shuffle traversal. Android tests, lint and APK build must pass in CI. Device playback and live chart/download verification require the checks above; no device result is claimed by compilation.
+- WorkManager keeps bounded downloads and Spotify collection matching in background jobs. Wi-Fi-only means **Android unmetered** and is enabled by default; changes to download/connection/offline settings can cancel pending jobs without deleting already saved originals.
+- The downloader saves private audio before attempting optional extra export. A failed public copy is reported separately, not retried as a missing original. Download activity shows unresolved jobs and unmatched Spotify-import tracks.
+- **Known code risk:** historical failed jobs may be considered resolved using title-only matching. Two unrelated songs with the same name can make the activity status misleading.
+- `ResolvingDataSource` checks an app-private `yt:` download first, then resolves an actual currently playable YouTube URL online. No fabricated or Spotify-protected streams are added.
+- Offline-only mode blocks online source resolution. Home online discovery shelves are hidden, but cached personal mixes and collection shortcuts can still contain unsaved tracks. Offline global search searches private downloads, **not all imported phone music**; Your music is the dependable entry point for locally accessible files.
+- Media3 manages queue, selected shuffle traversal, play controls, audio focus and saved-position checkpoints. Exact shuffle order may not survive recreation. Sleep timer currently lives in `PlayerViewModel` rather than playback service.
+
+## Backup, restore and update safeguards
+
+- Library JSON contains track metadata, likes and ordered playlist entries (including duplicates), plus optional settings, spoken progress/followed collections and recent **collection** history.
+- **Excluded:** downloaded audio binaries, individual song-play history, durable Spotify matching manifests, and transferable local file permissions.
+- Room playlists restore in a transaction; restoring settings/spoken/collection preferences happens separately afterwards, so the full operation isn't atomic. Restore merges additional playlist copies and can duplicate playlists if repeated.
+- On Android 10+, the experimental in-app updater checks APK package, signing identity and strictly higher version, then writes JSON into `Downloads/Groovio/` before opening Android's installer. Backup failure blocks installation. Android 8/9 users are instructed to export manually; automatic update preparation is blocked.
+- Install a newer compatible signed APK **over** the installed app, not by uninstalling first. Android may prevent a version downgrade; uninstalling would lose private downloaded audio.
+
+## Historical playback regression (v0.1.69 to v0.1.71)
+
+The owner reported that v0.1.69 stopped playing reliably; v0.1.71 was confirmed to play songs. Several changes were rolled back together, so the **exact root cause was never isolated**. At that checkpoint, normalisation, next-URL preparation and failed-track auto-skip were temporarily removed/hidden. They were later reintroduced under different limitations in **experimental** source, not approved as stable phone audio. Older notes referring to a separate Downloads screen or a permanent failed-job banner reflect a superseded UI stage.
+
+For dated details and CI evidence see [EXPERIMENTAL_STATUS](EXPERIMENTAL_STATUS.md), not this guide's current behaviour section.
+
+## Phone acceptance checklist (unverified for newer experimental source)
+
+1. Play online, private downloaded and imported phone tracks. Repeat after airplane mode, process restart and locked-screen playback; check seeking, next/previous, Bluetooth and audio focus.
+2. Download a song, an album and a Spotify-matched playlist. Test metered/unmetered constraints, cancellation, failed transfers, storage-full and retry, then check Download activity.
+3. Try public export and permissions on Android 10+; verify failed export never hides private playable audio and private deletion does not delete public copies.
+4. Export/restore likes, duplicate playlist tracks, settings and spoken progress. Check repeated restore and update-over-existing-data; confirm audio and individual play history remain excluded from backup.
+5. Listen with EQ, normalisation and prep/skip modes off/on; check long sessions, disconnections, calls, headphone safety and buffering.
+6. Navigate Home, Your music, Search and spoken Library offline; test large/small layouts and TalkBack.
+
+**Verification policy:** CI compilation, unit tests, lint and test-fixture screenshots do not certify physical phone behaviour.

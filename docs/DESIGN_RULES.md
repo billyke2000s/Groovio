@@ -1,17 +1,25 @@
 # Groovio design rules
 
-- Dark UI, clear hierarchy, original Groovio branding.
-- Full-screen player with large square artwork, title, artist, progress, transport controls, device and queue controls.
-- Final design: real codec/bitrate/sample-rate labels directly after song title; horizontally scroll together for long names.
-- Preserve accessibility labels, touch targets, contrast, and font scaling.
-- Do not present placeholders as finished functionality.
-- Accent colour is Groovio coral `#FF7A45` (not Spotify green). Palette lives in `ui/theme/Theme.kt`.
-- Only show navigation tabs and controls that work; Search and Library tabs arrive with their features.
+The current product identity is a **dark, coral/orange `#FF7A45` interface** with original Groovio branding, not a one-to-one Spotify copy. Preserve its look; improve consistency without inventing screens or buttons.
 
-## Motion guidelines
+## Existing surfaces
 
-- Keep the current dark/orange layout. Motion helps indicate navigation, intent and playback state; it must not insert new controls, reflow the UI or delay a tap.
-- Use the shared `groovioClickable` / `groovioCombinedClickable` press response for prominent tappable tiles, cards and rows. Preserve native ripple, long-press callbacks and hit targets. No decorative perpetual card movement.
-- Use short fades/slides for navigation and the mini player, and compact crossfades/scales for play/pause and favourites. Keep swipe-to-skip/dismiss directly responsive to the finger.
-- Follow Android's system animation scale/reduced-motion behaviour. Avoid animating audio processing, queue mutations, scrolling positions, search text or downloading state as fake progress.
-- Check transitions with large libraries, offline mode, screen rotation, TalkBack and rapid repeated taps on a real device before promoting experimental.
+- Home, Search, Library, full player, mini-player, queue, artist/album/collection details, spoken discovery and **Your music** are implemented—not merely future navigation milestones.
+- The full player has square artwork, readable title/artist, actual selected codec details inline when known, timeline, transport, shuffle/repeat, device output and queue.
+- **Your music** is the unified screen for completed private downloads and imported phone audio. Optional `Music/Groovio/` exports are separate files, not a second app library view.
+- Collection tiles open details rather than starting playback as a navigation side effect; explicit Play or track selection begins music.
+- Reuse `SongMenu` and `CollectionMenu` where appropriate while retaining spoken-only progress/follow actions. Existing gaps are tracked in [UI_ACTION_PARITY_AUDIT](UI_ACTION_PARITY_AUDIT.md).
+- Maintain contrast, clear hierarchy, adequate touch targets, accessibility labels, font scaling, screen-safe padding and responsiveness at small and large sizes.
+
+## Motion
+
+- Use `groovioClickable` and `groovioCombinedClickable` for genuine press/long-press feedback, keeping click bounds, semantics and ripples correct.
+- Keep navigation fades/slides short and swipes directly finger-following. No decorative perpetual movement, new unrequested UI controls or fake progress.
+- Respect system animation-scale/reduced-motion settings. Test rapid taps, TalkBack, back navigation, rotation, large libraries and disconnected networks on a physical device.
+- A documentation cleanup must never alter code, colours, player layout, gestures or image assets.
+
+## Evidence and screenshots
+
+- Public screenshots in `docs/screenshots/` are **real Groovio captures**, not generated/mocked images or another app. Preserve the genuine Home, song-menu and playlist-menu screenshots in README.
+- Product captures and CI-rendered sample fixture screenshots are not equivalent. Neither proves real phone playback.
+- The [current-state matrix](CURRENT_STATE.md) distinguishes stable, experimental, implemented and proposed features. Do not call the last group shipped.

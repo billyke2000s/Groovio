@@ -40,3 +40,15 @@ Scope: read-only examination of the Kotlin/Compose navigation, Home, Search, Lib
 ## Follow-up: unified music library (18 November 2026)
 
 The earlier audit's two separate music screens were replaced by a single **Your music** UI, reachable through both original routes. Verified private Groovio downloads are visible without MediaStore export, imported phone tracks remain accessible, and previously failed public export jobs do not incorrectly count as failed downloads when their originals are present. Existing optional export functionality remains via the overflow menu. Search, Settings and playback-error copy now refer to Your music. The large historical Downloads failure summary is no longer presented above all songs; unresolved issues and unmatched playlist items are available via Download activity. See `docs/EXPERIMENTAL_STATUS.md` for implementation details and verification limits.
+## 19 November source-level consistency addendum (documentation only)
+
+The original 18 November tables remain dated audit evidence. The later unified **Your music** UI is the current destination even where an older row says "Downloads"; both original navigation routes are retained as aliases. The following are code-observed gaps, not fixes made by this documentation pass.
+
+- `PlayerViewModel.addCollectionToPlaylist` and `addCollectionToNewPlaylist` use `distinctBy(mediaId)` and can remove deliberately repeated song occurrences even though Room playlists allow duplicates.
+- `LocalFilesScreen.downloadJobAlreadySaved` can fall back to matching a song **title**; different songs with identical titles can cause incorrectly resolved failure status.
+- Offline `SearchViewModel` only uses private download metadata, not all imported phone files. Home can still show cached mixes/collections with unsaved tracks.
+- Saved spoken Library entries navigate to broad Podcasts/Audiobooks categories rather than directly opening the selected item/collection. Full player and Queue still lack the complete shared `SongMenu`.
+- JSON backup does not include individual song-play events or audio files. Room playlist restore is transactional, but the subsequent settings/spoken/history preference restore is not one atomic cross-store operation.
+- The public export destination `Music/Groovio/` remains optional and is separate from verified app-private downloadable audio. A shared-folder export failure should not be counted as a private-song playback failure.
+
+See [CURRENT_STATE](CURRENT_STATE.md). No Kotlin, media, workflow or APK changes were made during this documentation reconciliation; phone verification remains pending.

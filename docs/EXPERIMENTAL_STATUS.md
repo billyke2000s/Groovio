@@ -1,6 +1,6 @@
-# Experimental status — 18 November 2026
+# Experimental implementation log — 18 November 2026 (historical checkpoints)
 
-The confirmed recovery source/tag remains unchanged: `6d2c55a372b2f7d6598032c78e3dee574b5e2085`, `experimental-baseline-v0.1.71`. Main has not been changed by this work. Experimental initially pointed at `55e4d98`, a documentation checkpoint over that source, with no newer commits to preserve.
+This page retains the **dated implementation and CI history**. See [CURRENT_STATE](CURRENT_STATE.md) for the verified/unverified state as inspected on 19 November 2026. At the start of these checkpoints, the confirmed recovery source/tag was `6d2c55a372b2f7d6598032c78e3dee574b5e2085` / `experimental-baseline-v0.1.71`, and experimental initially pointed at `55e4d98`. The old statement that main had not changed was true **at that earlier checkpoint**, not necessarily thereafter.
 
 ## Published stages
 
@@ -123,3 +123,12 @@ The separately presented **Local Files** and **Downloads** pages now open one **
 The owner reported **66 saved songs (221 MB)** while the old Downloads view showed **65 failed jobs** and Local Files showed only one phone-visible copy. Code inspection found that `AudioDownloadWorker` could successfully save private audio and then mark the entire download FAILED if the subsequent optional MediaStore export failed. The worker now returns SUCCESS after verified private saves and reports optional export failure separately in its output data; it does not redownload saved songs for a public-copy error. Existing historical FAILED WorkInfo records are treated as resolved when their identified audio exists in verified private storage. Truly unresolved failures remain accessible via Download activity, as do playlist-import unmatched-track details.
 
 Opening Your music no longer attempts re-exporting every stored download. A manual export action retries each song independently and reports partial successes/failures without changing the playable originals. Neither the Media3 resolver nor the `yt:` identity, data formats, private storage location, or Room database schema were changed. Focused JUnit tests cover historical worker-state classification; compilation and physical phone playback still require verification. The Android-specific root cause for failed public exports is not yet confirmed, so do not claim the external folder copy itself is repaired on every device.
+
+## Repository documentation and CI follow-up — 19 November 2026
+
+- [CURRENT_STATE](CURRENT_STATE.md) now distinguishes experimental implemented behaviour, owner-confirmed stable playback and unresolved device tests. This work updated documentation, not the APK or signing source.
+- The [18 November experimental Android CI run](https://github.com/billyke2000s/Groovio/actions/runs/44422540191) completed successfully. This does **not** verify newer audio, exported folder permissions or all UI interactions on a phone.
+- The [19 November NewPipe follower](https://github.com/billyke2000s/Groovio/actions/runs/44544010480) attempted Extractor v0.27.1 but failed compilation on removed `isAndroidStreamingUrl`, `getAndroidUserAgent`, `isIosStreamingUrl` and `getIosUserAgent` methods; that attempt was **not pushed or published**. The release pipeline's phone-source guard had separately blocked newer unapproved stable audio.
+- Before the 19 November docs reconciliation, `main` and `experimental` had identical Git trees but separate commit histories. Earlier assertions in this log that main was unchanged apply only to their dated stage.
+- Normalisation, next-URL preparation and skip-unavailable were previously rolled back for the v0.1.71 recovery, but later experimental source reintroduced them; no new phone approval is implied. The public README now displays the genuine images already in `docs/screenshots/`, not generated or fixture images.
+- Remaining source-level gaps include title-only failed-job matching, lost duplicate occurrences when copying playlists, partial offline Home/search playability, incomplete full-player/queue menus, saved spoken Library deep links, and incomplete backup coverage. These are tracked in [CURRENT_STATE](CURRENT_STATE.md) and [UI_ACTION_PARITY_AUDIT](UI_ACTION_PARITY_AUDIT.md); they were **not fixed in code** here.
