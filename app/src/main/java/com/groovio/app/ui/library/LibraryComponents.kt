@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.groovio.app.ui.player.GroovioArtwork
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.motion.groovioCombinedClickable
@@ -69,7 +69,7 @@ fun StoredTrackRow(
             contentAlignment = Alignment.Center,
         ) {
             if (track.artworkUri != null) {
-                AsyncImage(
+                GroovioArtwork(
                     model = track.artworkUri,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
