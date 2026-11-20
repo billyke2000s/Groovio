@@ -217,18 +217,9 @@ class YouTubeMusic(
     /** For spoken recordings, test actual CDN byte ranges and switch source if one is rejected. */
     private fun resolveSpoken(videoId: String, saver: Boolean, key: String): ResolvedAudio {
         val rejected = rejectedSpokenUrls.getOrPut(videoId) { ConcurrentHashMap.newKeySet<String>() }
-        var lastHttpCode: Int? = null
-        fun accept(candidate: ResolvedAudio): ResolvedAudio? {
-            if (candidate.url in rejected) return null
-            val result = spokenProbe.verify(candidate)
-            if (result.playable) {
-                cache[key] = candidate
-                return candidate
-            }
-            if (result.httpStatus != null) lastHttpCode = result.httpStatus
-            rejected.add(candidate.url)
-            return null
-        }
+        val selector = SpokenSourceSelector(spokenProbe::verify, rejected)
+        fun accept(candidate: ResolvedAudio): ResolvedAudio? =
+            selector.tryCandidate(candidate)?.also { cache[key] = it }
 
         // Do not trust the initial extractor result: a valid API response can carry
         // a CDN URL that returns HTTP 403, especially for long recordings.
@@ -277,7 +268,7 @@ class YouTubeMusic(
             .getOrNull()?.let { accept(it)?.let { selected -> return selected } }
         runCatching { innertube.resolveWith(InnertubeAudio.ANDROID, videoId, saver, muxedOnly = true) }
             .getOrNull()?.let { accept(it)?.let { selected -> return selected } }
-        throw SpokenSourceRejectedException(lastHttpCode)
+        throw SpokenSourceRejectedException(selector.lastHttpCode)
     }
 
     private fun resolvedFromNewPipe(url: String, codec: String?, bitrate: Int): ResolvedAudio {
