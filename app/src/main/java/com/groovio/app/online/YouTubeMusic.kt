@@ -212,18 +212,30 @@ class YouTubeMusic(
                     originalTrack = it.audioTrackType == null ||
                         it.audioTrackType == AudioTrackType.ORIGINAL,
                 )
-            }
-            , saver,
-        ) ?: throw NoPlayableAudioException(videoId)
+            }, saver,
+        )
+        // Some long recordings have no separate audio representation at all.
+        // NewPipe lists progressive video+audio files in videoStreams. Only use
+        // these if audio-only is genuinely absent; the service disables the
+        // video track so Groovio never starts a video renderer.
+        val muxed = if (chosen == null) MuxedAudioFallback.choose(info.videoStreams.map {
+            MuxedAudioFallback.Candidate(
+                url = if (it.isUrl) it.content else "",
+                resolution = it.resolution,
+                progressive = it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP,
+            )
+        }) else null
+        val streamUrl = chosen?.url ?: muxed?.url ?: throw NoPlayableAudioException(videoId)
         // Each YouTube client's stream URLs expect that client's user agent.
         val userAgent = when {
-            YoutubeParsingHelper.isVisionOsStreamingUrl(chosen.url) -> YoutubeParsingHelper.getVisionOsUserAgent(null)
-            YoutubeParsingHelper.isAndroidStreamingUrl(chosen.url) -> YoutubeParsingHelper.getAndroidUserAgent(null)
-            YoutubeParsingHelper.isIosStreamingUrl(chosen.url) -> YoutubeParsingHelper.getIosUserAgent(null)
+            YoutubeParsingHelper.isVisionOsStreamingUrl(streamUrl) -> YoutubeParsingHelper.getVisionOsUserAgent(null)
+            YoutubeParsingHelper.isAndroidStreamingUrl(streamUrl) -> YoutubeParsingHelper.getAndroidUserAgent(null)
+            YoutubeParsingHelper.isIosStreamingUrl(streamUrl) -> YoutubeParsingHelper.getIosUserAgent(null)
             else -> null
         }
         val headers = userAgent?.let { mapOf("User-Agent" to it) } ?: emptyMap()
-        return ResolvedAudio(chosen.url, chosen.codec, chosen.bitrate, headers, clock())
+        // A muxed stream's actual audio codec is measured by Media3, not guessed.
+        return ResolvedAudio(streamUrl, chosen?.codec, chosen?.bitrate ?: 0, headers, clock())
     }
 
     /** Forget a cached URL, e.g. after the host rejected it as expired. */
