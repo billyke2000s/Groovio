@@ -1,6 +1,6 @@
 package com.groovio.app.playback
 
-/** A temporary failure gets one retry; skipping cannot run away through a whole queue. */
+/** Retry an individual stream once, then skip failures without looping endlessly in repeat mode. */
 class RecoveryPolicy {
     private val retries = mutableSetOf<String>()
     private var skipped = 0
@@ -8,8 +8,10 @@ class RecoveryPolicy {
     fun started() { skipped = 0 }
     fun retry(id: String, transient: Boolean, userWantsPlay: Boolean): Boolean =
         transient && userWantsPlay && retries.add(id)
-    fun skip(unavailable: Boolean, enabled: Boolean, userWantsPlay: Boolean, hasNext: Boolean): Boolean {
-        if (!unavailable || !enabled || !userWantsPlay || !hasNext || skipped >= 3) return false
-        skipped++; return true
+    /** At most one queue's worth of consecutive failed items, reset by actual audio playback. */
+    fun skip(skippable: Boolean, enabled: Boolean, userWantsPlay: Boolean, hasNext: Boolean, queueSize: Int): Boolean {
+        if (!skippable || !enabled || !userWantsPlay || !hasNext || skipped >= queueSize.coerceAtLeast(1)) return false
+        skipped++
+        return true
     }
 }
