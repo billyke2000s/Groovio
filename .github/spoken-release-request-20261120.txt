@@ -1,3 +1,0 @@
-Owner-approved experimental release request on 20 November 2026.
-Purpose: podcast and audiobook loading improvements.
-Run the existing test, lint, APK build and release-note validation before publishing.
