@@ -28,9 +28,8 @@ object ArtworkQuality {
         }
         if (host == "i.ytimg.com" || host == "img.youtube.com") {
             // YouTube's 1280px cover, if the uploader supplied it. Coil falls back on 404.
-            val result = url.replaceFirst(ytSize) { match ->
-                "/maxresdefault.${match.groupValues[2].lowercase()}"
-            }
+            val match = ytSize.find(url) ?: return null
+            val result = url.replaceRange(match.range, "/maxresdefault.${match.groupValues[2].lowercase()}")
             return result.takeIf { it != url }
         }
         return null
