@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.groovio.app.ui.player.GroovioArtwork
 import com.groovio.app.data.RecentCollection
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.ui.library.DownloadCollectionButton
@@ -151,7 +151,7 @@ private fun CollectionArtwork(collection: RecentCollection, modifier: Modifier) 
                     covers.chunked(2).forEach { row ->
                         Row(Modifier.weight(1f)) {
                             row.forEach { artwork ->
-                                AsyncImage(
+                                GroovioArtwork(
                                     model = artwork, contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.weight(1f).fillMaxSize(),
@@ -162,7 +162,7 @@ private fun CollectionArtwork(collection: RecentCollection, modifier: Modifier) 
                 }
             }
             collection.artworkUri != null || covers.isNotEmpty() ->
-                AsyncImage(
+                GroovioArtwork(
                     model = collection.artworkUri ?: covers.first(),
                     contentDescription = "Artwork for ${collection.title}",
                     contentScale = ContentScale.Crop,
