@@ -262,7 +262,7 @@ internal fun LandscapePlayer(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             IconButton(onClick = onCollapse) { Icon(Icons.Default.KeyboardArrowDown, "Close player", tint = Color.White) }
-            if (videoMode != "off" && !offline && state.currentMediaId?.startsWith("yt:") == true) {
+            if ((videoMode == "always" || (videoMode == "wifi" && wifi)) && online && !offline && state.currentMediaId?.startsWith("yt:") == true) {
                 TextButton(onClick = { preferVideo = !preferVideo }) {
                     Text(if (preferVideo) "Artwork" else "Video", color = Color.White)
                 }
