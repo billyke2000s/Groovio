@@ -48,32 +48,26 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
         message = null
         results = emptyList()
         collections = emptyList()
-        // Search for playable episodes independently of the optional show/book
-        // collections. One slow playlist request must never hold the entire feed.
+        // Publish recordings first. Collections are optional and load afterwards:
+        // avoid two simultaneous YouTube searches on the same phone/network.
         val episodeQuery = query.ifBlank { if (kind == "Podcasts") "podcast full episode" else "public domain audiobook full book" }
         val collectionsQuery = query.ifBlank { if (kind == "Podcasts") "podcast episodes" else "public domain audiobook chapters" }
-        supervisorScope {
-            launch {
-                try {
-                    val tracks = withTimeoutOrNull(20_000) {
-                        runInterruptible(Dispatchers.IO) { app.youtube.searchSpoken(episodeQuery) }
-                    }
-                    if (tracks == null) message = "Episode search timed out. Try again or search by title."
-                    results = tracks.orEmpty()
-                } catch (e: CancellationException) { throw e }
-                catch (_: Exception) {
-                    message = "Couldn't refresh recordings. Your saved listening is still here."
-                } finally { loading = false }
+        try {
+            val tracks = withTimeoutOrNull(20_000) {
+                runInterruptible(Dispatchers.IO) { app.youtube.searchSpoken(episodeQuery) }
             }
-            launch {
-                try {
-                    collections = withTimeoutOrNull(20_000) {
-                        runInterruptible(Dispatchers.IO) { app.youtube.searchSpokenCollections(collectionsQuery) }
-                    }.orEmpty()
-                } catch (e: CancellationException) { throw e }
-                catch (_: Exception) { /* Collections are optional and never gate recordings. */ }
-            }
-        }
+            if (tracks == null) message = "Episode search timed out. Try again or search by title."
+            results = tracks.orEmpty()
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) {
+            message = "Couldn't refresh recordings. Your saved listening is still here."
+        } finally { loading = false }
+        try {
+            collections = withTimeoutOrNull(20_000) {
+                runInterruptible(Dispatchers.IO) { app.youtube.searchSpokenCollections(collectionsQuery) }
+            }.orEmpty()
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { /* Collections are optional and never gate recordings. */ }
         if (results.isEmpty() && collections.isEmpty() && message == null) {
             message = "Nothing found. Try another show, author or title."
         }
