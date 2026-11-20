@@ -1,0 +1,35 @@
+name: One-time owner-approved experimental update
+on:
+  push:
+    branches:
+      - experimental
+    paths:
+      - '.github/experimental-update-request-20261120.txt'
+
+# This workflow is a single-release bridge where workflow_dispatch cannot be invoked.
+# Delete it immediately after the approved experimental release has finished.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'billyke2000s/Groovio'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GROOVIO_EXPERIMENTAL: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/publish
+        with:
+          changes: |
+            Sharper album artwork on Wi-Fi when a higher-resolution image exists.
+            Optional higher-resolution album art on mobile data, controlled in Settings.
+            Landscape music videos are now off by default, with options to enable them.
+            Landscape album artwork fits the screen when music videos are not available.
