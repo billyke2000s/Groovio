@@ -50,7 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import com.groovio.app.ui.player.GroovioArtwork
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.OnlineAlbum
@@ -233,7 +233,7 @@ private fun TrackRow(track: OnlineTrack, playing: Boolean, onClick: () -> Unit, 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AsyncImage(
+        GroovioArtwork(
             model = track.thumbnailUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
@@ -286,7 +286,7 @@ private fun SpotifyResult(
             ) {
                 Text("From Spotify · $kind", color = GroovioColors.Accent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text(collection.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                collection.artworkUrl?.let { art -> AsyncImage(model = art, contentDescription = null, modifier = Modifier.size(140.dp), contentScale = ContentScale.Crop) }
+                collection.artworkUrl?.let { art -> GroovioArtwork(model = art, contentDescription = null, modifier = Modifier.size(140.dp), contentScale = ContentScale.Crop) }
                 Text("Matched to YouTube audio. Offline saving continues in Downloads; unmatched songs aren't saved.", color = GroovioColors.TextMuted, fontSize = 12.sp)
                 Text("${collection.tracks.size} songs", color = GroovioColors.TextMuted, fontSize = 14.sp)
                 Spacer(Modifier.height(14.dp))
