@@ -22,7 +22,7 @@ import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.*
 
 @Composable
-fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownload: (List<OnlineTrack>, Int) -> Unit) {
+fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownload: (List<OnlineTrack>, Int) -> Unit, playbackError: String? = null) {
     val app = LocalContext.current.applicationContext as GroovioApplication
     val followed by app.spoken.followed.collectAsStateWithLifecycle()
     val saved by app.spoken.saved.collectAsStateWithLifecycle()
@@ -109,6 +109,10 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
                 IconButton(onClick = { opened = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back to $kind") }
                 Text(if (kind == "Podcasts") "Episodes" else "Chapters", style = MaterialTheme.typography.titleLarge)
             } }
+            if (playbackError != null) item {
+                Text("Playback: $playbackError", color = GroovioColors.Accent,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+            }
             item { Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SpokenCover(detail.album.thumbnailUrl, Modifier.size(164.dp))
                 Text(detail.album.title, style = MaterialTheme.typography.headlineSmall)
@@ -131,7 +135,8 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
                 StoredTrackRow(TrackMapping.fromOnline(track), false, { play(track) })
             }
         }
-    } else SpokenDiscovery(kind, results, collections, followed, saved, downloads.map { it.mediaId }.toSet(), loading, offline, downloadsEnabled, message, query,
+    } else SpokenDiscovery(kind, results, collections, followed, saved, downloads.map { it.mediaId }.toSet(), loading, offline, downloadsEnabled,
+        playbackError?.let { "Playback: $it" } ?: message, query,
         onQuery = { query = it }, onPlay = ::play, onSave = { app.spoken.save(it, kind) }, onRemove = { app.spoken.remove(it.id) },
         onDownload = { track ->
             app.spoken.save(track, kind)
