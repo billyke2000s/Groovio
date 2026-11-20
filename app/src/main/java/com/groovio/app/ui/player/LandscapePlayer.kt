@@ -233,7 +233,7 @@ internal fun LandscapePlayer(
         }
     }
     var dragPosition by remember(state.currentMediaId) { mutableStateOf<Float?>(null) }
-    Box(Modifier.fillMaxSize().background(GroovioColors.Background)) {
+    Box(Modifier.fillMaxSize().background(GroovioColors.Background).clickable { controlsVisible = !controlsVisible }) {
         if (player != null) {
             AndroidView(
                 factory = { PlayerView(it).apply {
@@ -252,9 +252,6 @@ internal fun LandscapePlayer(
                 SwipeArtwork(state, artwork, onNext, onSwipePrevious, Modifier.size(size))
             }
         }
-
-        // Tapping the picture/video reveals the controls without affecting music playback.
-        Box(Modifier.fillMaxSize().clickable { controlsVisible = !controlsVisible })
 
         if (controlsVisible) Row(
             Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(horizontal = 14.dp, vertical = 4.dp),
