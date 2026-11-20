@@ -16,6 +16,8 @@ class ArtworkQualityTest {
         assertEquals(
             "https://i.ytimg.com/vi/abc/maxresdefault.jpg",
             ArtworkQuality.highResolutionUrl("https://i.ytimg.com/vi/abc/hqdefault.jpg"),
+        assertEquals("https://i.ytimg.com/vi/abc/maxresdefault.jpg",
+            ArtworkQuality.highResolutionUrl("https://i.ytimg.com/vi/abc/hqdefault.jpg?sqp=x=w120-h120"))
         )
         assertEquals(
             "https://i.ytimg.com/vi_webp/abc/maxresdefault.webp",
