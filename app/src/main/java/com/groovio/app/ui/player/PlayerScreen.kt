@@ -71,6 +71,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -117,6 +119,15 @@ fun PlayerScreen(
     var choosingSleep by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     var addingToPlaylist by rememberSaveable { mutableStateOf(false) }
+    // Only the visual surface changes on rotation. Music stays in GroovioPlaybackService.
+    if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        LandscapePlayer(
+            state = state, positionMs = positionMs, onCollapse = onCollapse,
+            onTogglePlay = onTogglePlay, onSeek = onSeek, onNext = onNext,
+            onPrevious = onPrevious, onSwipePrevious = onSwipePrevious,
+        )
+        return
+    }
     val artwork = rememberArtwork(state.artworkData, targetPx = 1024)
     val tint = rememberArtworkTint(artwork, state.artworkUri)
 
