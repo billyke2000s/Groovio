@@ -5,6 +5,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -59,6 +60,7 @@ import com.groovio.app.online.YouTubeMusic
 import com.groovio.app.playback.PlayerUiState
 import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
@@ -168,6 +170,8 @@ internal fun LandscapePlayer(
     var found by remember(state.currentMediaId) { mutableStateOf<LandscapeVideoSource?>(null) }
     var resolving by remember(state.currentMediaId) { mutableStateOf(false) }
     var failedUrl by remember(state.currentMediaId) { mutableStateOf<String?>(null) }
+    var firstFrame by remember(state.currentMediaId) { mutableStateOf(false) }
+    var controlsVisible by remember(state.currentMediaId) { mutableStateOf(true) }
     val duration = state.durationMs ?: 0L
 
     LaunchedEffect(canLookUp, state.currentMediaId, state.title, state.artist, duration) {
@@ -203,7 +207,9 @@ internal fun LandscapePlayer(
         }
     }
     DisposableEffect(player) {
+        firstFrame = false
         val listener = object : Player.Listener {
+            override fun onRenderedFirstFrame() { firstFrame = true }
             override fun onPlayerError(error: PlaybackException) { failedUrl = video?.url }
         }
         player?.addListener(listener)
@@ -219,10 +225,16 @@ internal fun LandscapePlayer(
         if (state.isPlaying) player.play() else player.pause()
     }
 
-    val showingVideo = player != null && failedUrl != video?.url
+    val showingVideo = player != null && firstFrame && failedUrl != video?.url
+    LaunchedEffect(controlsVisible, state.isPlaying) {
+        if (controlsVisible && state.isPlaying) {
+            delay(3_500)
+            controlsVisible = false
+        }
+    }
     var dragPosition by remember(state.currentMediaId) { mutableStateOf<Float?>(null) }
     Box(Modifier.fillMaxSize().background(GroovioColors.Background)) {
-        if (showingVideo) {
+        if (player != null) {
             AndroidView(
                 factory = { PlayerView(it).apply {
                     useController = false
@@ -232,7 +244,8 @@ internal fun LandscapePlayer(
                 update = { it.player = player },
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
+        }
+        if (!showingVideo) {
             val artwork = rememberArtwork(state.artworkData, targetPx = 1024)
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val size = minOf(maxHeight - 28.dp, maxWidth * 0.45f).coerceAtLeast(48.dp)
@@ -240,7 +253,10 @@ internal fun LandscapePlayer(
             }
         }
 
-        Row(
+        // Tapping the picture/video reveals the controls without affecting music playback.
+        Box(Modifier.fillMaxSize().clickable { controlsVisible = !controlsVisible })
+
+        if (controlsVisible) Row(
             Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(horizontal = 14.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -253,7 +269,7 @@ internal fun LandscapePlayer(
             }
         }
 
-        Column(
+        if (controlsVisible) Column(
             Modifier.fillMaxWidth().align(Alignment.BottomCenter)
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f))))
                 .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 2.dp),
