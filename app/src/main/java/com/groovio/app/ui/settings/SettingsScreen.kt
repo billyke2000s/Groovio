@@ -100,6 +100,7 @@ fun SettingsScreen(
     val wifiOnly by settings.wifiOnly.collectAsStateWithLifecycle()
     val offlineOnly by settings.offlineOnly.collectAsStateWithLifecycle()
     val landscapeVideoMode by settings.landscapeVideoMode.collectAsStateWithLifecycle()
+    val highResolutionMobileArtwork by settings.highResolutionMobileArtwork.collectAsStateWithLifecycle()
     val downloads by app.downloads.tracks.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var confirmClearHistory by remember { mutableStateOf(false) }
@@ -188,15 +189,22 @@ fun SettingsScreen(
 
             item { Action("Sleep timer", "Stop playback after a while or at the end of a song") { showSleep = true } }
 
+            item { Section("Artwork quality") }
+            item { Toggle(
+                "High-resolution artwork on mobile data",
+                "Wi-Fi always requests sharper available covers. Enable this to use more data for covers on mobile.",
+                highResolutionMobileArtwork,
+                settings::setHighResolutionMobileArtwork,
+            ) }
             item { Section("Landscape music videos") }
-            item { Choice("Wi-Fi only", "Show a matching silent video in landscape on Wi-Fi or Ethernet", landscapeVideoMode == "wifi") {
+            item { Choice("Off (default)", "Rotation shows album artwork, never starts video", landscapeVideoMode == "off") {
+                settings.setLandscapeVideoMode("off")
+            } }
+            item { Choice("Wi-Fi only", "Play a matching muted music video in landscape on Wi-Fi or Ethernet", landscapeVideoMode == "wifi") {
                 settings.setLandscapeVideoMode("wifi")
             } }
-            item { Choice("Always", "Allow video lookup on mobile data too; uses more data", landscapeVideoMode == "always") {
+            item { Choice("Always", "Also allow landscape videos on mobile data; uses more data", landscapeVideoMode == "always") {
                 settings.setLandscapeVideoMode("always")
-            } }
-            item { Choice("Off", "Only show properly fitted album artwork in landscape", landscapeVideoMode == "off") {
-                settings.setLandscapeVideoMode("off")
             } }
             item { Section("Downloads & offline") }
             item { Toggle("Enable downloads", "Save songs and playlists for offline listening", downloadsEnabled) {
