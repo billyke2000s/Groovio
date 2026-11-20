@@ -65,6 +65,11 @@ class YouTubeMusic(
 
     private val service = ServiceList.YouTube
     private val cache = ConcurrentHashMap<String, ResolvedAudio>()
+    // Signed URLs rejected by the media host cannot be retried unchanged.
+    // This is used only by the spoken-content fallback; music is untouched.
+    private val rejectedSpokenUrls = ConcurrentHashMap<String, MutableSet<String>>()
+    private val spokenProbe = StreamProbe()
+
 
     /** Songs only (YouTube Music "songs" filter), so videos, covers and uploads rank lower. */
     fun searchSpokenCollections(query: String): List<OnlineAlbum> {
@@ -182,21 +187,100 @@ class YouTubeMusic(
     /** The Discord bot's way of getting audio (TV / Android VR clients), on the phone. */
     private val innertube = InnertubeAudio(clock = clock)
 
-    fun resolve(videoId: String): ResolvedAudio {
+    fun resolve(videoId: String, spoken: Boolean = false): ResolvedAudio {
         requireOnline()
         val saver = dataSaver()
-        val key = if (saver) "$videoId|saver" else videoId
+        val key = if (spoken) "$videoId|spoken|$saver" else if (saver) "$videoId|saver" else videoId
         cache[key]?.let { if (clock() - it.resolvedAtMs < URL_TTL_MS) return it }
-        // 1) The bot's method; 2) NewPipe's own extraction as a fallback.
+        if (spoken) return resolveSpoken(videoId, saver, key)
+        // Ordinary music retains its existing source selection and request count.
         val first = runCatching { innertube.resolve(videoId, saver) }
         first.getOrNull()?.let { cache[key] = it; return it }
         return try {
             resolveWithNewPipe(videoId, saver).also { cache[key] = it }
         } catch (e: Exception) {
-            // Report the bot-method error if NewPipe failed too, so "blocked" is shown accurately.
             first.exceptionOrNull()?.let { e.addSuppressed(it) }
             throw e
         }
+    }
+
+    /** An actual 403/404 during playback marks this signed URL unusable for the next retry. */
+    fun rejectSpokenSource(videoId: String) {
+        val rejected = rejectedSpokenUrls.getOrPut(videoId) { ConcurrentHashMap.newKeySet<String>() }
+        for (key in listOf("$videoId|spoken|true", "$videoId|spoken|false")) {
+            cache.remove(key)?.let { rejected.add(it.url) }
+        }
+        // Avoid retaining long-lived per-recording URL sets forever.
+        if (rejectedSpokenUrls.size > 80) rejectedSpokenUrls.clear()
+    }
+
+    /** For spoken recordings, test actual CDN byte ranges and switch source if one is rejected. */
+    private fun resolveSpoken(videoId: String, saver: Boolean, key: String): ResolvedAudio {
+        val rejected = rejectedSpokenUrls.getOrPut(videoId) { ConcurrentHashMap.newKeySet<String>() }
+        var lastHttpCode: Int? = null
+        fun accept(candidate: ResolvedAudio): ResolvedAudio? {
+            if (candidate.url in rejected) return null
+            val result = spokenProbe.verify(candidate)
+            if (result.playable) {
+                cache[key] = candidate
+                return candidate
+            }
+            if (result.httpStatus != null) lastHttpCode = result.httpStatus
+            rejected.add(candidate.url)
+            return null
+        }
+
+        // Do not trust the initial extractor result: a valid API response can carry
+        // a CDN URL that returns HTTP 403, especially for long recordings.
+        for (client in InnertubeAudio.CLIENTS) {
+            val candidate = runCatching { innertube.resolveWith(client, videoId, saver) }.getOrNull() ?: continue
+            accept(candidate)?.let { return it }
+        }
+
+        // NewPipe may offer other audio bitrates/codecs or an older muxed file.
+        // Try up to five audio-only variants before resorting to a small muxed file.
+        val info = runCatching {
+            StreamInfo.getInfo(service, service.streamLHFactory.fromId(videoId).url)
+        }.getOrNull()
+        if (info != null) {
+            val remaining = info.audioStreams.map {
+                AudioCandidate(
+                    url = if (it.isUrl) it.content else "",
+                    codec = it.codec,
+                    bitrate = if (it.averageBitrate > 0) it.averageBitrate else it.bitrate,
+                    progressive = it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP,
+                    originalTrack = it.audioTrackType == null || it.audioTrackType == AudioTrackType.ORIGINAL,
+                )
+            }.toMutableList()
+            repeat(5) {
+                val next = StreamSelector.choose(remaining, saver) ?: return@repeat
+                remaining.remove(next)
+                accept(resolvedFromNewPipe(next.url, next.codec, next.bitrate))?.let { return it }
+            }
+            val muxed = info.videoStreams.map {
+                MuxedAudioFallback.Candidate(
+                    url = if (it.isUrl) it.content else "",
+                    resolution = it.resolution,
+                    progressive = it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP,
+                )
+            }.toMutableList()
+            repeat(3) {
+                val next = MuxedAudioFallback.choose(muxed) ?: return@repeat
+                muxed.remove(next)
+                accept(resolvedFromNewPipe(next.url, null, 0))?.let { return it }
+            }
+        }
+        throw SpokenSourceRejectedException(lastHttpCode)
+    }
+
+    private fun resolvedFromNewPipe(url: String, codec: String?, bitrate: Int): ResolvedAudio {
+        val userAgent = when {
+            YoutubeParsingHelper.isVisionOsStreamingUrl(url) -> YoutubeParsingHelper.getVisionOsUserAgent(null)
+            YoutubeParsingHelper.isAndroidStreamingUrl(url) -> YoutubeParsingHelper.getAndroidUserAgent(null)
+            YoutubeParsingHelper.isIosStreamingUrl(url) -> YoutubeParsingHelper.getIosUserAgent(null)
+            else -> NewPipeDownloader.USER_AGENT
+        }
+        return ResolvedAudio(url, codec, bitrate, mapOf("User-Agent" to userAgent), clock())
     }
 
     private fun resolveWithNewPipe(videoId: String, saver: Boolean): ResolvedAudio {
@@ -245,6 +329,8 @@ class YouTubeMusic(
     fun invalidate(videoId: String) {
         cache.remove(videoId)
         cache.remove("$videoId|saver")
+        cache.remove("$videoId|spoken|false")
+        cache.remove("$videoId|spoken|true")
     }
 
     private fun toTrack(item: StreamInfoItem): OnlineTrack? {
