@@ -302,7 +302,7 @@ private fun CollectionTile(
         Box(
             Modifier.fillMaxWidth().aspectRatio(1f).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
-        ) { if (artwork != null) coil.compose.AsyncImage(model = artwork, contentDescription = null,
+        ) { if (artwork != null) com.groovio.app.ui.player.GroovioArtwork(model = artwork, contentDescription = null,
             contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
             else Icon(icon, contentDescription = null, tint = GroovioColors.Accent, modifier = Modifier.size(40.dp)) }
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -326,7 +326,7 @@ private fun CollectionRow(
         Box(
             Modifier.size(56.dp).background(GroovioColors.SurfaceHigh, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
-        ) { if (artwork != null) coil.compose.AsyncImage(model = artwork, contentDescription = null,
+        ) { if (artwork != null) com.groovio.app.ui.player.GroovioArtwork(model = artwork, contentDescription = null,
             contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
             else Icon(icon, contentDescription = null, tint = GroovioColors.Accent) }
         Column(Modifier.weight(1f)) {
