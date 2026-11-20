@@ -209,12 +209,13 @@ class InnertubeAudio(
             embedded = false,
         )
 
+        /** Existing music order is unchanged. */
         val CLIENTS = listOf(TV, ANDROID_VR)
 
         /** A video/mp4 file must actually include an audio codec, not video alone. */
         fun containsMuxedAudio(mimeType: String?): Boolean {
             if (mimeType?.startsWith("video/") != true) return false
-            val codecs = mimeType.substringAfter("codecs=\\\"", "").substringBefore('"')
+            val codecs = mimeType.substringAfter("codecs=", "").trim().trim('"')
             return codecs.split(',').any { it.trim().startsWith("mp4a.") || it.trim() == "opus" || it.trim() == "vorbis" }
         }
 
