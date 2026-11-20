@@ -21,7 +21,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
-import coil.compose.AsyncImage
 import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,11 +57,12 @@ private fun decodeSampled(bytes: ByteArray, targetPx: Int): ImageBitmap? = try {
 fun ArtworkImage(bitmap: ImageBitmap?, url: String?, iconSize: Dp, modifier: Modifier = Modifier) {
     Box(modifier.background(GroovioColors.ArtworkFallback), contentAlignment = Alignment.Center) {
         if (bitmap == null && url != null) {
-            AsyncImage(
+            GroovioArtwork(
                 model = url,
                 contentDescription = "Album artwork",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
+                highDetail = iconSize >= 80.dp,
             )
         } else if (bitmap != null) {
             Image(
