@@ -1,5 +1,7 @@
 package com.groovio.app.ui.player
 
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -131,6 +133,7 @@ internal class LandscapeVideoResolver(private val youtube: YouTubeMusic) {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 internal fun LandscapePlayer(
     state: PlayerUiState,
@@ -153,6 +156,7 @@ internal fun LandscapePlayer(
             it.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     } == true
     val wifi by produceState(initialValue = onWifi(), manager) {
+        value = onWifi()
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) { value = onWifi() }
             override fun onLost(network: Network) { value = onWifi() }
