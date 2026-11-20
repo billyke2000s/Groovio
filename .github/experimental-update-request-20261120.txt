@@ -1,1 +1,0 @@
-Approved experimental release retry after switching landscape to the existing connectivity observer.\nTests, lint and APK build must pass before publication.\n
