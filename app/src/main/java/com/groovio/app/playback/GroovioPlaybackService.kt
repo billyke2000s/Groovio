@@ -13,6 +13,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -94,7 +95,7 @@ class GroovioPlaybackService : MediaSessionService() {
             }
             if (app.settings.offlineOnly.value) throw IOException("Song is not downloaded")
             val audio = try {
-                youtube.resolve(id)
+                youtube.resolve(id, spoken = app.spoken.contains("yt:$id"))
             } catch (e: Exception) {
                 throw IOException("Couldn't load audio for $id", e)
             }
@@ -181,6 +182,14 @@ class GroovioPlaybackService : MediaSessionService() {
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
                 )
                 val wantsPlay = player.playWhenReady
+                // The direct CDN URL (not the original YouTube ID) may be 403/404.
+                // On retry, do not hand the same rejected signed URL back to Media3.
+                if (app.spoken.contains("yt:$id")) {
+                    val httpStatus = generateSequence<Throwable>(error) { it.cause }
+                        .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+                        .firstOrNull()?.responseCode
+                    if (httpStatus in setOf(403, 404, 410, 416)) youtube.rejectSpokenSource(id)
+                }
                 if (!app.settings.offlineOnly.value && recovery.retry(id, transient, wantsPlay)) {
                     youtube.invalidate(id)
                     player.prepare()
