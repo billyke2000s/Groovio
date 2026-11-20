@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -22,6 +23,7 @@ import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
 import com.groovio.app.online.InnertubeAudio
 import com.groovio.app.online.NoPlayableAudioException
+import com.groovio.app.online.SpokenSourceRejectedException
 import com.groovio.app.online.OnlineMedia
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
@@ -165,6 +167,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         return when {
             causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException || it is InnertubeAudio.BlockedException } ->
                 "YouTube is blocking this network right now. Try again later or switch network."
+            causes.any { it is SpokenSourceRejectedException } -> {
+                val status = causes.filterIsInstance<SpokenSourceRejectedException>().first().status
+                if (status != null) "No tested source worked for this recording (HTTP $status). Try another upload."
+                else "No tested source worked for this recording. Try another upload."
+            }
+            causes.any { it is HttpDataSource.InvalidResponseCodeException } -> {
+                val status = causes.filterIsInstance<HttpDataSource.InvalidResponseCodeException>().first().responseCode
+                "The media server rejected this recording (HTTP $status). Try another upload."
+            }
             causes.any { it is NoPlayableAudioException } ->
                 "YouTube didn't provide a compatible audio stream for this recording."
             error is PlaybackException && error.errorCode in setOf(
