@@ -28,8 +28,10 @@ object ArtworkQuality {
         }
         if (host == "i.ytimg.com" || host == "img.youtube.com") {
             // YouTube's 1280px cover, if the uploader supplied it. Coil falls back on 404.
-            val match = ytSize.find(url) ?: return null
-            val result = url.replaceRange(match.range, "/maxresdefault.${match.groupValues[2].lowercase()}")
+            // Thumbnail query parameters can request a small rendered variant; drop them for HD.
+            val publicThumbnail = url.substringBefore('?')
+            val match = ytSize.find(publicThumbnail) ?: return null
+            val result = publicThumbnail.replaceRange(match.range, "/maxresdefault.${match.groupValues[2].lowercase()}")
             return result.takeIf { it != url }
         }
         return null
