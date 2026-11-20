@@ -2,9 +2,6 @@ package com.groovio.app.ui.player
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,7 +30,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -150,24 +146,7 @@ internal fun LandscapePlayer(
     val videoMode by app.settings.landscapeVideoMode.collectAsStateWithLifecycle()
     val online by app.connectivity.online.collectAsStateWithLifecycle()
     val offline by app.settings.offlineOnly.collectAsStateWithLifecycle()
-    val manager = remember(context) { context.getSystemService(ConnectivityManager::class.java) }
-    fun onWifi(): Boolean = manager.getNetworkCapabilities(manager.activeNetwork)?.let {
-        it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-            it.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-    } == true
-    val wifi by produceState(initialValue = onWifi(), manager) {
-        value = onWifi()
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { value = onWifi() }
-            override fun onLost(network: Network) { value = onWifi() }
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                value = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-            }
-        }
-        manager.registerDefaultNetworkCallback(callback)
-        awaitDispose { manager.unregisterNetworkCallback(callback) }
-    }
+    val wifi by app.connectivity.wifiConnected.collectAsStateWithLifecycle()
     var preferVideo by remember(state.currentMediaId) { mutableStateOf(true) }
     val canLookUp = preferVideo && online && !offline && state.currentMediaId?.startsWith("yt:") == true &&
         (videoMode == "always" || (videoMode == "wifi" && wifi))
