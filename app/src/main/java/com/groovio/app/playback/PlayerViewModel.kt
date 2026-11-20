@@ -164,10 +164,17 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
         return when {
             causes.any { it is SignInConfirmNotBotException || it is ReCaptchaException || it is InnertubeAudio.BlockedException } ->
                 "YouTube is blocking this network right now. Try again later or switch network."
-            causes.any { it is NoPlayableAudioException } -> "No playable audio for this song."
+            causes.any { it is NoPlayableAudioException } ->
+                "YouTube didn't provide a compatible audio stream for this recording."
+            error is PlaybackException && error.errorCode in setOf(
+                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+            ) -> "Connection timed out while loading this recording. Try again."
+            error is PlaybackException && error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ->
+                "The source rejected this recording. Try again or choose another upload."
             causes.any { it.message?.contains("not downloaded") == true || it.message?.contains("not saved for offline") == true } ->
-                "This song isn't saved for offline listening. Open Your music to play saved songs."
-            else -> "Couldn't play this track."
+                "This recording isn't saved for offline listening. Open Your music to play saved items."
+            else -> "Couldn't play this recording. Try another upload or network."
         }
     }
 
