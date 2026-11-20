@@ -44,6 +44,27 @@ internal class StreamProbe(
     }
 }
 
+/**
+ * Testable source failover: a rejected signed URL is never returned again.
+ * Accepting one candidate must mean a real media request was successful.
+ */
+internal class SpokenSourceSelector(
+    private val probe: (ResolvedAudio) -> StreamProbe.Result,
+    private val rejectedUrls: MutableSet<String>,
+) {
+    var lastHttpCode: Int? = null
+        private set
+
+    fun tryCandidate(candidate: ResolvedAudio): ResolvedAudio? {
+        if (candidate.url in rejectedUrls) return null
+        val result = probe(candidate)
+        if (result.playable) return candidate
+        if (result.httpStatus != null && result.httpStatus !in 200..299) lastHttpCode = result.httpStatus
+        rejectedUrls.add(candidate.url)
+        return null
+    }
+}
+
 /** Failure returned only after every eligible source failed a real HTTP byte-range check. */
 class SpokenSourceRejectedException(val status: Int?) : java.io.IOException(
     if (status != null) "No playable spoken recording source (HTTP $status)"
