@@ -115,6 +115,11 @@ class GroovioPlaybackService : MediaSessionService() {
             // Pause when headphones are unplugged or Bluetooth audio disconnects.
             .setHandleAudioBecomingNoisy(true)
             .build()
+        // Groovio's primary session is audio-only. A rare muxed fallback may
+        // contain video bytes, but must never enable video rendering/decoding.
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+            .build()
 
         // Let the system / equalizer apps attach to Groovio's audio (Settings → Equalizer).
         app.audioSessionId = player.audioSessionId
