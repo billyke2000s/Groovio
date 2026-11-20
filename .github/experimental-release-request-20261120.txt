@@ -1,0 +1,3 @@
+One-time owner-authorized release request, 20 November 2026.
+Source: experimental after merging PR #14 (spoken progress, library, category filter and unavailable skipping fixes).
+Run the existing shared publish action, including unit tests, lint, version allocation and release notes. This request is not a standing auto-release policy.
