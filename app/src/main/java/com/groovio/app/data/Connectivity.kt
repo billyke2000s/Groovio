@@ -13,13 +13,14 @@ class Connectivity(context: Context) {
     private fun available(): Boolean = manager.getNetworkCapabilities(manager.activeNetwork)?.let {
         it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     } == true
-    /** Wi-Fi/Ethernet, detected separately from mobile data (including while on VPN). */
-    private fun localBroadband(): Boolean = manager.allNetworks.any { network ->
-        manager.getNetworkCapabilities(network)?.let { caps ->
+    /** Use the active route's metered status, so VPN/mobile traffic doesn't trigger HD. */
+    private fun localBroadband(): Boolean {
+        val caps = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            !manager.isActiveNetworkMetered &&
             (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) &&
-                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        } == true
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN))
     }
     private val mutable = MutableStateFlow(available())
     private val wifiMutable = MutableStateFlow(localBroadband())
