@@ -18,6 +18,15 @@ class InnertubeAudioTest {
         assertEquals("https://r1.googlevideo.com/videoplayback?id=1", q["url"])
     }
 
+    @Test fun `spoken fallback only accepts muxed video with an audio codec`() {
+        org.junit.Assert.assertTrue(InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\\"avc1.42001E, mp4a.40.2\\""))
+        org.junit.Assert.assertTrue(InnertubeAudio.containsMuxedAudio("video/webm; codecs=\\"vp9, opus\\""))
+        org.junit.Assert.assertEquals(false, InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\\"avc1.42001E\\""))
+        org.junit.Assert.assertEquals(false, InnertubeAudio.containsMuxedAudio("audio/mp4; codecs=\\"mp4a.40.2\\""))
+        assertEquals("ANDROID", InnertubeAudio.ANDROID.name)
+        assertEquals(2, InnertubeAudio.CLIENTS.size)
+    }
+
     @Test fun `tries the bot's TV client first`() {
         assertEquals(listOf("TVHTML5", "ANDROID_VR"), InnertubeAudio.CLIENTS.map { it.name })
         assertEquals("Samsung", InnertubeAudio.TV.extraClientFields["deviceMake"])
