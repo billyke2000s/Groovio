@@ -270,6 +270,13 @@ class YouTubeMusic(
                 accept(resolvedFromNewPipe(next.url, null, 0))?.let { return it }
             }
         }
+        // Final client-side alternative: the native Android player API may
+        // offer a playable audio stream or a small progressive MP4 when the
+        // TV/VR and NewPipe streams are rejected. Verify both byte ranges.
+        runCatching { innertube.resolveWith(InnertubeAudio.ANDROID, videoId, saver) }
+            .getOrNull()?.let { accept(it)?.let { selected -> return selected } }
+        runCatching { innertube.resolveWith(InnertubeAudio.ANDROID, videoId, saver, muxedOnly = true) }
+            .getOrNull()?.let { accept(it)?.let { selected -> return selected } }
         throw SpokenSourceRejectedException(lastHttpCode)
     }
 
