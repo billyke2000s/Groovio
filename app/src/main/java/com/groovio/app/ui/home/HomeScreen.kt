@@ -45,7 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.groovio.app.ui.player.GroovioArtwork
 import com.groovio.app.data.PlaylistSummary
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
@@ -312,21 +312,21 @@ private fun QuickTile(tile: Tile, modifier: Modifier) {
     ) {
         Box(Modifier.size(56.dp).background(GroovioColors.ArtworkFallback), contentAlignment = Alignment.Center) {
             if (tile.artworkUri != null) {
-                AsyncImage(model = tile.artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
+                GroovioArtwork(model = tile.artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize())
             } else if (tile.artworkUris.size >= 4) {
                 Column(Modifier.fillMaxSize()) {
                     tile.artworkUris.take(4).chunked(2).forEach { pair ->
                         Row(Modifier.weight(1f)) {
                             pair.forEach { art ->
-                                AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop,
+                                GroovioArtwork(model = art, contentDescription = null, contentScale = ContentScale.Crop,
                                     modifier = Modifier.weight(1f).fillMaxSize())
                             }
                         }
                     }
                 }
             } else if (tile.artworkUris.isNotEmpty()) {
-                AsyncImage(model = tile.artworkUris.first(), contentDescription = null, contentScale = ContentScale.Crop,
+                GroovioArtwork(model = tile.artworkUris.first(), contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize())
             } else {
                 Icon(tile.icon ?: Icons.Default.MusicNote, contentDescription = null, tint = GroovioColors.Accent)
@@ -362,13 +362,13 @@ private fun SquareCard(
                 Column(Modifier.fillMaxSize()) {
                     artworkUris.take(4).chunked(2).forEach { pair ->
                         Row(Modifier.weight(1f)) { pair.forEach { art ->
-                            AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop,
+                            GroovioArtwork(model = art, contentDescription = null, contentScale = ContentScale.Crop,
                                 modifier = Modifier.weight(1f).fillMaxSize())
                         } }
                     }
                 }
             } else if (artworkUri != null) {
-                AsyncImage(model = artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
+                GroovioArtwork(model = artworkUri, contentDescription = null, contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize())
             } else {
                 Icon(icon, contentDescription = null, tint = GroovioColors.Accent, modifier = Modifier.size(48.dp))
