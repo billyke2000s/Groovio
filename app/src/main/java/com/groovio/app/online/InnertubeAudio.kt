@@ -59,7 +59,7 @@ class InnertubeAudio(
         throw lastError ?: IOException("No YouTube client could load $videoId")
     }
 
-    fun resolveWith(client: ClientSpec, videoId: String, dataSaver: Boolean = false): ResolvedAudio {
+    fun resolveWith(client: ClientSpec, videoId: String, dataSaver: Boolean = false, muxedOnly: Boolean = false): ResolvedAudio {
         val body = JsonObject()
         val context = JsonObject()
         val clientObj = JsonObject()
@@ -101,21 +101,31 @@ class InnertubeAudio(
             throw IOException("${client.name}: $reason")
         }
 
-        val formats = json.getObject("streamingData").getArray("adaptiveFormats")
+        val formats = json.getObject("streamingData").getArray(
+            if (muxedOnly) "formats" else "adaptiveFormats"
+        )
         val candidates = (0 until formats.size).map { formats.getObject(it) }
-            .filter { it.getString("mimeType")?.startsWith("audio/") == true }
+            .filter { f ->
+                if (muxedOnly) containsMuxedAudio(f.getString("mimeType"))
+                else f.getString("mimeType")?.startsWith("audio/") == true
+            }
             .mapNotNull { f ->
                 val url = playableUrl(videoId, f, client.scrambled) ?: return@mapNotNull null
                 val bitrate = f.getInt("averageBitrate").takeIf { it > 0 } ?: f.getInt("bitrate")
                 AudioCandidate(
                     url = url,
-                    codec = codecOf(f.getString("mimeType")),
+                    codec = if (muxedOnly) null else codecOf(f.getString("mimeType")),
                     bitrate = bitrate,
                     progressive = true,
-                    originalTrack = f.getObject("audioTrack").let { t -> t.isEmpty() || t.getBoolean("audioIsDefault") },
+                    originalTrack = muxedOnly || f.getObject("audioTrack").let { t ->
+                        t.isEmpty() || t.getBoolean("audioIsDefault")
+                    },
                 )
             }
-        val chosen = StreamSelector.choose(candidates, dataSaver) ?: throw IOException("${client.name}: no audio formats")
+        // In a rare muxed-only fallback, choose the smallest file: video is not decoded.
+        val chosen = (if (muxedOnly) candidates.filter { it.url.isNotBlank() }.minByOrNull { it.bitrate }
+            else StreamSelector.choose(candidates, dataSaver))
+            ?: throw IOException("${client.name}: no ${if (muxedOnly) "muxed" else "audio"} formats")
         return ResolvedAudio(chosen.url, chosen.codec, chosen.bitrate, mapOf("User-Agent" to client.userAgent), clock())
     }
 
@@ -187,7 +197,26 @@ class InnertubeAudio(
         )
 
         /** Tried in this order (the bot's order, among clients that can play). */
+        /** The native Android client is a last resort for long recordings only. */
+        val ANDROID = ClientSpec(
+            name = "ANDROID",
+            version = "21.26.364",
+            userAgent = "com.google.android.youtube/21.26.364 (Linux; U; Android 11) gzip",
+            extraClientFields = mapOf(
+                "androidSdkVersion" to 30, "osName" to "Android", "osVersion" to "11",
+            ),
+            scrambled = false,
+            embedded = false,
+        )
+
         val CLIENTS = listOf(TV, ANDROID_VR)
+
+        /** A video/mp4 file must actually include an audio codec, not video alone. */
+        fun containsMuxedAudio(mimeType: String?): Boolean {
+            if (mimeType?.startsWith("video/") != true) return false
+            val codecs = mimeType.substringAfter("codecs=\\\"", "").substringBefore('"')
+            return codecs.split(',').any { it.trim().startsWith("mp4a.") || it.trim() == "opus" || it.trim() == "vorbis" }
+        }
 
         /** 'audio/webm; codecs="opus"' -> "opus". */
         fun codecOf(mimeType: String?): String? =
