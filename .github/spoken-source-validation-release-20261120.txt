@@ -1,0 +1,2 @@
+Experimental spoken-source validation update requested in the active Groovio troubleshooting conversation.
+Validate byte-range probes and source failover; publish only if tests, lint and APK build pass.
