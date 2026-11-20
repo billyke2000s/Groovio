@@ -60,9 +60,11 @@ fun SpokenDiscovery(
     var searching by rememberSaveable(kind) { mutableStateOf(false) }
     var information by remember { mutableStateOf(false) }
     val myShows = followed.filter { it.kind == kind }
-    val myItems = saved.filter { it.kind == kind }
+    val listened = saved.filter { it.kind == kind }
+    val myItems = listened.filter { it.inLibrary }
     val savedIds = myItems.map { it.track.id }.toSet()
-    val feed = if (offline) myItems.map { it.track } else tracks.distinctBy { it.id }
+    // A bookmark is not a download: offline discovery only offers audio on the device.
+    val feed = if (offline) listened.filter { "yt:${it.track.id}" in downloadedIds }.map { it.track } else tracks.distinctBy { it.id }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
@@ -119,7 +121,7 @@ fun SpokenDiscovery(
                     downloadsEnabled && !offline, { onPlay(track) }, { onSave(track) }, { onRemove(track) }, { onDownload(track) })
             }
         } else {
-            val inProgress = myItems.filter { it.positionMs > 0 }
+            val inProgress = listened.filter { it.positionMs > 0 && (!offline || "yt:${it.track.id}" in downloadedIds) }
             if (inProgress.isNotEmpty()) {
                 item { Text("Continue listening", style = MaterialTheme.typography.titleLarge) }
                 item {
@@ -128,19 +130,19 @@ fun SpokenDiscovery(
                             Column(Modifier.width(136.dp).groovioClickable(onClickLabel = "Resume ${item.track.title}") { onPlay(item.track) }) {
                                 SpokenCover(item.track.thumbnailUrl, Modifier.size(136.dp))
                                 Text(item.track.title, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 6.dp))
-                                Text("${item.positionMs / 60_000} min played", color = GroovioColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+                                Text("${PlaybackText.time(item.positionMs)} listened", color = GroovioColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
                 }
             }
-            item { Text(when { query.isNotBlank() -> "Search results"; offline -> "Saved for you"; podcast -> "Episodes you might like"; else -> "Audiobooks for you" }, style = MaterialTheme.typography.titleLarge) }
+            item { Text(when { query.isNotBlank() -> "Search results"; offline -> "Available offline"; podcast -> "Episodes you might like"; else -> "Audiobooks for you" }, style = MaterialTheme.typography.titleLarge) }
             if (feed.isEmpty() && !loading && message == null) item {
                 Text(if (offline) "Your saved episodes and books will be here. Download some while connected." else "Find a show, author or book using search.", color = GroovioColors.TextMuted)
             }
             itemsIndexed(feed.take(3), key = { _, t -> "featured:${t.id}" }) { _, track ->
                 SpokenFeatureCard(track, podcast, track.id in savedIds, "yt:${track.id}" in downloadedIds,
-                    myItems.firstOrNull { it.track.id == track.id }?.positionMs ?: 0,
+                    listened.firstOrNull { it.track.id == track.id }?.positionMs ?: 0,
                     downloadsEnabled && !offline, { onPlay(track) }, { onSave(track) }, { onRemove(track) }, { onDownload(track) })
             }
             if (collections.isNotEmpty() && !offline) {
@@ -160,7 +162,7 @@ fun SpokenDiscovery(
             if (feed.size > 3) item { Text(if (podcast) "More episodes to explore" else "More books to explore", style = MaterialTheme.typography.titleLarge) }
             items(feed.drop(3), key = { "more:${it.id}" }) { track ->
                 SpokenFeatureCard(track, podcast, track.id in savedIds, "yt:${track.id}" in downloadedIds,
-                    myItems.firstOrNull { it.track.id == track.id }?.positionMs ?: 0,
+                    listened.firstOrNull { it.track.id == track.id }?.positionMs ?: 0,
                     downloadsEnabled && !offline, { onPlay(track) }, { onSave(track) }, { onRemove(track) }, { onDownload(track) })
             }
         }
@@ -182,7 +184,7 @@ private fun SpokenFeatureCard(track: OnlineTrack, podcast: Boolean, saved: Boole
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(track.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 track.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-                Text(listOfNotNull(if (podcast) "Episode" else "Audiobook", track.durationMs?.let(PlaybackText::time), if (downloaded) "Downloaded" else "YouTube").joinToString(" · "), style = MaterialTheme.typography.labelSmall)
+                Text(listOfNotNull(if (podcast) "Episode" else "Audiobook", track.durationMs?.let(PlaybackText::time), if (downloaded) "Downloaded" else "YouTube", if (saved) "In library" else null).joinToString(" · "), style = MaterialTheme.typography.labelSmall)
             }
             Box {
                 IconButton(onClick = { menu = true }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.MoreVert, "Options for ${track.title}") }
@@ -193,7 +195,7 @@ private fun SpokenFeatureCard(track: OnlineTrack, podcast: Boolean, saved: Boole
             }
         }
         if (positionMs > 0) {
-            Text("${positionMs / 60_000} min played", style = MaterialTheme.typography.bodySmall)
+            Text("${PlaybackText.time(positionMs)} listened", style = MaterialTheme.typography.bodySmall)
             track.durationMs?.takeIf { it > 0 }?.let { duration ->
                 LinearProgressIndicator(progress = { (positionMs.toFloat() / duration).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = GroovioColors.Accent)
             }
@@ -205,7 +207,7 @@ private fun SpokenFeatureCard(track: OnlineTrack, podcast: Boolean, saved: Boole
             }
             IconButton(onClick = if (saved) onRemove else onSave,
                 modifier = Modifier.background(GroovioColors.Background, CircleShape)) {
-                Icon(if (saved) Icons.Default.CheckCircle else Icons.Default.AddCircleOutline,
+                Icon(if (saved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                     if (saved) "Remove ${track.title} from library" else "Save ${track.title}", tint = GroovioColors.Accent, modifier = Modifier.size(30.dp))
             }
         }

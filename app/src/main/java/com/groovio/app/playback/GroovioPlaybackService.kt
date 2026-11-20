@@ -163,7 +163,10 @@ class GroovioPlaybackService : MediaSessionService() {
                 if (player.isPlaying) recovery.started()
                 recordPlayIfStarted(player)
                 prepareNext(player)
-                if (events.containsAny(
+                if (events.contains(Player.EVENT_IS_PLAYING_CHANGED) && !player.isPlaying) {
+                    // A user may close the app immediately after pausing a long audiobook.
+                    saveNow(player)
+                } else if (events.containsAny(
                         Player.EVENT_TIMELINE_CHANGED, Player.EVENT_MEDIA_ITEM_TRANSITION,
                         Player.EVENT_IS_PLAYING_CHANGED, Player.EVENT_SHUFFLE_MODE_ENABLED_CHANGED,
                         Player.EVENT_REPEAT_MODE_CHANGED, Player.EVENT_POSITION_DISCONTINUITY,
@@ -176,7 +179,7 @@ class GroovioPlaybackService : MediaSessionService() {
             // An expired or rejected stream URL: resolve it again once and resume.
             override fun onPlayerError(error: PlaybackException) {
                 val uri = player.currentMediaItem?.localConfiguration?.uri?.toString()
-                val id = OnlineMedia.youtubeId(uri) ?: return
+                val id = OnlineMedia.youtubeId(uri)
                 val transient = error.errorCode in setOf(
                     PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
@@ -184,13 +187,13 @@ class GroovioPlaybackService : MediaSessionService() {
                 val wantsPlay = player.playWhenReady
                 // The direct CDN URL (not the original YouTube ID) may be 403/404.
                 // On retry, do not hand the same rejected signed URL back to Media3.
-                if (app.spoken.contains("yt:$id")) {
+                if (id != null && app.spoken.contains("yt:$id")) {
                     val httpStatus = generateSequence<Throwable>(error) { it.cause }
                         .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
                         .firstOrNull()?.responseCode
                     if (httpStatus in setOf(403, 404, 410, 416)) youtube.rejectSpokenSource(id)
                 }
-                if (!app.settings.offlineOnly.value && recovery.retry(id, transient, wantsPlay)) {
+                if (id != null && !app.settings.offlineOnly.value && recovery.retry(id, transient, wantsPlay)) {
                     youtube.invalidate(id)
                     player.prepare()
                     player.playWhenReady = wantsPlay
@@ -199,13 +202,19 @@ class GroovioPlaybackService : MediaSessionService() {
                     val blocked = causes.any { it is org.schabi.newpipe.extractor.exceptions.ReCaptchaException ||
                         it is org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException ||
                         it is com.groovio.app.online.InnertubeAudio.BlockedException }
-                    val unavailable = !blocked && causes.any {
-                        it is com.groovio.app.online.NoPlayableAudioException ||
-                            it is org.schabi.newpipe.extractor.exceptions.ContentNotAvailableException
-                    }
-                    if (recovery.skip(unavailable, app.settings.skipFailed.value, wantsPlay, player.hasNextMediaItem())) {
-                        app.playbackNotice.value = "Skipped unavailable track: ${player.mediaMetadata.title}"
-                        player.seekToNextMediaItem(); player.prepare(); player.playWhenReady = wantsPlay
+                    val disconnected = !app.connectivity.online.value && error.errorCode in setOf(
+                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                        PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+                    )
+                    // Media3 often wraps an unavailable YouTube source as a generic IOException.
+                    // After one permitted retry, skip individual playback failures, not a
+                    // network-wide block/disconnection. Cap consecutive skips to queue size.
+                    if (recovery.skip(!blocked && !disconnected, app.settings.skipFailed.value, wantsPlay,
+                            player.hasNextMediaItem(), player.mediaItemCount)) {
+                        app.playbackNotice.value = "Skipped failed track: ${player.mediaMetadata.title}"
+                        player.seekToNextMediaItem()
+                        player.prepare()
+                        player.playWhenReady = wantsPlay
                     }
                 }
             }

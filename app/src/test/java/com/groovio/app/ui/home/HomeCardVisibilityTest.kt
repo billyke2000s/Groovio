@@ -2,6 +2,7 @@ package com.groovio.app.ui.home
 
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,4 +24,12 @@ class HomeCardVisibilityTest {
         assertFalse(HomeCardVisibility.visible(HomeCardVisibility(context).hidden.value, "quick", "playlist:5"))
         context.getSharedPreferences("home_card_visibility", Context.MODE_PRIVATE).edit().clear().commit()
     }
+
+    @Test fun musicHomeHidesBooksAndPodcastsButAllKeepsThem() {
+        fun c(id: String, kind: String) = com.groovio.app.data.RecentCollection(id, id, kind, null, emptyList())
+        val collections = listOf(c("p", "Show"), c("b", "Audiobook"), c("a", "Album"), c("l", "Playlist"))
+        assertEquals(listOf("a", "l"), visibleCollectionsForHome(collections, "Music").map { it.id })
+        assertEquals(collections, visibleCollectionsForHome(collections, "All"))
+    }
+
 }

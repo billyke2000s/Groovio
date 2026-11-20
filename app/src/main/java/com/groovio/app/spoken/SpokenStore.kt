@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 data class SpokenCollection(val album: com.groovio.app.online.OnlineAlbum, val kind: String, val tracks: List<OnlineTrack>)
 
-data class SpokenItem(val track: OnlineTrack, val kind: String, val positionMs: Long = 0)
+data class SpokenItem(val track: OnlineTrack, val kind: String, val positionMs: Long = 0, val inLibrary: Boolean = true)
 
 /** Separate spoken-content library and progress; music history stays music. */
 class SpokenStore(context: Context) {
@@ -34,15 +34,37 @@ class SpokenStore(context: Context) {
     }
     fun contains(id: String) = items.value.any { it.track.id == id.removePrefix("yt:") }
     fun position(id: String) = items.value.firstOrNull { it.track.id == id.removePrefix("yt:") }?.positionMs ?: 0L
+    /** Listening creates a resume entry, not an explicit library save or offline download. */
+    @Synchronized fun remember(track: OnlineTrack, kind: String) {
+        if (items.value.none { it.track.id == track.id }) write(items.value + SpokenItem(track, kind, inLibrary = false))
+    }
     fun save(track: OnlineTrack, kind: String) = saveAll(listOf(track), kind)
     @Synchronized fun saveAll(tracks: List<OnlineTrack>, kind: String) {
-        val known = items.value.map { it.track.id }.toSet()
-        val additions = tracks.distinctBy { it.id }.filterNot { it.id in known }.map { SpokenItem(it, kind) }
-        if (additions.isNotEmpty()) write(items.value + additions)
+        val unique = tracks.distinctBy { it.id }
+        val ids = unique.map { it.id }.toSet()
+        val existing = items.value.map { if (it.track.id in ids) it.copy(kind = kind, inLibrary = true) else it }
+        val known = existing.map { it.track.id }.toSet()
+        val additions = unique.filterNot { it.id in known }.map { SpokenItem(it, kind) }
+        if (existing != items.value || additions.isNotEmpty()) write(existing + additions)
     }
-    @Synchronized fun remove(id: String) { write(items.value.filterNot { it.track.id == id }) }
+    /** Removing a bookmark must not erase the listening position. */
+    @Synchronized fun remove(id: String) {
+        val key = id.removePrefix("yt:")
+        write(items.value.mapNotNull {
+            if (it.track.id != key) it else if (it.positionMs > 0) it.copy(inLibrary = false) else null
+        })
+    }
     @Synchronized fun progress(id: String, ms: Long) {
-        write(items.value.map { if (it.track.id == id.removePrefix("yt:")) it.copy(positionMs = ms.coerceAtLeast(0)) else it })
+        val key = id.removePrefix("yt:")
+        val updated = items.value.map { item ->
+            if (item.track.id != key) item else {
+                val duration = item.track.durationMs
+                val position = ms.coerceAtLeast(0)
+                val finished = duration != null && duration > 0 && position >= duration - minOf(5_000L, duration / 100)
+                item.copy(positionMs = if (finished) 0 else position)
+            }
+        }
+        if (updated != items.value) write(updated)
     }
     private fun write(list: List<SpokenItem>) {
         prefs.edit().putString("items", encode(list)).apply(); items.value = list
@@ -65,7 +87,7 @@ class SpokenStore(context: Context) {
             val t = item.track
             put(JSONObject().put("id", t.id).put("title", t.title).put("artist", t.artist.orEmpty())
                 .put("art", t.thumbnailUrl.orEmpty()).put("duration", t.durationMs ?: 0)
-                .put("kind", item.kind).put("position", item.positionMs))
+                .put("kind", item.kind).put("position", item.positionMs).put("saved", item.inLibrary))
         } }.toString()
         fun decode(text: String): List<SpokenItem> = runCatching {
             val a = JSONArray(text)
@@ -74,7 +96,8 @@ class SpokenStore(context: Context) {
                 val id = j.getString("id"); require(id.matches(Regex("[A-Za-z0-9_-]+")))
                 SpokenItem(OnlineTrack(id, j.getString("title").take(2000), j.optString("artist").ifBlank { null },
                     j.optLong("duration").takeIf { it > 0 }, j.optString("art").takeIf { it.startsWith("https://") }),
-                    j.getString("kind").also { require(it in listOf("Podcasts", "Audiobooks")) }, j.optLong("position").coerceAtLeast(0))
+                    j.getString("kind").also { require(it in listOf("Podcasts", "Audiobooks")) }, j.optLong("position").coerceAtLeast(0),
+                    j.optBoolean("saved", true))
             } }
         }.getOrDefault(emptyList())
     }

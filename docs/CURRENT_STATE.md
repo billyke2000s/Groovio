@@ -72,3 +72,12 @@ The experimental artwork loader now requests actual larger source thumbnails on 
 ## Release publication policy (19 November 2026)
 
 Pushing commits to `experimental` or `main` automatically runs Android build/test checks **without publishing an update**. Both release workflows now run only through a manual GitHub Actions `workflow_dispatch`, require an itemised user-facing change list, and refuse a release when there are no Android app/source/dependency differences from the previous reachable release tag on that channel. The existing app updater's version/signature checks and visible popup layout are unchanged. The daily NewPipe Extractor job only checks and tests a candidate inside CI; it no longer pushes or publishes. Historical releases, including v0.1.71 and the experimental v0.1.172, are unchanged.
+
+
+## Spoken status, Home filters and skip policy (20 November 2026 — proposed fix)
+
+The proposed fix on the spoken-progress review branch separates **listening history** from **explicit library bookmarks** and **completed offline audio downloads**. Starting an episode/book still creates a private resume record, but no longer automatically bookmarks it; the UI uses a bookmark icon and plain "In library" / "Downloaded" wording instead of a checkmark that resembles a completion state. Previously stored items default to bookmarked on decode to preserve users' existing library rather than silently discard saves. Playback's existing start-position logic is retained, and pause now requests an immediate saved position.
+
+Home's Music view excludes "Show" and "Audiobook" recent collections from its quick-access and Jump back in shelves. The All view retains these mixed categories. Spoken offline discovery shows locally downloaded recordings rather than equating library bookmarks with downloads. The skip-unavailable setting is broadened to cover Media3-wrapped individual playback errors after the standard retry; blocked/disconnected networks are excluded and queue-sized consecutive failures prevent repeat-mode loops. Added regression tests cover these contracts.
+
+**Evidence:** source changes and tests are in a proposed branch only; this note does not claim a passing Android build or verified phone playback. Podcast/audio availability still depends on the extractor and individual uploads.

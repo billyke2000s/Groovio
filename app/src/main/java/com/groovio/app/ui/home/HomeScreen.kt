@@ -103,11 +103,12 @@ fun HomeScreen(
     onFilter: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty() && recentCollections.isEmpty()
+    val homeCollections = visibleCollectionsForHome(recentCollections, filter)
+    val firstRun = recent.isEmpty() && likedCount == 0 && playlists.isEmpty() && homeCollections.isEmpty()
     val tiles = buildList {
         // Always-visible entry point in addition to the header folder icon.
         add(Tile("local-files", "Your music", Icons.Default.FolderOpen, null, onClick = onOpenFiles))
-        recentCollections.filter {
+        homeCollections.filter {
             HomeCardVisibility.visible(hiddenHomeCards, "quick", it.id)
         }.take(5).forEach { c ->
             add(Tile("collection:${c.id}", c.title, Icons.AutoMirrored.Filled.QueueMusic, c.artworkUri,
@@ -116,7 +117,7 @@ fun HomeScreen(
         }
         if (size < 6 && likedCount > 0 && none { it.key == "collection:liked" }) add(Tile("liked", "Liked songs", Icons.Default.Favorite, null, onClick = onOpenLiked))
         playlists.filter { p ->
-            recentCollections.none { it.playlistId == p.id } &&
+            homeCollections.none { it.playlistId == p.id } &&
                 HomeCardVisibility.visible(hiddenHomeCards, "quick", "playlist:${p.id}")
         }.take(6 - size).forEach { p ->
             val collection = com.groovio.app.data.RecentCollection(
@@ -165,7 +166,7 @@ fun HomeScreen(
             }
         }
 
-        val visibleJump = recentCollections.filter {
+        val visibleJump = homeCollections.filter {
             HomeCardVisibility.visible(hiddenHomeCards, "jump", it.id)
         }
         if (visibleJump.isNotEmpty()) {
@@ -438,3 +439,11 @@ private fun UpdateBanner(state: UpdateState, onUpdate: () -> Unit) {
         }
     }
 }
+
+/** Music is a real category filter, not just a highlighted Home tab. */
+internal fun visibleCollectionsForHome(
+    collections: List<com.groovio.app.data.RecentCollection>,
+    filter: String,
+): List<com.groovio.app.data.RecentCollection> =
+    if (filter == "Music") collections.filterNot { it.kind == "Show" || it.kind == "Audiobook" }
+    else collections

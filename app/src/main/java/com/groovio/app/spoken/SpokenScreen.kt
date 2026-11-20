@@ -73,7 +73,7 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
         }
     }
     fun play(track: OnlineTrack) {
-        app.spoken.save(track, kind)
+        app.spoken.remember(track, kind)
         val collection = opened
         if (collection != null) {
             val entry = com.groovio.app.data.RecentCollection(collection.album.url, collection.album.title,
