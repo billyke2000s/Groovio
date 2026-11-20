@@ -1,2 +1,1 @@
-Owner-approved one-time experimental update for improved artwork quality and optional landscape videos.
-Release note source: the user requested this update on 20 November 2026.
+Approved experimental release retry after switching landscape to the existing connectivity observer.\nTests, lint and APK build must pass before publication.\n
