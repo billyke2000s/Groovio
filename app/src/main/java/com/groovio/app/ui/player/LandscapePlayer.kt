@@ -62,6 +62,7 @@ import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
@@ -182,8 +183,10 @@ internal fun LandscapePlayer(
         if (!canLookUp || duration <= 0L || state.title.isBlank()) return@LaunchedEffect
         resolving = true
         try {
-            found = withContext(Dispatchers.IO) {
-                runCatching { LandscapeVideoResolver(app.youtube).find(state.title, artist, duration) }.getOrNull()
+            found = withTimeoutOrNull(12_000L) {
+                withContext(Dispatchers.IO) {
+                    runCatching { LandscapeVideoResolver(app.youtube).find(state.title, artist, duration) }.getOrNull()
+                }
             }
         } finally {
             resolving = false
