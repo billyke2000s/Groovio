@@ -53,8 +53,9 @@ fun GroovioArtwork(
     val app = LocalContext.current.applicationContext as GroovioApplication
     val wifi by app.connectivity.wifiConnected.collectAsStateWithLifecycle()
     val highMobile by app.settings.highResolutionMobileArtwork.collectAsStateWithLifecycle()
-    val upgraded = remember(model, wifi, highMobile, highDetail) {
-        if (highDetail && (wifi || highMobile)) {
+    val offlineOnly by app.settings.offlineOnly.collectAsStateWithLifecycle()
+    val upgraded = remember(model, wifi, highMobile, highDetail, offlineOnly) {
+        if (highDetail && !offlineOnly && (wifi || highMobile)) {
             (model as? String)?.let(ArtworkQuality::highResolutionUrl)
         } else null
     }
