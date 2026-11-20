@@ -37,24 +37,46 @@ fun SpokenScreen(kind: String, onPlay: (List<OnlineTrack>, Int) -> Unit, onDownl
     var message by remember(kind) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(kind, offline, query) {
-        if (offline) { loading = false; return@LaunchedEffect }
+        if (offline) {
+            loading = false
+            results = emptyList()
+            collections = emptyList()
+            return@LaunchedEffect
+        }
         if (query.isNotBlank()) delay(300)
-        loading = true; message = null
-        try {
-            val response = withContext(Dispatchers.IO) {
-                val tracks = async { app.youtube.searchSpoken(query.ifBlank { if (kind == "Podcasts") "podcast full episode" else "public domain audiobook full book" }) }
-                val albums = async {
-                    try { app.youtube.searchSpokenCollections(query.ifBlank { if (kind == "Podcasts") "podcast episodes" else "public domain audiobook chapters" }) }
-                    catch (e: CancellationException) { throw e }
-                    catch (_: Exception) { emptyList() }
-                }
-                tracks.await() to albums.await()
+        loading = true
+        message = null
+        results = emptyList()
+        collections = emptyList()
+        // Search for playable episodes independently of the optional show/book
+        // collections. One slow playlist request must never hold the entire feed.
+        val episodeQuery = query.ifBlank { if (kind == "Podcasts") "podcast full episode" else "public domain audiobook full book" }
+        val collectionsQuery = query.ifBlank { if (kind == "Podcasts") "podcast episodes" else "public domain audiobook chapters" }
+        supervisorScope {
+            launch {
+                try {
+                    val tracks = withTimeoutOrNull(20_000) {
+                        runInterruptible(Dispatchers.IO) { app.youtube.searchSpoken(episodeQuery) }
+                    }
+                    if (tracks == null) message = "Episode search timed out. Try again or search by title."
+                    results = tracks.orEmpty()
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) {
+                    message = "Couldn't refresh recordings. Your saved listening is still here."
+                } finally { loading = false }
             }
-            results = response.first; collections = response.second
-            if (results.isEmpty() && collections.isEmpty()) message = "Nothing found. Try another show, author or title."
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { message = "Couldn't refresh right now. Your saved listening is still here." }
-        finally { loading = false }
+            launch {
+                try {
+                    collections = withTimeoutOrNull(20_000) {
+                        runInterruptible(Dispatchers.IO) { app.youtube.searchSpokenCollections(collectionsQuery) }
+                    }.orEmpty()
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { /* Collections are optional and never gate recordings. */ }
+            }
+        }
+        if (results.isEmpty() && collections.isEmpty() && message == null) {
+            message = "Nothing found. Try another show, author or title."
+        }
     }
     fun play(track: OnlineTrack) {
         app.spoken.save(track, kind)
