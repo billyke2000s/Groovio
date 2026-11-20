@@ -52,7 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.groovio.app.ui.player.GroovioArtwork
 import com.groovio.app.GroovioApplication
 import com.groovio.app.data.TrackEntity
 import com.groovio.app.data.TrackMapping
@@ -142,7 +142,7 @@ private fun ArtistContent(
             // Spotify-style header: big artist photo fading into the page, name on top.
             Box(Modifier.fillMaxWidth().height(if (page.imageUrl != null) 300.dp else 120.dp)) {
                 if (page.imageUrl != null) {
-                    AsyncImage(
+                    GroovioArtwork(
                         model = page.imageUrl, contentDescription = null, contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -212,7 +212,7 @@ fun AlbumScreen(
         item { BackBar(onBack) }
         item {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                AsyncImage(
+                GroovioArtwork(
                     model = album.thumbnailUrl,
                     contentDescription = "Album artwork",
                     contentScale = ContentScale.Crop,
@@ -310,7 +310,7 @@ private fun SongRow(
     ) {
         Text("$number", color = GroovioColors.TextMuted, fontSize = 14.sp, modifier = Modifier.width(22.dp))
         if (showArt) {
-            AsyncImage(
+            GroovioArtwork(
                 model = track.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
                 modifier = Modifier.size(44.dp).clip(RoundedCornerShape(4.dp)).background(GroovioColors.ArtworkFallback),
             )
@@ -329,7 +329,7 @@ private fun SongRow(
 @Composable
 fun AlbumCard(album: OnlineAlbum, onClick: () -> Unit) {
     Column(Modifier.width(140.dp).groovioClickable(onClickLabel = "Open ${album.title}", onClick = onClick)) {
-        AsyncImage(
+        GroovioArtwork(
             model = album.thumbnailUrl, contentDescription = null, contentScale = ContentScale.Crop,
             modifier = Modifier.size(140.dp).clip(RoundedCornerShape(6.dp)).background(GroovioColors.ArtworkFallback),
         )
