@@ -67,6 +67,26 @@ class StreamProbeTest {
         assertEquals(3_145_728L, result.failedOffset)
     }
 
+    @Test fun `selector really switches to next URL after HTTP 403 and never reprobes rejected URL`() {
+        server.enqueue(MockResponse().setResponseCode(403).setBody("rejected"))
+        server.enqueue(MockResponse().setResponseCode(206).setBody("good-start"))
+        server.enqueue(MockResponse().setResponseCode(206).setBody("good-seek"))
+        val bad = stream().copy(url = server.url("/bad").toString())
+        val good = stream().copy(url = server.url("/good").toString())
+        val rejected = mutableSetOf<String>()
+        val selector = SpokenSourceSelector(checker::verify, rejected)
+
+        assertEquals(null, selector.tryCandidate(bad))
+        assertEquals(403, selector.lastHttpCode)
+        assertTrue(bad.url in rejected)
+        assertEquals(null, selector.tryCandidate(bad))
+        assertEquals(good, selector.tryCandidate(good))
+        assertEquals(3, server.requestCount)
+        assertEquals("/bad", server.takeRequest().path)
+        assertEquals("/good", server.takeRequest().path)
+        assertEquals("/good", server.takeRequest().path)
+    }
+
     @Test fun `rejects a successful HTTP response with empty media body`() {
         server.enqueue(MockResponse().setResponseCode(206).setBody(""))
         assertFalse(checker.verify(stream()).playable)
