@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.groovio.app.ui.theme.GroovioColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
