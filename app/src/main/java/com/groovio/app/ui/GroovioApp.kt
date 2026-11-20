@@ -265,7 +265,11 @@ fun GroovioApp(
                                 }
                                 com.groovio.app.spoken.SpokenScreen(
                                     homeFilter, vm::playTracks, vm::downloadOnline,
-                                    playbackError = state.error?.takeIf { state.currentMediaId?.let(app.spoken::contains) == true },
+                                    playbackError = state.error?.takeIf {
+                                        app.spoken.saved.value.any { item ->
+                                            "yt:${item.track.id}" == state.currentMediaId && item.kind == homeFilter
+                                        }
+                                    },
                                 )
                             }
                         } else HomeScreen(
