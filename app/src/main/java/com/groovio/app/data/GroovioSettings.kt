@@ -44,13 +44,20 @@ class GroovioSettings(context: Context) {
     fun setOfflineOnly(on: Boolean) { prefs.edit().putBoolean("offline_only", on).apply(); _offlineOnly.value = on }
     /** Landscape is visual-only. The audio service is never switched or reconfigured. */
     private val _landscapeVideoMode = MutableStateFlow(
-        prefs.getString("landscape_video_mode", "wifi")?.takeIf { it in setOf("off", "wifi", "always") } ?: "wifi"
+        prefs.getString("landscape_video_mode", "off")?.takeIf { it in setOf("off", "wifi", "always") } ?: "off"
     )
     val landscapeVideoMode = _landscapeVideoMode.asStateFlow()
     fun setLandscapeVideoMode(mode: String) {
         require(mode in setOf("off", "wifi", "always"))
         prefs.edit().putString("landscape_video_mode", mode).apply()
         _landscapeVideoMode.value = mode
+    }
+    /** Original poster size on mobile data; optional high-resolution override. Wi-Fi always uses high-res. */
+    private val _highResolutionMobileArtwork = MutableStateFlow(prefs.getBoolean("hires_art_mobile", false))
+    val highResolutionMobileArtwork = _highResolutionMobileArtwork.asStateFlow()
+    fun setHighResolutionMobileArtwork(on: Boolean) {
+        prefs.edit().putBoolean("hires_art_mobile", on).apply()
+        _highResolutionMobileArtwork.value = on
     }
     private val _prepareNext = MutableStateFlow(prefs.getBoolean("prepare_next", false))
     val prepareNext = _prepareNext.asStateFlow()
@@ -79,7 +86,7 @@ class GroovioSettings(context: Context) {
         put("downloads", downloadsEnabled.value); put("wifi", wifiOnly.value)
         put("prepareNext", prepareNext.value); put("spokenSpeed", spokenSpeed.value)
         put("normalise", normalise.value); put("skipFailed", skipFailed.value)
-        put("offlineOnly", offlineOnly.value); put("landscapeVideoMode", landscapeVideoMode.value)
+        put("offlineOnly", offlineOnly.value); put("landscapeVideoMode", landscapeVideoMode.value); put("highResolutionMobileArtwork", highResolutionMobileArtwork.value)
         put("equalizerEnabled", equalizerEnabled.value); put("equalizerBands", org.json.JSONArray(equalizerBands.value))
     }
     fun restore(json: org.json.JSONObject) {
@@ -88,7 +95,8 @@ class GroovioSettings(context: Context) {
         setPrepareNext(json.optBoolean("prepareNext", false)); setSpokenSpeed(json.optDouble("spokenSpeed", 1.0).toFloat())
         setNormalise(json.optBoolean("normalise", false)); setSkipFailed(json.optBoolean("skipFailed", false))
         setOfflineOnly(json.optBoolean("offlineOnly", false))
-        setLandscapeVideoMode(json.optString("landscapeVideoMode", "wifi").takeIf { it in setOf("off", "wifi", "always") } ?: "wifi")
+        setLandscapeVideoMode(json.optString("landscapeVideoMode", "off").takeIf { it in setOf("off", "wifi", "always") } ?: "off")
+        setHighResolutionMobileArtwork(json.optBoolean("highResolutionMobileArtwork", false))
         setEqualizerEnabled(json.optBoolean("equalizerEnabled", false))
         json.optJSONArray("equalizerBands")?.let { a -> setEqualizerBands((0..4).map { a.optInt(it, 0) }) }
     }
