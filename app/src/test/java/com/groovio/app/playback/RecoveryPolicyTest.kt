@@ -11,9 +11,9 @@ class RecoveryPolicyTest {
         assertTrue(policy.retry("a", true, true))
         assertFalse(policy.retry("a", true, true))
     }
-    @Test fun `skip budget survives transitions until audio really starts`() {
+    @Test fun `skip traverses five consecutive failures but cannot loop forever`() {
         val policy = RecoveryPolicy()
-        repeat(3) { assertTrue(policy.skip(true, true, true, true, 5)); policy.transition() }
+        repeat(5) { assertTrue(policy.skip(true, true, true, true, 5)); policy.transition() }
         assertFalse(policy.skip(true, true, true, true, 5))
         policy.started()
         assertTrue(policy.skip(true, true, true, true, 5))
