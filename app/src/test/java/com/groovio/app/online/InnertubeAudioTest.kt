@@ -1,7 +1,9 @@
 package com.groovio.app.online
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class InnertubeAudioTest {
@@ -19,10 +21,10 @@ class InnertubeAudioTest {
     }
 
     @Test fun `spoken fallback only accepts muxed video with an audio codec`() {
-        org.junit.Assert.assertTrue(InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\\"avc1.42001E, mp4a.40.2\\""))
-        org.junit.Assert.assertTrue(InnertubeAudio.containsMuxedAudio("video/webm; codecs=\\"vp9, opus\\""))
-        org.junit.Assert.assertEquals(false, InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\\"avc1.42001E\\""))
-        org.junit.Assert.assertEquals(false, InnertubeAudio.containsMuxedAudio("audio/mp4; codecs=\\"mp4a.40.2\\""))
+        assertTrue(InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\"avc1.42001E, mp4a.40.2\""))
+        assertTrue(InnertubeAudio.containsMuxedAudio("video/webm; codecs=\"vp9, opus\""))
+        assertFalse(InnertubeAudio.containsMuxedAudio("video/mp4; codecs=\"avc1.42001E\""))
+        assertFalse(InnertubeAudio.containsMuxedAudio("audio/mp4; codecs=\"mp4a.40.2\""))
         assertEquals("ANDROID", InnertubeAudio.ANDROID.name)
         assertEquals(2, InnertubeAudio.CLIENTS.size)
     }
