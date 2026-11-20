@@ -263,7 +263,10 @@ fun GroovioApp(
                                                 containerColor = GroovioColors.SurfaceHigh, selectedContainerColor = GroovioColors.Accent, selectedLabelColor = GroovioColors.OnAccent))
                                     }
                                 }
-                                com.groovio.app.spoken.SpokenScreen(homeFilter, vm::playTracks, vm::downloadOnline)
+                                com.groovio.app.spoken.SpokenScreen(
+                                    homeFilter, vm::playTracks, vm::downloadOnline,
+                                    playbackError = state.error?.takeIf { state.currentMediaId?.let(app.spoken::contains) == true },
+                                )
                             }
                         } else HomeScreen(
                             filter = homeFilter, onFilter = { homeFilter = it },
