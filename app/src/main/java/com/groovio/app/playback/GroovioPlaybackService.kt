@@ -273,10 +273,27 @@ class GroovioPlaybackService : MediaSessionService() {
         }
     }
 
+    private suspend fun loadQueueWithDownloads() = withContext(Dispatchers.IO) {
+        val saved = library.loadQueue() ?: return@withContext null
+        val downloads = app.downloads.tracks.value
+        val byId = downloads.associateBy { it.mediaId }
+        val bySong = downloads.filter { !it.artist.isNullOrBlank() }
+            .groupBy { it.title to it.artist }
+        saved.copy(items = saved.items.map { item ->
+            if (!TrackMapping.isOnline(item.mediaId)) return@map item
+            val metadata = item.mediaMetadata
+            val download = byId[item.mediaId]
+                ?: bySong[metadata.title?.toString().orEmpty() to metadata.artist?.toString()]?.singleOrNull()
+                ?: return@map item
+            // Keep the logical URI so removing the file later still permits online playback.
+            TrackMapping.toMediaItem(download)
+        })
+    }
+
     /** Restores the last queue (paused) if nothing has been queued yet. */
     private fun restoreQueue(player: Player) {
         scope.launch {
-            val saved = runCatching { library.loadQueue() }.getOrNull() ?: return@launch
+            val saved = runCatching { loadQueueWithDownloads() }.getOrNull() ?: return@launch
             if (player.mediaItemCount > 0) return@launch
             player.setMediaItems(saved.items, saved.index, saved.positionMs)
             player.shuffleModeEnabled = saved.shuffle
@@ -337,7 +354,7 @@ class GroovioPlaybackService : MediaSessionService() {
         ): ListenableFuture<MediaItemsWithStartPosition> {
             val result = SettableFuture.create<MediaItemsWithStartPosition>()
             scope.launch {
-                val saved = runCatching { library.loadQueue() }.getOrNull()
+                val saved = runCatching { loadQueueWithDownloads() }.getOrNull()
                 if (saved == null) {
                     result.setException(UnsupportedOperationException("Nothing to resume"))
                 } else {
