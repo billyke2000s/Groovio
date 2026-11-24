@@ -1,5 +1,7 @@
 package com.groovio.app.online
 
+import android.content.SharedPreferences
+import org.json.JSONArray
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.schabi.newpipe.extractor.ServiceList
@@ -18,6 +20,7 @@ class SpotifyImporter(
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build(),
+    private val matches: SharedPreferences? = null,
 ) {
     private val service = ServiceList.YouTube
 
@@ -33,6 +36,28 @@ class SpotifyImporter(
 
     /** Best YouTube match for [track], or null if nothing plausible was found. */
     fun match(track: SpotifyTrack): OnlineTrack? {
+        val store = matches ?: return searchMatch(track)
+        val key = track.uri?.takeIf { it.isNotBlank() }
+            ?: JSONArray().put(track.title).put(track.artist.orEmpty()).put(track.durationMs ?: 0L).toString()
+        fun saved(): OnlineTrack? = store.getString(key, null)?.let { value ->
+            val row = JSONArray(value)
+            OnlineTrack(row.getString(0), track.title, track.artist ?: row.optString(1).ifBlank { null },
+                track.durationMs, row.optString(2).ifBlank { null })
+        }
+        saved()?.let { return it }
+        val candidate = searchMatch(track)
+        // A concurrent importer may have finished this search first.
+        synchronized(store) {
+            saved()?.let { return it }
+            if (candidate != null) {
+                val row = JSONArray().put(candidate.id).put(candidate.artist.orEmpty()).put(candidate.thumbnailUrl.orEmpty())
+                store.edit().putString(key, row.toString()).commit()
+            }
+            return candidate
+        }
+    }
+
+    private fun searchMatch(track: SpotifyTrack): OnlineTrack? {
         val want = TrackMatcher.Wanted(track.title, track.artist, track.durationMs)
         val query = listOfNotNull(track.title, track.artist?.substringBefore(',')).joinToString(" ")
         var best: Pair<OnlineTrack, Double>? = null
