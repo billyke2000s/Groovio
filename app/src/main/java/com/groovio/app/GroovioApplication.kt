@@ -33,7 +33,7 @@ class GroovioApplication : Application() {
 
     /** The player's audio session, for the system equalizer (set by the playback service). */
     @Volatile var audioSessionId: Int = 0
-    val spotify: SpotifyImporter by lazy { SpotifyImporter() }
+    val spotify: SpotifyImporter by lazy { SpotifyImporter(matches = getSharedPreferences("spotify_matches", MODE_PRIVATE)) }
 
     /** Text shared to Groovio (e.g. a Spotify link), waiting for the UI to pick it up. */
     val sharedText = MutableStateFlow<String?>(null)
