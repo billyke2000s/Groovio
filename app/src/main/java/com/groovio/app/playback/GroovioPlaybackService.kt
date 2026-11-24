@@ -173,10 +173,9 @@ class GroovioPlaybackService : MediaSessionService() {
                 val uri = item.localConfiguration?.uri?.toString()
                 val wantsPlay = player.playWhenReady
 
-                // A restored or externally supplied queue item can carry a stale direct stream
-                // URI, bypassing the local-first data-source resolver. If Groovio has a verified
-                // download for this stable media id, retry that file before reporting an online
-                // source failure.
+                // Download & Play starts online playback while WorkManager saves the file.
+                // If this item later errors and a verified download exists, retry the local file
+                // directly before surfacing an online-source error.
                 val localFile = item?.mediaId
                     ?.takeIf { it.startsWith("yt:") }
                     ?.let(app.downloads::localFile)
