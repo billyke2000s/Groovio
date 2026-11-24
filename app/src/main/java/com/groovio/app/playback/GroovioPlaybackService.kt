@@ -169,13 +169,32 @@ class GroovioPlaybackService : MediaSessionService() {
 
             // An expired or rejected stream URL: resolve it again once and resume.
             override fun onPlayerError(error: PlaybackException) {
-                val uri = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                val item = player.currentMediaItem ?: return
+                val uri = item.localConfiguration?.uri?.toString()
+                val wantsPlay = player.playWhenReady
+
+                // Download & Play starts online playback while WorkManager saves the file.
+                // If this item later errors and a verified download exists, retry the local file
+                // directly before surfacing an online-source error.
+                val localFile = item?.mediaId
+                    ?.takeIf { it.startsWith("yt:") }
+                    ?.let(app.downloads::localFile)
+                val localUri = localFile?.let(Uri::fromFile)
+                if (localUri != null && uri != localUri.toString()) {
+                    val index = player.currentMediaItemIndex
+                    if (index != C.INDEX_UNSET) {
+                        player.replaceMediaItem(index, item.buildUpon().setUri(localUri).build())
+                        player.prepare()
+                        player.playWhenReady = wantsPlay
+                        return
+                    }
+                }
+
                 val id = OnlineMedia.youtubeId(uri) ?: return
                 val transient = error.errorCode in setOf(
                     PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
                     PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED, PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
                 )
-                val wantsPlay = player.playWhenReady
                 if (!app.settings.offlineOnly.value && recovery.retry(id, transient, wantsPlay)) {
                     youtube.invalidate(id)
                     player.prepare()
