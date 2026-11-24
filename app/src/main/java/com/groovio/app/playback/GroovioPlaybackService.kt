@@ -169,8 +169,8 @@ class GroovioPlaybackService : MediaSessionService() {
 
             // An expired or rejected stream URL: resolve it again once and resume.
             override fun onPlayerError(error: PlaybackException) {
-                val item = player.currentMediaItem
-                val uri = item?.localConfiguration?.uri?.toString()
+                val item = player.currentMediaItem ?: return
+                val uri = item.localConfiguration?.uri?.toString()
                 val wantsPlay = player.playWhenReady
 
                 // A restored or externally supplied queue item can carry a stale direct stream
