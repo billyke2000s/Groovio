@@ -8,6 +8,7 @@ import com.groovio.app.online.OnlineAlbum
 import com.groovio.app.online.OnlineTrack
 import com.groovio.app.online.SpotifyCollection
 import com.groovio.app.online.SpotifyImporter
+import com.groovio.app.online.YouTubeLinks
 import com.groovio.app.online.SpotifyLinks
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -72,10 +73,14 @@ class SearchViewModel(app: Application) : AndroidViewModel(app) {
                     return@collectLatest
                 }
                 val link = SpotifyLinks.findLink(q)
+                val youtubeId = YouTubeLinks.videoId(q)
                 _state.value = try {
                     if (link != null) {
                         val collection = withContext(Dispatchers.IO) { spotify.load(link) }
                         SearchState(query = q, spotify = collection)
+                    } else if (youtubeId != null) {
+                        val track = withContext(Dispatchers.IO) { youtube.trackById(youtubeId) }
+                        SearchState(query = q, results = listOf(track))
                     } else {
                         val results = withContext(Dispatchers.IO) { youtube.searchSongs(q) }
                         // Albums are a bonus row; a failure there shouldn't hide the songs.
