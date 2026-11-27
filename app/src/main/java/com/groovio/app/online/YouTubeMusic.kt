@@ -83,6 +83,19 @@ class YouTubeMusic(
         return extractor.initialPage.items.filterIsInstance<StreamInfoItem>().mapNotNull(::toTrack)
     }
 
+    /** Look up a pasted video directly, preserving its real title and artwork. */
+    fun trackById(videoId: String): OnlineTrack {
+        requireOnline()
+        val info = StreamInfo.getInfo(service, service.streamLHFactory.fromId(videoId).url)
+        return OnlineTrack(
+            id = videoId,
+            title = info.name,
+            artist = info.uploaderName?.removeSuffix(" - Topic")?.takeIf { it.isNotBlank() },
+            durationMs = info.duration.takeIf { it > 0 }?.times(1000),
+            thumbnailUrl = bestImage(info.thumbnails),
+        )
+    }
+
     fun searchSongs(query: String): List<OnlineTrack> {
         requireOnline()
         val extractor = service.getSearchExtractor(
