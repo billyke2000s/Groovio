@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "com.groovio.app"
-        minSdk = 26
+        minSdk = 21
         targetSdk = 35
         // CI passes the commit count on main, so every release has a higher version.
         val build = (System.getenv("GROOVIO_BUILD_NUMBER") ?: "1").toInt()
