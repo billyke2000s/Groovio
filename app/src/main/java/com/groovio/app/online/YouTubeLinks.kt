@@ -13,7 +13,7 @@ object YouTubeLinks {
         val host = uri.host?.lowercase()?.removePrefix("www.") ?: return null
         val path = uri.path.orEmpty().trim('/')
         val candidate = when (host) {
-            "youtu.be" -> path.substringBefore('/')
+            "youtu.be" -> path.takeIf { '/' !in it }
             "youtube.com", "m.youtube.com", "music.youtube.com" -> when {
                 path == "watch" -> uri.rawQuery.orEmpty().split('&')
                     .firstOrNull { it.substringBefore('=') == "v" }?.substringAfter('=')
